@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -33,14 +34,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-screen items-center justify-center bg-gray-50">
+      {/* Watermark */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.04]">
+        <Image
+          src="/prl_logo.png"
+          alt=""
+          width={600}
+          height={600}
+          className="select-none"
+        />
+      </div>
+      <div className="relative z-10 w-full max-w-md">
         <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
           <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white text-lg font-bold">
-              P
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">PRL Staffing</h1>
+            <Image
+              src="/prl_logo.png"
+              alt="PRL Site Solutions"
+              width={80}
+              height={80}
+              className="mx-auto mb-4 rounded-full"
+            />
+            <h1 className="text-2xl font-bold text-gray-900">PRL Site Solutions</h1>
             <p className="mt-1 text-sm text-gray-500">
               Sign in to your account
             </p>

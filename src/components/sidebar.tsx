@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -32,12 +33,17 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-gray-200 bg-white">
-      <div className="flex h-16 items-center gap-2 border-b border-gray-200 px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white text-sm font-bold">
-          P
-        </div>
+      <div className="flex h-20 items-center gap-3 border-b border-gray-200 px-4">
+        <Image
+          src="/prl_logo.png"
+          alt="PRL Site Solutions"
+          width={48}
+          height={48}
+          className="rounded-full"
+        />
         <div>
-          <h1 className="text-lg font-bold text-gray-900">PRL Staffing</h1>
+          <h1 className="text-sm font-bold text-gray-900 leading-tight">PRL Site Solutions</h1>
+          <p className="text-xs text-gray-500">Recruitment Specialists</p>
         </div>
       </div>
       <nav className="flex-1 space-y-1 p-4">

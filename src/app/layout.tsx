@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PRL Staffing - Contractor Management",
-  description: "Manage contractors, timesheets, and compliance",
+  title: "PRL Site Solutions - Contractor Management",
+  description: "PRL Site Solutions - Recruitment Specialists",
 };
 
 export default function RootLayout({
