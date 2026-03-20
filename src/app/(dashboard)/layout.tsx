@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Sidebar } from "@/components/sidebar";
 
 export default function DashboardLayout({
@@ -12,7 +11,7 @@ export default function DashboardLayout({
       <main className="relative ml-64 min-h-screen">
         {/* Full-screen watermark */}
         <div className="pointer-events-none fixed inset-0 ml-64 flex items-center justify-center opacity-[0.03] z-0">
-          <Image
+          <img
             src="/prl_logo.png"
             alt=""
             width={500}

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -37,7 +36,7 @@ export default function LoginPage() {
     <div className="relative flex min-h-screen items-center justify-center bg-gray-50">
       {/* Watermark */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.04]">
-        <Image
+        <img
           src="/prl_logo.png"
           alt=""
           width={600}
@@ -48,7 +47,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md">
         <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
           <div className="mb-8 text-center">
-            <Image
+            <img
               src="/prl_logo.png"
               alt="PRL Site Solutions"
               width={80}
