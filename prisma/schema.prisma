@@ -32,6 +32,7 @@ model Company {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   contractors  Assignment[]
+  requirements ComplianceRequirement[]
 }
 
 // ─── Suppliers (agencies) ───
@@ -138,6 +139,21 @@ model ComplianceRecord {
   filePath     String?    // path to uploaded document
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+}
+
+// ─── Compliance Requirements (checklists per role/site) ───
+model ComplianceRequirement {
+  id          String   @id @default(cuid())
+  role        String   // e.g. "Electrician", "Labourer", "All"
+  companyId   String?  // null = applies to all sites
+  company     Company? @relation(fields: [companyId], references: [id])
+  type        String   // CSCS, DBS, Right to Work, Insurance, IR35 Assessment, Qualification
+  description String?  // extra detail, e.g. "NVQ Level 3"
+  isMandatory Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([role, companyId, type])
 }
 
 // ─── Rate Cards ───

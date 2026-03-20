@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { ComplianceScoreRing } from "./compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
+import { getComplianceGaps } from "@/lib/compliance-gaps";
 
 const COMPLIANCE_TYPES = [
   "Right to Work",
@@ -59,14 +60,20 @@ export default async function CompliancePage({
   // Sync statuses based on expiry dates before fetching
   await syncComplianceStatuses();
 
-  const [records, allRecords] = await Promise.all([
+  const [records, allRecords, gaps] = await Promise.all([
     prisma.complianceRecord.findMany({
       where,
       include: { contractor: true },
       orderBy: { expiryDate: "asc" },
     }),
     prisma.complianceRecord.findMany(),
+    getComplianceGaps(),
   ]);
+
+  const mandatoryGaps = gaps.filter((g) => g.isMandatory);
+  const criticalGaps = gaps.filter(
+    (g) => g.status === "missing" || g.status === "expired"
+  );
 
   // Calculate counts from DB (now accurate after sync)
   const counts = {
@@ -176,13 +183,21 @@ export default async function CompliancePage({
         title="Compliance Dashboard"
         description="Workforce compliance monitoring and risk scoring"
         action={
-          <Link
-            href="/compliance/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Add Record
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/compliance/requirements"
+              className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              Checklists
+            </Link>
+            <Link
+              href="/compliance/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Add Record
+            </Link>
+          </div>
         }
       />
 
@@ -264,6 +279,73 @@ export default async function CompliancePage({
           )}
         </div>
       </div>
+
+      {/* Compliance Gaps */}
+      {criticalGaps.length > 0 && (
+        <div className="rounded-xl border border-red-200 bg-red-50/50 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <h2 className="text-lg font-semibold text-red-900">
+              Compliance Gaps ({criticalGaps.length})
+            </h2>
+            <span className="text-sm text-red-600">
+              Contractors missing mandatory requirements
+            </span>
+          </div>
+          <div className="space-y-2">
+            {criticalGaps.slice(0, 10).map((gap, i) => (
+              <div
+                key={`${gap.contractorId}-${gap.requiredType}-${i}`}
+                className="flex items-center justify-between rounded-lg border border-red-200 bg-white px-4 py-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`h-2 w-2 rounded-full ${
+                      gap.status === "missing"
+                        ? "bg-red-500"
+                        : "bg-amber-500"
+                    }`}
+                  />
+                  <div>
+                    <Link
+                      href={`/contractors/${gap.contractorId}`}
+                      className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                    >
+                      {gap.contractorName}
+                    </Link>
+                    <p className="text-xs text-gray-500">
+                      {gap.assignmentRole} at {gap.companyName}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-700">
+                    {gap.requiredType}
+                  </span>
+                  <Badge
+                    variant={
+                      gap.status === "missing"
+                        ? "Non-Compliant"
+                        : gap.status === "expired"
+                          ? "Expired"
+                          : gap.status === "expiring"
+                            ? "Expiring"
+                            : "Pending"
+                    }
+                  >
+                    {gap.status === "missing" ? "Missing" : gap.status === "expired" ? "Expired" : gap.status === "expiring" ? "Expiring" : "Pending"}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+            {criticalGaps.length > 10 && (
+              <p className="text-center text-sm text-red-600 pt-2">
+                + {criticalGaps.length - 10} more gaps
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <form method="GET" className="flex flex-wrap items-center gap-4">
