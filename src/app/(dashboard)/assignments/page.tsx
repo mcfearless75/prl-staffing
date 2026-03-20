@@ -5,22 +5,9 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate, getInitials } from "@/lib/utils";
 import { Plus } from "lucide-react";
+import { KanbanBoard } from "./kanban-board";
 
 const STATUSES = ["Placed", "Active", "Ending", "Completed"] as const;
-
-const statusBorderColors: Record<string, string> = {
-  Placed: "border-l-blue-500",
-  Active: "border-l-emerald-500",
-  Ending: "border-l-orange-500",
-  Completed: "border-l-gray-400",
-};
-
-const statusHeaderColors: Record<string, string> = {
-  Placed: "bg-blue-50 text-blue-700",
-  Active: "bg-emerald-50 text-emerald-700",
-  Ending: "bg-orange-50 text-orange-700",
-  Completed: "bg-gray-50 text-gray-600",
-};
 
 export default async function AssignmentsPage({
   searchParams,
@@ -43,13 +30,6 @@ export default async function AssignmentsPage({
     },
     orderBy: { startDate: "desc" },
   });
-
-  const grouped = {
-    Placed: assignments.filter((a) => a.status === "Placed"),
-    Active: assignments.filter((a) => a.status === "Active"),
-    Ending: assignments.filter((a) => a.status === "Ending"),
-    Completed: assignments.filter((a) => a.status === "Completed"),
-  };
 
   return (
     <div className="space-y-6">
@@ -94,82 +74,9 @@ export default async function AssignmentsPage({
       </div>
 
       {/* Kanban Board */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {(["Placed", "Active", "Ending"] as const).map((status) => (
-          <div key={status} className="space-y-3">
-            {/* Column Header */}
-            <div
-              className={`flex items-center justify-between rounded-lg px-4 py-2.5 ${statusHeaderColors[status]}`}
-            >
-              <span className="text-sm font-semibold">{status}</span>
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/60 text-xs font-bold">
-                {grouped[status].length}
-              </span>
-            </div>
+      <KanbanBoard initialAssignments={JSON.parse(JSON.stringify(assignments))} />
 
-            {/* Cards */}
-            <div className="space-y-3">
-              {grouped[status].length === 0 ? (
-                <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-400">
-                  No assignments
-                </div>
-              ) : (
-                grouped[status].map((assignment) => {
-                  const initials = assignment.contractor
-                    ? getInitials(
-                        assignment.contractor.firstName,
-                        assignment.contractor.lastName
-                      )
-                    : "??";
-
-                  return (
-                    <Link
-                      key={assignment.id}
-                      href={`/assignments/${assignment.id}`}
-                      className={`block rounded-xl border border-gray-200 border-l-4 bg-white p-4 shadow-sm hover:shadow-md transition-shadow ${statusBorderColors[status]}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-medium text-white">
-                          {initials}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-gray-900">
-                            {assignment.contractor
-                              ? `${assignment.contractor.firstName} ${assignment.contractor.lastName}`
-                              : "Unknown"}
-                          </p>
-                          <p className="truncate text-xs text-gray-500">
-                            {assignment.company?.name || "—"}
-                          </p>
-                          <p className="mt-1 text-xs font-medium text-gray-700">
-                            {assignment.role}
-                          </p>
-                          {assignment.location && (
-                            <p className="text-xs text-gray-400">
-                              {assignment.location}
-                            </p>
-                          )}
-                          <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-                            <span>{formatDate(assignment.startDate)}</span>
-                            {assignment.endDate && (
-                              <>
-                                <span>—</span>
-                                <span>{formatDate(assignment.endDate)}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Table View Fallback */}
+      {/* Table View */}
       <div className="mt-8">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">
           All Assignments

@@ -64,6 +64,20 @@ export async function updateAssignment(id: string, formData: FormData) {
   redirect(`/assignments/${id}`);
 }
 
+export async function updateAssignmentStatus(id: string, status: string) {
+  const validStatuses = ["Placed", "Active", "Ending", "Completed"];
+  if (!validStatuses.includes(status)) {
+    throw new Error("Invalid status");
+  }
+
+  await prisma.assignment.update({
+    where: { id },
+    data: { status },
+  });
+
+  revalidatePath("/assignments");
+}
+
 export async function deleteAssignment(id: string) {
   await prisma.assignment.delete({
     where: { id },
