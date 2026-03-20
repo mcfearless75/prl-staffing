@@ -13,8 +13,11 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { ComplianceScoreRing } from "./compliance/compliance-score-ring";
+import { syncComplianceStatuses } from "@/lib/compliance-sync";
 
 export default async function DashboardPage() {
+  await syncComplianceStatuses();
+
   const [
     totalContractors,
     activeAssignments,

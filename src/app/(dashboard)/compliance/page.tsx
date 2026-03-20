@@ -15,6 +15,7 @@ import {
   AlertOctagon,
 } from "lucide-react";
 import { ComplianceScoreRing } from "./compliance-score-ring";
+import { syncComplianceStatuses } from "@/lib/compliance-sync";
 
 const COMPLIANCE_TYPES = [
   "Right to Work",
@@ -25,21 +26,6 @@ const COMPLIANCE_TYPES = [
   "Qualification",
   "Other",
 ] as const;
-
-function getAutoStatus(record: {
-  status: string;
-  expiryDate: Date | null;
-}): string {
-  if (!record.expiryDate) return record.status;
-  const now = new Date();
-  const expiry = new Date(record.expiryDate);
-  const daysUntilExpiry = Math.ceil(
-    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  if (daysUntilExpiry < 0) return "Expired";
-  if (daysUntilExpiry <= 30) return "Expiring";
-  return record.status;
-}
 
 export default async function CompliancePage({
   searchParams,
@@ -70,62 +56,43 @@ export default async function CompliancePage({
     where.type = type;
   }
 
-  const [records, allRecords, totalContractors] = await Promise.all([
+  // Sync statuses based on expiry dates before fetching
+  await syncComplianceStatuses();
+
+  const [records, allRecords] = await Promise.all([
     prisma.complianceRecord.findMany({
       where,
       include: { contractor: true },
       orderBy: { expiryDate: "asc" },
     }),
-    prisma.complianceRecord.findMany({
-      include: { contractor: true },
-    }),
-    prisma.contractor.count({ where: { status: "Active" } }),
+    prisma.complianceRecord.findMany(),
   ]);
 
-  // Apply auto-expiry detection to all records
-  const allWithAutoStatus = allRecords.map((r) => ({
-    ...r,
-    effectiveStatus: getAutoStatus(r),
-  }));
-
-  // Calculate counts with auto-detection
+  // Calculate counts from DB (now accurate after sync)
   const counts = {
-    Verified: allWithAutoStatus.filter((r) => r.effectiveStatus === "Verified")
+    Verified: allRecords.filter((r) => r.status === "Verified").length,
+    Pending: allRecords.filter((r) => r.status === "Pending").length,
+    Expiring: allRecords.filter((r) => r.status === "Expiring").length,
+    Expired: allRecords.filter((r) => r.status === "Expired").length,
+    "Non-Compliant": allRecords.filter((r) => r.status === "Non-Compliant")
       .length,
-    Pending: allWithAutoStatus.filter((r) => r.effectiveStatus === "Pending")
-      .length,
-    Expiring: allWithAutoStatus.filter((r) => r.effectiveStatus === "Expiring")
-      .length,
-    Expired: allWithAutoStatus.filter((r) => r.effectiveStatus === "Expired")
-      .length,
-    "Non-Compliant": allWithAutoStatus.filter(
-      (r) => r.effectiveStatus === "Non-Compliant"
-    ).length,
   };
 
-  const totalRecords = allWithAutoStatus.length;
+  const totalRecords = allRecords.length;
   const compliantCount = counts.Verified;
   const riskScore =
     totalRecords > 0 ? Math.round((compliantCount / totalRecords) * 100) : 0;
 
   // Per-type breakdown for progress bars
   const typeBreakdown = COMPLIANCE_TYPES.map((typeName) => {
-    const ofType = allWithAutoStatus.filter((r) => r.type === typeName);
+    const ofType = allRecords.filter((r) => r.type === typeName);
     const total = ofType.length;
-    const verified = ofType.filter(
-      (r) => r.effectiveStatus === "Verified"
-    ).length;
-    const expiring = ofType.filter(
-      (r) => r.effectiveStatus === "Expiring"
-    ).length;
+    const verified = ofType.filter((r) => r.status === "Verified").length;
+    const expiring = ofType.filter((r) => r.status === "Expiring").length;
     const expired = ofType.filter(
-      (r) =>
-        r.effectiveStatus === "Expired" ||
-        r.effectiveStatus === "Non-Compliant"
+      (r) => r.status === "Expired" || r.status === "Non-Compliant"
     ).length;
-    const pending = ofType.filter(
-      (r) => r.effectiveStatus === "Pending"
-    ).length;
+    const pending = ofType.filter((r) => r.status === "Pending").length;
     const percentage = total > 0 ? Math.round((verified / total) * 100) : 0;
 
     let displayStatus: string;
@@ -146,12 +113,6 @@ export default async function CompliancePage({
       displayStatus,
     };
   }).filter((t) => t.total > 0);
-
-  // Records with auto-status for the table
-  const recordsWithAutoStatus = records.map((r) => ({
-    ...r,
-    effectiveStatus: getAutoStatus(r),
-  }));
 
   function getRowBorderColor(recordStatus: string) {
     switch (recordStatus) {
@@ -349,7 +310,7 @@ export default async function CompliancePage({
       </form>
 
       {/* Compliance Table */}
-      {recordsWithAutoStatus.length > 0 ? (
+      {records.length > 0 ? (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -378,10 +339,10 @@ export default async function CompliancePage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {recordsWithAutoStatus.map((record) => (
+              {records.map((record) => (
                 <tr
                   key={record.id}
-                  className={`hover:bg-gray-50 transition-colors ${getRowBorderColor(record.effectiveStatus)}`}
+                  className={`hover:bg-gray-50 transition-colors ${getRowBorderColor(record.status)}`}
                 >
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -422,8 +383,8 @@ export default async function CompliancePage({
                     {record.expiryDate ? formatDate(record.expiryDate) : "—"}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
-                    <Badge variant={record.effectiveStatus}>
-                      {record.effectiveStatus}
+                    <Badge variant={record.status}>
+                      {record.status}
                     </Badge>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right">
