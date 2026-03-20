@@ -37,7 +37,7 @@ export default function LoginPage() {
       {/* Watermark */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.04]">
         <img
-          src="/prl_logo.png"
+          src="/prl_logo.jpg"
           alt=""
           width={600}
           height={600}
@@ -48,7 +48,7 @@ export default function LoginPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
           <div className="mb-8 text-center">
             <img
-              src="/prl_logo.png"
+              src="/prl_logo.jpg"
               alt="PRL Site Solutions"
               width={80}
               height={80}

@@ -34,7 +34,7 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-gray-200 bg-white">
       <div className="flex h-20 items-center gap-3 border-b border-gray-200 px-4">
         <img
-          src="/prl_logo.png"
+          src="/prl_logo.jpg"
           alt="PRL Site Solutions"
           width={48}
           height={48}

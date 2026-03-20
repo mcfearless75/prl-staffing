@@ -12,7 +12,7 @@ export default function DashboardLayout({
         {/* Full-screen watermark */}
         <div className="pointer-events-none fixed inset-0 ml-64 flex items-center justify-center opacity-[0.03] z-0">
           <img
-            src="/prl_logo.png"
+            src="/prl_logo.jpg"
             alt=""
             width={500}
             height={500}
