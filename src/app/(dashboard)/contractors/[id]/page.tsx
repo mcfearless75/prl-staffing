@@ -63,6 +63,12 @@ export default async function ContractorDetailPage({
           </div>
           <div className="flex items-center gap-3">
             <Link
+              href={`/contractors/${contractor.id}/ir35`}
+              className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-100 transition-colors"
+            >
+              IR35 Assessment
+            </Link>
+            <Link
               href={`/contractors/${contractor.id}/edit`}
               className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
             >
@@ -127,8 +133,27 @@ export default async function ContractorDetailPage({
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">IR35 Status</p>
-            <p className="text-sm text-gray-900">
-              {contractor.ir35Status || "-"}
+            <p className="text-sm">
+              {contractor.ir35Status ? (
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    contractor.ir35Status === "Outside"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : contractor.ir35Status === "Inside"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {contractor.ir35Status}
+                </span>
+              ) : (
+                <Link
+                  href={`/contractors/${contractor.id}/ir35`}
+                  className="text-blue-600 hover:underline text-xs"
+                >
+                  Run assessment →
+                </Link>
+              )}
             </p>
           </div>
           <div>
