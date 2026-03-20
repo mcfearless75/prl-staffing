@@ -10,10 +10,11 @@ import { formatDate } from "@/lib/utils";
 export default async function CompanyDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const company = await prisma.company.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       contractors: {
         include: {

@@ -12,10 +12,11 @@ const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export default async function TimesheetDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const timesheet = await prisma.timesheet.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       contractor: true,
       assignment: { include: { company: true } },

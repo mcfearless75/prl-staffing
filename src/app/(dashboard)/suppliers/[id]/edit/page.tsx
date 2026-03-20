@@ -8,10 +8,11 @@ import { updateSupplier } from "../../actions";
 export default async function EditSupplierPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const supplier = await prisma.supplier.findUnique({
-    where: { id: params.id },
+    where: { id },
   });
 
   if (!supplier) {

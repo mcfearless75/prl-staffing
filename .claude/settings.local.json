@@ -43,7 +43,10 @@
       "Bash(then sed:*)",
       "Bash(fi)",
       "Bash(gh auth:*)",
-      "Bash(gh repo:*)"
+      "Bash(gh repo:*)",
+      "Bash(openssl rand:*)",
+      "WebFetch(domain:prl-staffing-production.up.railway.app)",
+      "Bash(grep -iE \"\\\\.\\(png|jpg|jpeg|svg|webp\\)$\")"
     ]
   }
 }

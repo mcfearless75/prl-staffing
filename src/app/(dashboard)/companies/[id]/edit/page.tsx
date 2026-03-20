@@ -8,10 +8,11 @@ import { updateCompany } from "../../actions";
 export default async function EditCompanyPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const company = await prisma.company.findUnique({
-    where: { id: params.id },
+    where: { id },
   });
 
   if (!company) {

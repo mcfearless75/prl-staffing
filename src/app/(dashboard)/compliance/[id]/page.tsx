@@ -10,10 +10,11 @@ import { deleteComplianceRecord } from "../actions";
 export default async function ComplianceRecordPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const record = await prisma.complianceRecord.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { contractor: true },
   });
 

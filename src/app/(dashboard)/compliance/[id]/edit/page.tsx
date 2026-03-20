@@ -8,11 +8,12 @@ import { updateComplianceRecord } from "../../actions";
 export default async function EditComplianceRecordPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const [record, contractors] = await Promise.all([
     prisma.complianceRecord.findUnique({
-      where: { id: params.id },
+      where: { id },
     }),
     prisma.contractor.findMany({
       select: { id: true, firstName: true, lastName: true },

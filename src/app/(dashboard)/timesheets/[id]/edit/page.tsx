@@ -11,10 +11,11 @@ const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export default async function EditTimesheetPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const timesheet = await prisma.timesheet.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       contractor: true,
       entries: { orderBy: { dayOfWeek: "asc" } },
