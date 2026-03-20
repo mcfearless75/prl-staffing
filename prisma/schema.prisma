@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users (internal staff) ───
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("admin") // admin, manager, viewer
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── Client Companies ───
+model Company {
+  id           String       @id @default(cuid())
+  name         String
+  address      String?
+  city         String?
+  postcode     String?
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  contractors  Assignment[]
+}
+
+// ─── Suppliers (agencies) ───
+model Supplier {
+  id           String       @id @default(cuid())
+  name         String
+  tier         String       @default("Tier 2") // Tier 1, Tier 2, Tier 3
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  score        Int          @default(0) // 0-100 performance score
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  contractors  Contractor[]
+}
+
+// ─── Contractors ───
+model Contractor {
+  id           String             @id @default(cuid())
+  firstName    String
+  lastName     String
+  email        String             @unique
+  phone        String?
+  jobTitle     String?
+  dayRate      Float?
+  payRate      Float?             // hourly pay rate
+  chargeRate   Float?             // hourly charge rate
+  status       String             @default("Active") // Active, Inactive, On Hold
+  supplierId   String?
+  supplier     Supplier?          @relation(fields: [supplierId], references: [id])
+  niNumber     String?
+  utrNumber    String?
+  ir35Status   String?            // Inside, Outside, TBD
+  notes        String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  assignments  Assignment[]
+  timesheets   Timesheet[]
+  compliances  ComplianceRecord[]
+}
+
+// ─── Assignments (contractor <-> company placement) ───
+model Assignment {
+  id           String      @id @default(cuid())
+  contractorId String
+  contractor   Contractor  @relation(fields: [contractorId], references: [id])
+  companyId    String
+  company      Company     @relation(fields: [companyId], references: [id])
+  role         String
+  location     String?
+  startDate    DateTime
+  endDate      DateTime?
+  status       String      @default("Active") // Placed, Active, Ending, Completed
+  poNumber     String?
+  notes        String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  timesheets   Timesheet[]
+}
+
+// ─── Timesheets ───
+model Timesheet {
+  id           String          @id @default(cuid())
+  contractorId String
+  contractor   Contractor      @relation(fields: [contractorId], references: [id])
+  assignmentId String?
+  assignment   Assignment?     @relation(fields: [assignmentId], references: [id])
+  weekStarting DateTime        // Monday of the week
+  status       String          @default("Draft") // Draft, Submitted, Approved, Rejected
+  totalHours   Float           @default(0)
+  overtimeHours Float          @default(0)
+  notes        String?
+  submittedAt  DateTime?
+  approvedAt   DateTime?
+  approvedBy   String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  entries      TimesheetEntry[]
+}
+
+model TimesheetEntry {
+  id          String    @id @default(cuid())
+  timesheetId String
+  timesheet   Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+  dayOfWeek   Int       // 0=Mon, 1=Tue, ... 6=Sun
+  hours       Float     @default(0)
+  overtime    Float     @default(0)
+  notes       String?
+}
+
+// ─── Compliance Records ───
+model ComplianceRecord {
+  id           String     @id @default(cuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+  type         String     // CSCS, DBS, Right to Work, Insurance, IR35, Qualification
+  documentName String?
+  reference    String?    // cert number etc
+  issueDate    DateTime?
+  expiryDate   DateTime?
+  status       String     @default("Pending") // Verified, Pending, Expiring, Expired, Non-Compliant
+  notes        String?
+  filePath     String?    // path to uploaded document
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+// ─── Rate Cards ───
+model RateCard {
+  id         String   @id @default(cuid())
+  role       String
+  location   String?
+  payRate    Float    // per hour
+  chargeRate Float    // per hour
+  margin     Float?   // percentage
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}

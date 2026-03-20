@@ -1,0 +1,262 @@
+export const dynamic = "force-dynamic";
+import { prisma } from "@/lib/db";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { deleteContractor } from "../actions";
+
+export default async function ContractorDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
+  const contractor = await prisma.contractor.findUnique({
+    where: { id },
+    include: {
+      supplier: true,
+      assignments: {
+        include: { company: true },
+      },
+      compliances: true,
+    },
+  });
+
+  if (!contractor) {
+    notFound();
+  }
+
+  const initials =
+    (contractor.firstName?.[0] ?? "") + (contractor.lastName?.[0] ?? "");
+
+  const statusColor =
+    contractor.status === "Active"
+      ? "bg-green-100 text-green-800"
+      : contractor.status === "Inactive"
+        ? "bg-gray-100 text-gray-800"
+        : "bg-yellow-100 text-yellow-800";
+
+  const deleteAction = deleteContractor.bind(null, contractor.id);
+
+  return (
+    <div className="space-y-6">
+      {/* Header Card */}
+      <div className="rounded-xl border bg-white p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-xl font-bold text-blue-700">
+              {initials}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {contractor.firstName} {contractor.lastName}
+              </h1>
+              {contractor.jobTitle && (
+                <p className="text-sm text-gray-500">{contractor.jobTitle}</p>
+              )}
+              <span
+                className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor}`}
+              >
+                {contractor.status}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/contractors/${contractor.id}/edit`}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+            >
+              Edit
+            </Link>
+            <form action={deleteAction}>
+              <input type="hidden" name="id" value={contractor.id} />
+              <button
+                type="submit"
+                className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50"
+              >
+                Delete
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* Details Grid */}
+      <div className="rounded-xl border bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">Details</h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Email</p>
+            <p className="text-sm text-gray-900">{contractor.email || "-"}</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Phone</p>
+            <p className="text-sm text-gray-900">{contractor.phone || "-"}</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Day Rate</p>
+            <p className="text-sm text-gray-900">
+              {contractor.dayRate != null
+                ? `£${Number(contractor.dayRate).toFixed(2)}`
+                : "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Pay Rate/hr</p>
+            <p className="text-sm text-gray-900">
+              {contractor.payRate || "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Charge Rate/hr</p>
+            <p className="text-sm text-gray-900">
+              {contractor.chargeRate || "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">NI Number</p>
+            <p className="text-sm text-gray-900">
+              {contractor.niNumber || "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">UTR Number</p>
+            <p className="text-sm text-gray-900">
+              {contractor.utrNumber || "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">IR35 Status</p>
+            <p className="text-sm text-gray-900">
+              {contractor.ir35Status || "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Supplier</p>
+            <p className="text-sm text-gray-900">
+              {contractor.supplier?.name || "-"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Assignments */}
+      <div className="rounded-xl border bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          Assignments
+        </h2>
+        {contractor.assignments.length === 0 ? (
+          <p className="text-sm text-gray-500">No assignments found.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Company
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Role
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Start Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    End Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {contractor.assignments.map((assignment: any) => (
+                  <tr key={assignment.id}>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {assignment.company?.name || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {assignment.role || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {assignment.startDate
+                        ? new Date(assignment.startDate).toLocaleDateString()
+                        : "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {assignment.endDate
+                        ? new Date(assignment.endDate).toLocaleDateString()
+                        : "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {assignment.status || "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Compliance */}
+      <div className="rounded-xl border bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          Compliance
+        </h2>
+        {contractor.compliances.length === 0 ? (
+          <p className="text-sm text-gray-500">No compliance records found.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Reference
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Expiry Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {contractor.compliances.map((compliance: any) => (
+                  <tr key={compliance.id}>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {compliance.type || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {compliance.reference || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {compliance.expiryDate
+                        ? new Date(compliance.expiryDate).toLocaleDateString()
+                        : "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {compliance.status || "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Notes */}
+      <div className="rounded-xl border bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">Notes</h2>
+        <p className="whitespace-pre-wrap text-sm text-gray-700">
+          {contractor.notes || "No notes."}
+        </p>
+      </div>
+    </div>
+  );
+}
