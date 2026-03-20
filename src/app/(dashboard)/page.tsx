@@ -12,6 +12,7 @@ import {
   TrendingUp,
   AlertTriangle,
 } from "lucide-react";
+import { ComplianceScoreRing } from "./compliance/compliance-score-ring";
 
 export default async function DashboardPage() {
   const [
@@ -23,6 +24,8 @@ export default async function DashboardPage() {
     activeSuppliers,
     recentContractors,
     recentAlerts,
+    totalComplianceRecords,
+    verifiedComplianceRecords,
   ] = await Promise.all([
     prisma.contractor.count(),
     prisma.assignment.count({ where: { status: "Active" } }),
@@ -44,7 +47,14 @@ export default async function DashboardPage() {
       take: 5,
       include: { contractor: true },
     }),
+    prisma.complianceRecord.count(),
+    prisma.complianceRecord.count({ where: { status: "Verified" } }),
   ]);
+
+  const complianceScore =
+    totalComplianceRecords > 0
+      ? Math.round((verifiedComplianceRecords / totalComplianceRecords) * 100)
+      : 0;
 
   return (
     <div className="space-y-8">
@@ -134,10 +144,11 @@ export default async function DashboardPage() {
 
         {/* Compliance Alerts */}
         <div className="rounded-xl border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
             <h2 className="text-lg font-semibold text-gray-900">
               Compliance Alerts
             </h2>
+            <ComplianceScoreRing score={complianceScore} />
           </div>
           <div className="divide-y divide-gray-100">
             {recentAlerts.length === 0 ? (

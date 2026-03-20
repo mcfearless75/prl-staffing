@@ -4,16 +4,52 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate, getInitials } from "@/lib/utils";
-import { Plus, ShieldCheck, AlertTriangle, XCircle, Search } from "lucide-react";
+import {
+  Plus,
+  ShieldCheck,
+  AlertTriangle,
+  XCircle,
+  Search,
+  Clock,
+  CheckCircle2,
+  AlertOctagon,
+} from "lucide-react";
+import { ComplianceScoreRing } from "./compliance-score-ring";
+
+const COMPLIANCE_TYPES = [
+  "Right to Work",
+  "DBS",
+  "CSCS",
+  "Insurance",
+  "IR35 Assessment",
+  "Qualification",
+  "Other",
+] as const;
+
+function getAutoStatus(record: {
+  status: string;
+  expiryDate: Date | null;
+}): string {
+  if (!record.expiryDate) return record.status;
+  const now = new Date();
+  const expiry = new Date(record.expiryDate);
+  const daysUntilExpiry = Math.ceil(
+    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (daysUntilExpiry < 0) return "Expired";
+  if (daysUntilExpiry <= 30) return "Expiring";
+  return record.status;
+}
 
 export default async function CompliancePage({
   searchParams,
 }: {
-  searchParams?: { search?: string; status?: string; type?: string };
+  searchParams?: Promise<{ search?: string; status?: string; type?: string }>;
 }) {
-  const search = searchParams?.search || "";
-  const status = searchParams?.status || "";
-  const type = searchParams?.type || "";
+  const params = await searchParams;
+  const search = params?.search || "";
+  const status = params?.status || "";
+  const type = params?.type || "";
 
   const where: Record<string, unknown> = {};
 
@@ -34,31 +70,88 @@ export default async function CompliancePage({
     where.type = type;
   }
 
-  const records = await prisma.complianceRecord.findMany({
-    where,
-    include: { contractor: true },
-    orderBy: { expiryDate: "asc" },
-  });
+  const [records, allRecords, totalContractors] = await Promise.all([
+    prisma.complianceRecord.findMany({
+      where,
+      include: { contractor: true },
+      orderBy: { expiryDate: "asc" },
+    }),
+    prisma.complianceRecord.findMany({
+      include: { contractor: true },
+    }),
+    prisma.contractor.count({ where: { status: "Active" } }),
+  ]);
 
-  // Summary counts
-  const allRecords = await prisma.complianceRecord.groupBy({
-    by: ["status"],
-    _count: { status: true },
-  });
+  // Apply auto-expiry detection to all records
+  const allWithAutoStatus = allRecords.map((r) => ({
+    ...r,
+    effectiveStatus: getAutoStatus(r),
+  }));
 
+  // Calculate counts with auto-detection
   const counts = {
-    Verified: 0,
-    Pending: 0,
-    Expiring: 0,
-    Expired: 0,
-    "Non-Compliant": 0,
+    Verified: allWithAutoStatus.filter((r) => r.effectiveStatus === "Verified")
+      .length,
+    Pending: allWithAutoStatus.filter((r) => r.effectiveStatus === "Pending")
+      .length,
+    Expiring: allWithAutoStatus.filter((r) => r.effectiveStatus === "Expiring")
+      .length,
+    Expired: allWithAutoStatus.filter((r) => r.effectiveStatus === "Expired")
+      .length,
+    "Non-Compliant": allWithAutoStatus.filter(
+      (r) => r.effectiveStatus === "Non-Compliant"
+    ).length,
   };
 
-  for (const r of allRecords) {
-    if (r.status in counts) {
-      counts[r.status as keyof typeof counts] = r._count.status;
-    }
-  }
+  const totalRecords = allWithAutoStatus.length;
+  const compliantCount = counts.Verified;
+  const riskScore =
+    totalRecords > 0 ? Math.round((compliantCount / totalRecords) * 100) : 0;
+
+  // Per-type breakdown for progress bars
+  const typeBreakdown = COMPLIANCE_TYPES.map((typeName) => {
+    const ofType = allWithAutoStatus.filter((r) => r.type === typeName);
+    const total = ofType.length;
+    const verified = ofType.filter(
+      (r) => r.effectiveStatus === "Verified"
+    ).length;
+    const expiring = ofType.filter(
+      (r) => r.effectiveStatus === "Expiring"
+    ).length;
+    const expired = ofType.filter(
+      (r) =>
+        r.effectiveStatus === "Expired" ||
+        r.effectiveStatus === "Non-Compliant"
+    ).length;
+    const pending = ofType.filter(
+      (r) => r.effectiveStatus === "Pending"
+    ).length;
+    const percentage = total > 0 ? Math.round((verified / total) * 100) : 0;
+
+    let displayStatus: string;
+    if (expired > 0) displayStatus = "Non-Compliant";
+    else if (expiring > 0) displayStatus = "Expiring";
+    else if (pending > 0) displayStatus = "Pending";
+    else if (verified > 0) displayStatus = "Verified";
+    else displayStatus = "None";
+
+    return {
+      type: typeName,
+      total,
+      verified,
+      expiring,
+      expired,
+      pending,
+      percentage,
+      displayStatus,
+    };
+  }).filter((t) => t.total > 0);
+
+  // Records with auto-status for the table
+  const recordsWithAutoStatus = records.map((r) => ({
+    ...r,
+    effectiveStatus: getAutoStatus(r),
+  }));
 
   function getRowBorderColor(recordStatus: string) {
     switch (recordStatus) {
@@ -72,10 +165,55 @@ export default async function CompliancePage({
     }
   }
 
+  function getStatusIcon(displayStatus: string) {
+    switch (displayStatus) {
+      case "Verified":
+        return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
+      case "Expiring":
+        return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+      case "Non-Compliant":
+      case "Expired":
+        return <AlertOctagon className="h-5 w-5 text-red-500" />;
+      case "Pending":
+        return <Clock className="h-5 w-5 text-gray-400" />;
+      default:
+        return <Clock className="h-5 w-5 text-gray-300" />;
+    }
+  }
+
+  function getProgressBarColor(displayStatus: string) {
+    switch (displayStatus) {
+      case "Verified":
+        return "bg-emerald-500";
+      case "Expiring":
+        return "bg-amber-500";
+      case "Non-Compliant":
+      case "Expired":
+        return "bg-red-500";
+      default:
+        return "bg-gray-300";
+    }
+  }
+
+  function getProgressTrackColor(displayStatus: string) {
+    switch (displayStatus) {
+      case "Verified":
+        return "bg-emerald-100";
+      case "Expiring":
+        return "bg-amber-100";
+      case "Non-Compliant":
+      case "Expired":
+        return "bg-red-100";
+      default:
+        return "bg-gray-100";
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Compliance"
+        title="Compliance Dashboard"
+        description="Workforce compliance monitoring and risk scoring"
         action={
           <Link
             href="/compliance/new"
@@ -87,53 +225,82 @@ export default async function CompliancePage({
         }
       />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-              <ShieldCheck className="h-5 w-5 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-emerald-700">{counts.Verified}</p>
-              <p className="text-xs font-medium text-emerald-600">Verified</p>
-            </div>
+      {/* Risk Score + Summary Cards — Requidex Style */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <div className="flex items-start justify-between mb-6">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Compliance Overview
+          </h2>
+          <ComplianceScoreRing score={riskScore} />
+        </div>
+
+        {/* Summary Cards Row */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center">
+            <p className="text-3xl font-bold text-emerald-700">
+              {compliantCount}
+            </p>
+            <p className="text-sm font-medium text-emerald-600">Compliant</p>
+          </div>
+          <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-center">
+            <p className="text-3xl font-bold text-amber-700">
+              {counts.Expiring}
+            </p>
+            <p className="text-sm font-medium text-amber-600">Expiring</p>
+          </div>
+          <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-center">
+            <p className="text-3xl font-bold text-red-700">
+              {counts.Expired + counts["Non-Compliant"]}
+            </p>
+            <p className="text-sm font-medium text-red-600">Non-Compliant</p>
           </div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-              <Search className="h-5 w-5 text-gray-500" />
+
+        {/* Per-Type Progress Bars — Requidex Style */}
+        <div className="space-y-4">
+          {typeBreakdown.map((item) => (
+            <div
+              key={item.type}
+              className="flex items-center gap-4 rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-gray-200">
+                {getStatusIcon(item.displayStatus)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-semibold text-gray-900">
+                    {item.type}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {item.verified}/{item.total} verified
+                  </span>
+                </div>
+                <div
+                  className={`h-2.5 w-full rounded-full ${getProgressTrackColor(item.displayStatus)}`}
+                >
+                  <div
+                    className={`h-2.5 rounded-full transition-all ${getProgressBarColor(item.displayStatus)}`}
+                    style={{ width: `${item.percentage}%` }}
+                  />
+                </div>
+              </div>
+              <Badge variant={item.displayStatus} className="ml-2 shrink-0">
+                {item.displayStatus}
+              </Badge>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-700">{counts.Pending}</p>
-              <p className="text-xs font-medium text-gray-500">Pending</p>
+          ))}
+
+          {typeBreakdown.length === 0 && (
+            <div className="py-8 text-center text-sm text-gray-400">
+              No compliance records yet.{" "}
+              <Link
+                href="/compliance/new"
+                className="text-blue-600 hover:underline"
+              >
+                Add your first record
+              </Link>
             </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-amber-700">{counts.Expiring}</p>
-              <p className="text-xs font-medium text-amber-600">Expiring</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100">
-              <XCircle className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-red-700">
-                {counts.Expired + counts["Non-Compliant"]}
-              </p>
-              <p className="text-xs font-medium text-red-600">Expired / Non-Compliant</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -167,13 +334,11 @@ export default async function CompliancePage({
           className="rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">All Types</option>
-          <option value="CSCS">CSCS</option>
-          <option value="DBS">DBS</option>
-          <option value="Right to Work">Right to Work</option>
-          <option value="Insurance">Insurance</option>
-          <option value="IR35 Assessment">IR35 Assessment</option>
-          <option value="Qualification">Qualification</option>
-          <option value="Other">Other</option>
+          {COMPLIANCE_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
         </select>
         <button
           type="submit"
@@ -184,7 +349,7 @@ export default async function CompliancePage({
       </form>
 
       {/* Compliance Table */}
-      {records.length > 0 ? (
+      {recordsWithAutoStatus.length > 0 ? (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -213,10 +378,10 @@ export default async function CompliancePage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {records.map((record) => (
+              {recordsWithAutoStatus.map((record) => (
                 <tr
                   key={record.id}
-                  className={`hover:bg-gray-50 transition-colors ${getRowBorderColor(record.status)}`}
+                  className={`hover:bg-gray-50 transition-colors ${getRowBorderColor(record.effectiveStatus)}`}
                 >
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -227,7 +392,8 @@ export default async function CompliancePage({
                         )}
                       </div>
                       <span className="text-sm font-medium text-gray-900">
-                        {record.contractor.firstName} {record.contractor.lastName}
+                        {record.contractor.firstName}{" "}
+                        {record.contractor.lastName}
                       </span>
                     </div>
                   </td>
@@ -237,10 +403,14 @@ export default async function CompliancePage({
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     <div>
                       {record.documentName && (
-                        <span className="text-gray-900">{record.documentName}</span>
+                        <span className="text-gray-900">
+                          {record.documentName}
+                        </span>
                       )}
                       {record.reference && (
-                        <span className="ml-2 text-gray-400">#{record.reference}</span>
+                        <span className="ml-2 text-gray-400">
+                          #{record.reference}
+                        </span>
                       )}
                       {!record.documentName && !record.reference && "—"}
                     </div>
@@ -252,7 +422,9 @@ export default async function CompliancePage({
                     {record.expiryDate ? formatDate(record.expiryDate) : "—"}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
-                    <Badge variant={record.status}>{record.status}</Badge>
+                    <Badge variant={record.effectiveStatus}>
+                      {record.effectiveStatus}
+                    </Badge>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right">
                     <Link
@@ -272,11 +444,17 @@ export default async function CompliancePage({
           <p className="text-sm text-gray-500">
             No compliance records found.{" "}
             {search || status || type ? (
-              <Link href="/compliance" className="text-blue-600 hover:underline">
+              <Link
+                href="/compliance"
+                className="text-blue-600 hover:underline"
+              >
                 Clear filters
               </Link>
             ) : (
-              <Link href="/compliance/new" className="text-blue-600 hover:underline">
+              <Link
+                href="/compliance/new"
+                className="text-blue-600 hover:underline"
+              >
                 Add your first compliance record
               </Link>
             )}
