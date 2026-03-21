@@ -34,6 +34,7 @@ model Company {
   contractors   Assignment[]
   requirements  ComplianceRequirement[]
   approvalChain ApprovalChain?
+  invoices      Invoice[]
 }
 
 // ─── Suppliers (agencies) ───
@@ -74,6 +75,7 @@ model Contractor {
   assignments  Assignment[]
   timesheets   Timesheet[]
   compliances  ComplianceRecord[]
+  invoiceLines InvoiceLine[]
 }
 
 // ─── Assignments (contractor <-> company placement) ───
@@ -209,6 +211,46 @@ model TimesheetApproval {
   approvedAt  DateTime?
   notes       String?
   createdAt   DateTime  @default(now())
+}
+
+// ─── Invoices ───
+model Invoice {
+  id             String        @id @default(cuid())
+  invoiceNumber  String        @unique // e.g. INV-0001
+  companyId      String
+  company        Company       @relation(fields: [companyId], references: [id])
+  periodStart    DateTime      // billing period start
+  periodEnd      DateTime      // billing period end
+  status         String        @default("Draft") // Draft, Reconciling, Approved, Sent, Paid, Disputed
+  currency       String        @default("GBP")
+  subtotal       Float         @default(0)
+  vatRate        Float         @default(20) // UK VAT %
+  vatAmount      Float         @default(0)
+  total          Float         @default(0)
+  dueDate        DateTime?
+  paidDate       DateTime?
+  poNumber       String?       // PO reference for three-way matching
+  notes          String?
+  matchStatus    String        @default("Unmatched") // Unmatched, Partial, Matched, Disputed
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  lines          InvoiceLine[]
+}
+
+model InvoiceLine {
+  id            String    @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  contractorId  String
+  contractor    Contractor @relation(fields: [contractorId], references: [id])
+  timesheetId   String?
+  description   String     // e.g. "J. Smith - Electrician"
+  hours         Float
+  overtimeHours Float      @default(0)
+  rate          Float      // charge rate per hour
+  overtimeRate  Float?     // overtime rate (1.5x)
+  amount        Float      // total line amount
+  createdAt     DateTime   @default(now())
 }
 
 // ─── Rate Cards ───

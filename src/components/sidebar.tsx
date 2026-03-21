@@ -14,6 +14,7 @@ import {
   Truck,
   ClipboardList,
   LogOut,
+  Receipt,
 } from "lucide-react";
 
 const navigation = [
@@ -22,6 +23,7 @@ const navigation = [
   { name: "Companies", href: "/companies", icon: Building2 },
   { name: "Assignments", href: "/assignments", icon: ClipboardList },
   { name: "Timesheets", href: "/timesheets", icon: Clock },
+  { name: "Billing", href: "/billing", icon: Receipt },
   { name: "Compliance", href: "/compliance", icon: ShieldCheck },
   { name: "Rates", href: "/rates", icon: TrendingUp },
   { name: "Suppliers", href: "/suppliers", icon: Truck },
