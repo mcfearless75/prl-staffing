@@ -4,16 +4,17 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
-import { Plus, Search } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 
 const statuses = ["All", "Draft", "Submitted", "Approved", "Rejected"];
 
 export default async function TimesheetsPage({
   searchParams,
 }: {
-  searchParams?: { status?: string };
+  searchParams?: Promise<{ status?: string }>;
 }) {
-  const statusFilter = searchParams?.status || "";
+  const params = searchParams ? await searchParams : {};
+  const statusFilter = params?.status || "";
 
   const where: Record<string, unknown> = {};
   if (statusFilter && statusFilter !== "All") {
@@ -29,18 +30,35 @@ export default async function TimesheetsPage({
     orderBy: { weekStarting: "desc" },
   });
 
+  // Stats
+  const totalCount = timesheets.length;
+  const exceptionCount = timesheets.filter((t) => t.isException).length;
+  const autoApprovedCount = timesheets.filter(
+    (t) => t.status === "Approved" && t.approvedBy === "system"
+  ).length;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Timesheets"
+        description={`${totalCount} timesheets${exceptionCount > 0 ? ` · ${exceptionCount} exceptions` : ""}${autoApprovedCount > 0 ? ` · ${autoApprovedCount} auto-approved` : ""}`}
         action={
-          <Link
-            href="/timesheets/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            New Timesheet
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/timesheets/approval-chains"
+              className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              <Settings className="h-4 w-4" />
+              Approval Chains
+            </Link>
+            <Link
+              href="/timesheets/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              New Timesheet
+            </Link>
+          </div>
         }
       />
 
@@ -82,7 +100,7 @@ export default async function TimesheetsPage({
                   Week Starting
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Total Hours
+                  Hours
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Overtime
@@ -102,7 +120,9 @@ export default async function TimesheetsPage({
               {timesheets.map((timesheet) => (
                 <tr
                   key={timesheet.id}
-                  className="hover:bg-gray-50 transition-colors"
+                  className={`hover:bg-gray-50 transition-colors ${
+                    timesheet.isException ? "bg-amber-50/40" : ""
+                  }`}
                 >
                   <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
                     {timesheet.contractor.firstName}{" "}
@@ -111,16 +131,30 @@ export default async function TimesheetsPage({
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     {formatDate(timesheet.weekStarting)}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    {timesheet.totalHours}
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-gray-900">
+                    {timesheet.totalHours}h
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    {timesheet.overtimeHours}
+                  <td className="whitespace-nowrap px-6 py-4 text-sm">
+                    <span className={timesheet.overtimeHours > 0 ? "font-semibold text-orange-600" : "text-gray-400"}>
+                      {timesheet.overtimeHours}h
+                    </span>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
-                    <Badge variant={timesheet.status}>
-                      {timesheet.status}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant={timesheet.status}>
+                        {timesheet.status}
+                      </Badge>
+                      {timesheet.isException && (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                          Exception
+                        </span>
+                      )}
+                      {timesheet.status === "Approved" && timesheet.approvedBy === "system" && (
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                          Auto
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     {timesheet.assignment?.company?.name || "—"}

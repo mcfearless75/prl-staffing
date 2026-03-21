@@ -31,8 +31,9 @@ model Company {
   isActive     Boolean      @default(true)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-  contractors  Assignment[]
-  requirements ComplianceRequirement[]
+  contractors   Assignment[]
+  requirements  ComplianceRequirement[]
+  approvalChain ApprovalChain?
 }
 
 // ─── Suppliers (agencies) ───
@@ -111,7 +112,11 @@ model Timesheet {
   approvedBy   String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
-  entries      TimesheetEntry[]
+  isException     Boolean         @default(false)
+  exceptionReason String?
+  entries         TimesheetEntry[]
+  auditLogs       TimesheetAuditLog[]
+  approvals       TimesheetApproval[]
 }
 
 model TimesheetEntry {
@@ -154,6 +159,56 @@ model ComplianceRequirement {
   updatedAt   DateTime @updatedAt
 
   @@unique([role, companyId, type])
+}
+
+// ─── Timesheet Audit Log ───
+model TimesheetAuditLog {
+  id          String    @id @default(cuid())
+  timesheetId String
+  timesheet   Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+  action      String    // Created, Edited, Submitted, Approved, Rejected, AutoApproved, Reopened
+  field       String?   // which field changed (e.g. "hours_Mon", "status")
+  oldValue    String?
+  newValue    String?
+  userId      String?   // who made the change
+  userName    String?
+  createdAt   DateTime  @default(now())
+}
+
+// ─── Approval Chains (multi-step approval per company) ───
+model ApprovalChain {
+  id        String         @id @default(cuid())
+  companyId String?        @unique // null = default chain for all companies
+  company   Company?       @relation(fields: [companyId], references: [id])
+  name      String
+  steps     ApprovalStep[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model ApprovalStep {
+  id              String        @id @default(cuid())
+  approvalChainId String
+  approvalChain   ApprovalChain @relation(fields: [approvalChainId], references: [id], onDelete: Cascade)
+  stepOrder       Int           // 1, 2, 3...
+  approverRole    String        // "manager", "admin"
+  label           String        // "Line Manager", "Site Manager", "Finance"
+  createdAt       DateTime      @default(now())
+}
+
+// ─── Timesheet Approval Steps (per-timesheet tracking) ───
+model TimesheetApproval {
+  id          String    @id @default(cuid())
+  timesheetId String
+  timesheet   Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+  stepOrder   Int
+  stepLabel   String
+  status      String    @default("Pending") // Pending, Approved, Rejected
+  approvedBy  String?
+  approverName String?
+  approvedAt  DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
 }
 
 // ─── Rate Cards ───
