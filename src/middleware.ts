@@ -6,7 +6,11 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const isLoginPage = req.nextUrl.pathname === "/login";
+  const isSetPasswordPage = req.nextUrl.pathname === "/set-password";
   const isPortalPage = req.nextUrl.pathname.startsWith("/portal");
+
+  // Allow set-password page without auth
+  if (isSetPasswordPage) return;
   const userType = (req.auth?.user as { userType?: string })?.userType;
 
   if (isLoginPage) {

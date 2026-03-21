@@ -9,6 +9,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -113,6 +116,58 @@ export default function LoginPage() {
               {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
+
+          {/* Forgot Password */}
+          <div className="mt-4 text-center">
+            {!forgotMode ? (
+              <button
+                onClick={() => setForgotMode(true)}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Forgot your password?
+              </button>
+            ) : forgotSent ? (
+              <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+                If that email exists, a reset link has been sent. Check your inbox.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">Enter your email to receive a password reset link</p>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!email) return;
+                      setForgotLoading(true);
+                      await fetch("/api/auth/forgot-password", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email }),
+                      });
+                      setForgotLoading(false);
+                      setForgotSent(true);
+                    }}
+                    disabled={forgotLoading || !email}
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {forgotLoading ? "..." : "Send"}
+                  </button>
+                </div>
+                <button
+                  onClick={() => setForgotMode(false)}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  Back to login
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
