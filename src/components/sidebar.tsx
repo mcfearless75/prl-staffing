@@ -15,10 +15,12 @@ import {
   ClipboardList,
   LogOut,
   Receipt,
+  Brain,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Intelligence", href: "/intelligence", icon: Brain },
   { name: "Contractors", href: "/contractors", icon: Users },
   { name: "Companies", href: "/companies", icon: Building2 },
   { name: "Assignments", href: "/assignments", icon: ClipboardList },
