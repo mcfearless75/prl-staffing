@@ -1,1 +1,35 @@
 @import "tailwindcss";
+
+/* Mobile-friendly tables: horizontal scroll on small screens */
+@media (max-width: 768px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Smaller text on mobile tables */
+  td, th {
+    font-size: 0.75rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    white-space: nowrap;
+  }
+
+  /* Fix filter pills overflow */
+  .flex.items-center.gap-2 {
+    flex-wrap: wrap;
+  }
+}
+
+/* Safe area padding for notched phones (iPhone 14+) */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .min-h-screen {
+    min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+
+/* Smoother touch scrolling */
+* {
+  -webkit-tap-highlight-color: transparent;
+}

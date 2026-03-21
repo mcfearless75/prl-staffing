@@ -33,7 +33,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gray-50">
+    <div className="relative flex min-h-screen items-center justify-center bg-gray-50 px-4">
       {/* Watermark */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.04]">
         <img
@@ -41,20 +41,20 @@ export default function LoginPage() {
           alt=""
           width={600}
           height={600}
-          className="select-none"
+          className="select-none max-w-[80vw]"
         />
       </div>
       <div className="relative z-10 w-full max-w-md">
-        <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-          <div className="mb-8 text-center">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
+          <div className="mb-6 sm:mb-8 text-center">
             <img
               src="/prl_logo.jpg"
               alt="PRL Site Solutions"
               width={80}
               height={80}
-              className="mx-auto mb-4 rounded-full"
+              className="mx-auto mb-4 rounded-full w-16 h-16 sm:w-20 sm:h-20"
             />
-            <h1 className="text-2xl font-bold text-gray-900">PRL Site Solutions</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">PRL Site Solutions</h1>
             <p className="mt-1 text-sm text-gray-500">
               Sign in to your account
             </p>
@@ -80,8 +80,9 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="you@prl.co.uk"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base sm:text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="you@prlsitesolutions.co.uk"
+                autoComplete="email"
               />
             </div>
 
@@ -98,15 +99,16 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base sm:text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Enter your password"
+                autoComplete="current-password"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+              className="w-full rounded-lg bg-blue-600 px-4 py-3 sm:py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 active:bg-blue-800 transition-colors"
             >
               {loading ? "Signing in..." : "Sign in"}
             </button>

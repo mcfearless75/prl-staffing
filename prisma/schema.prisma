@@ -74,8 +74,9 @@ model Contractor {
   updatedAt    DateTime           @updatedAt
   assignments  Assignment[]
   timesheets   Timesheet[]
-  compliances  ComplianceRecord[]
-  invoiceLines InvoiceLine[]
+  compliances      ComplianceRecord[]
+  invoiceLines     InvoiceLine[]
+  contractorLogin  ContractorLogin?
 }
 
 // ─── Assignments (contractor <-> company placement) ───
@@ -251,6 +252,32 @@ model InvoiceLine {
   overtimeRate  Float?     // overtime rate (1.5x)
   amount        Float      // total line amount
   createdAt     DateTime   @default(now())
+}
+
+// ─── Activity Log (tracks all user actions for audit) ───
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  userName    String?
+  userEmail   String?
+  action      String   // e.g. "Created Contractor", "Approved Timesheet"
+  entityType  String   // e.g. "Contractor", "Timesheet", "Invoice"
+  entityId    String?
+  details     String?  // JSON or text with additional context
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+}
+
+// ─── Contractor Login (self-service portal) ───
+model ContractorLogin {
+  id           String     @id @default(cuid())
+  contractorId String     @unique
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+  email        String     @unique
+  passwordHash String
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
 // ─── Rate Cards ───

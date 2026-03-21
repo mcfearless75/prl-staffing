@@ -11,27 +11,41 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Check if admin already exists
-    const existing = await prisma.user.findUnique({
-      where: { email: "admin@prl.co.uk" },
-    });
+    const passwordHash = await bcrypt.hash("prl2026!", 10);
+    const results: string[] = [];
 
-    if (existing) {
-      return NextResponse.json({ message: "Database already seeded", userId: existing.id });
+    // Three user accounts
+    const users = [
+      { email: "admin@prlsitesolutions.co.uk", name: "Admin", role: "admin" },
+      { email: "adella@prlsitesolutions.co.uk", name: "Adella", role: "manager" },
+      { email: "accounts@prlsitesolutions.co.uk", name: "Accounts", role: "manager" },
+    ];
+
+    for (const user of users) {
+      const existing = await prisma.user.findUnique({
+        where: { email: user.email },
+      });
+
+      if (existing) {
+        results.push(`${user.email}: already exists`);
+      } else {
+        await prisma.user.create({
+          data: {
+            email: user.email,
+            name: user.name,
+            passwordHash,
+            role: user.role,
+          },
+        });
+        results.push(`${user.email}: created (${user.role})`);
+      }
     }
 
-    // Create admin user
-    const passwordHash = await bcrypt.hash("admin123", 10);
-    const admin = await prisma.user.create({
-      data: {
-        email: "admin@prl.co.uk",
-        name: "Admin User",
-        passwordHash,
-        role: "admin",
-      },
+    return NextResponse.json({
+      message: "User accounts processed",
+      password: "prl2026!",
+      results,
     });
-
-    return NextResponse.json({ message: "Admin user created", userId: admin.id });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }

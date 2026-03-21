@@ -8,9 +8,9 @@ export default function DashboardLayout({
   return (
     <>
       <Sidebar />
-      <main className="relative ml-64 min-h-screen">
+      <main className="relative min-h-screen pt-14 lg:pt-0 lg:ml-64">
         {/* Full-screen watermark */}
-        <div className="pointer-events-none fixed inset-0 ml-64 flex items-center justify-center opacity-[0.03] z-0">
+        <div className="pointer-events-none fixed inset-0 lg:ml-64 flex items-center justify-center opacity-[0.03] z-0">
           <img
             src="/prl_logo.jpg"
             alt=""
@@ -19,7 +19,7 @@ export default function DashboardLayout({
             className="select-none"
           />
         </div>
-        <div className="relative z-10 p-8">{children}</div>
+        <div className="relative z-10 p-4 lg:p-8">{children}</div>
       </main>
     </>
   );
