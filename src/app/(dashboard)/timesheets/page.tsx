@@ -2,9 +2,9 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { Plus, Settings } from "lucide-react";
+import { WeeklyTimesheetGroup } from "./weekly-group";
 
 const statuses = ["All", "Draft", "Submitted", "Approved", "Rejected"];
 
@@ -32,16 +32,25 @@ export default async function TimesheetsPage({
 
   // Stats
   const totalCount = timesheets.length;
-  const exceptionCount = timesheets.filter((t) => t.isException).length;
-  const autoApprovedCount = timesheets.filter(
-    (t) => t.status === "Approved" && t.approvedBy === "system"
-  ).length;
+  const submittedCount = timesheets.filter((t) => t.status === "Submitted").length;
+  const draftCount = timesheets.filter((t) => t.status === "Draft").length;
+  const approvedCount = timesheets.filter((t) => t.status === "Approved").length;
+
+  // Group by week
+  const grouped: Record<string, typeof timesheets> = {};
+  for (const ts of timesheets) {
+    const weekKey = new Date(ts.weekStarting).toISOString().split("T")[0];
+    if (!grouped[weekKey]) grouped[weekKey] = [];
+    grouped[weekKey].push(ts);
+  }
+
+  const weeks = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Timesheets"
-        description={`${totalCount} timesheets${exceptionCount > 0 ? ` · ${exceptionCount} exceptions` : ""}${autoApprovedCount > 0 ? ` · ${autoApprovedCount} auto-approved` : ""}`}
+        description={`${totalCount} timesheets`}
         action={
           <div className="flex items-center gap-2">
             <Link
@@ -61,6 +70,26 @@ export default async function TimesheetsPage({
           </div>
         }
       />
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
+          <p className="text-2xl font-bold text-gray-900">{totalCount}</p>
+          <p className="text-xs text-gray-500">Total</p>
+        </div>
+        <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-center">
+          <p className="text-2xl font-bold text-orange-600">{submittedCount}</p>
+          <p className="text-xs text-orange-600">Awaiting Approval</p>
+        </div>
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-center">
+          <p className="text-2xl font-bold text-blue-600">{draftCount}</p>
+          <p className="text-xs text-blue-600">Draft</p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
+          <p className="text-2xl font-bold text-emerald-600">{approvedCount}</p>
+          <p className="text-xs text-emerald-600">Approved</p>
+        </div>
+      </div>
 
       {/* Status Filter Pills */}
       <div className="flex items-center gap-2">
@@ -87,91 +116,29 @@ export default async function TimesheetsPage({
         })}
       </div>
 
-      {/* Timesheets Table */}
-      {timesheets.length > 0 ? (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Contractor
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Week Starting
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Hours
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Overtime
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Assignment
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {timesheets.map((timesheet) => (
-                <tr
-                  key={timesheet.id}
-                  className={`hover:bg-gray-50 transition-colors ${
-                    timesheet.isException ? "bg-amber-50/40" : ""
-                  }`}
-                >
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                    {timesheet.contractor.firstName}{" "}
-                    {timesheet.contractor.lastName}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {formatDate(timesheet.weekStarting)}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-gray-900">
-                    {timesheet.totalHours}h
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm">
-                    <span className={timesheet.overtimeHours > 0 ? "font-semibold text-orange-600" : "text-gray-400"}>
-                      {timesheet.overtimeHours}h
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <div className="flex items-center gap-1.5">
-                      <Badge variant={timesheet.status}>
-                        {timesheet.status}
-                      </Badge>
-                      {timesheet.isException && (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                          Exception
-                        </span>
-                      )}
-                      {timesheet.status === "Approved" && timesheet.approvedBy === "system" && (
-                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                          Auto
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {timesheet.assignment?.company?.name || "—"}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right">
-                    <Link
-                      href={`/timesheets/${timesheet.id}`}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Weekly Grouped Timesheets */}
+      {weeks.length > 0 ? (
+        <WeeklyTimesheetGroup
+          weeks={weeks}
+          grouped={JSON.parse(JSON.stringify(
+            Object.fromEntries(
+              weeks.map((w) => [
+                w,
+                grouped[w].map((ts) => ({
+                  id: ts.id,
+                  contractorName: `${ts.contractor.firstName} ${ts.contractor.lastName}`,
+                  weekStarting: ts.weekStarting,
+                  totalHours: ts.totalHours,
+                  overtimeHours: ts.overtimeHours,
+                  status: ts.status,
+                  isException: ts.isException,
+                  approvedBy: ts.approvedBy,
+                  companyName: ts.assignment?.company?.name || "—",
+                })),
+              ])
+            )
+          ))}
+        />
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center">
           <p className="text-sm text-gray-500">
