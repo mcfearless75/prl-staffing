@@ -17,19 +17,19 @@ export default async function AssignmentsPage({
   const params = await searchParams;
   const filterStatus = params?.status || "";
 
-  const where: Record<string, unknown> = {};
-  if (filterStatus) {
-    where.status = filterStatus;
-  }
-
-  const assignments = await prisma.assignment.findMany({
-    where,
+  // Always fetch ALL assignments for the kanban board
+  const allAssignments = await prisma.assignment.findMany({
     include: {
       contractor: true,
       company: true,
     },
     orderBy: { startDate: "desc" },
   });
+
+  // Filter for the table only
+  const tableAssignments = filterStatus
+    ? allAssignments.filter((a) => a.status === filterStatus)
+    : allAssignments;
 
   return (
     <div className="space-y-6">
@@ -73,15 +73,15 @@ export default async function AssignmentsPage({
         ))}
       </div>
 
-      {/* Kanban Board */}
-      <KanbanBoard initialAssignments={JSON.parse(JSON.stringify(assignments))} />
+      {/* Kanban Board - always shows ALL assignments */}
+      <KanbanBoard initialAssignments={JSON.parse(JSON.stringify(allAssignments))} />
 
-      {/* Table View */}
+      {/* Table View - respects status filter */}
       <div className="mt-8">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">
-          All Assignments
+          {filterStatus ? `${filterStatus} Assignments` : "All Assignments"} ({tableAssignments.length})
         </h2>
-        {assignments.length > 0 ? (
+        {tableAssignments.length > 0 ? (
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -113,7 +113,7 @@ export default async function AssignmentsPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {assignments.map((assignment) => (
+                {tableAssignments.map((assignment) => (
                   <tr
                     key={assignment.id}
                     className="hover:bg-gray-50 transition-colors"
@@ -173,22 +173,13 @@ export default async function AssignmentsPage({
         ) : (
           <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center">
             <p className="text-sm text-gray-500">
-              No assignments found.{" "}
-              {filterStatus ? (
-                <Link
-                  href="/assignments"
-                  className="text-blue-600 hover:underline"
-                >
-                  Clear filters
-                </Link>
-              ) : (
-                <Link
-                  href="/assignments/new"
-                  className="text-blue-600 hover:underline"
-                >
-                  Create your first assignment
-                </Link>
-              )}
+              No {filterStatus?.toLowerCase()} assignments found.{" "}
+              <Link
+                href="/assignments"
+                className="text-blue-600 hover:underline"
+              >
+                View all
+              </Link>
             </p>
           </div>
         )}
