@@ -201,6 +201,8 @@ export function KanbanBoard({
   const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
 
   // Support both mouse and touch
   const mouseSensor = useSensor(MouseSensor, {
@@ -209,17 +211,29 @@ export function KanbanBoard({
   const touchSensor = useSensor(TouchSensor, {
     activationConstraint: { delay: 200, tolerance: 5 },
   });
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 8 },
-  });
 
   const sensors = useSensors(mouseSensor, touchSensor);
 
+  // Get unique companies for dropdown
+  const companies = Array.from(
+    new Set(assignments.map((a) => a.company?.name).filter(Boolean))
+  ).sort() as string[];
+
+  // Filter assignments
+  const filtered = assignments.filter((a) => {
+    const name = a.contractor
+      ? `${a.contractor.firstName} ${a.contractor.lastName}`.toLowerCase()
+      : "";
+    const matchesSearch = !searchQuery || name.includes(searchQuery.toLowerCase()) || (a.role?.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCompany = !companyFilter || a.company?.name === companyFilter;
+    return matchesSearch && matchesCompany;
+  });
+
   const grouped: Record<string, Assignment[]> = {
-    Placed: assignments.filter((a) => a.status === "Placed"),
-    Active: assignments.filter((a) => a.status === "Active"),
-    Ending: assignments.filter((a) => a.status === "Ending"),
-    Completed: assignments.filter((a) => a.status === "Completed"),
+    Placed: filtered.filter((a) => a.status === "Placed"),
+    Active: filtered.filter((a) => a.status === "Active"),
+    Ending: filtered.filter((a) => a.status === "Ending"),
+    Completed: filtered.filter((a) => a.status === "Completed"),
   };
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -285,6 +299,53 @@ export function KanbanBoard({
 
   return (
     <div className="relative">
+      {/* Search & Filter Bar */}
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder="Search by name or role..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-2 rounded p-0.5 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        <select
+          value={companyFilter}
+          onChange={(e) => setCompanyFilter(e.target.value)}
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="">All Companies</option>
+          {companies.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        {(searchQuery || companyFilter) && (
+          <button
+            onClick={() => { setSearchQuery(""); setCompanyFilter(""); }}
+            className="rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-200"
+          >
+            Clear filters
+          </button>
+        )}
+        {(searchQuery || companyFilter) && (
+          <span className="text-xs text-gray-500">
+            {filtered.length} of {assignments.length} shown
+          </span>
+        )}
+      </div>
+
       {/* Status indicators */}
       {saving && (
         <div className="absolute -top-2 right-0 z-20">
