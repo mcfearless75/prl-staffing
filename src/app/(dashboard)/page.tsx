@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
+import Link from "next/link";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/badge";
 import { PageHeader } from "@/components/page-header";
@@ -11,6 +12,7 @@ import {
   ShieldCheck,
   TrendingUp,
   AlertTriangle,
+  ChevronRight,
 } from "lucide-react";
 import { ComplianceScoreRing } from "./compliance/compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
@@ -66,37 +68,43 @@ export default async function DashboardPage() {
         description="Overview of your contractor workforce and compliance status."
       />
 
-      {/* KPI Cards */}
+      {/* KPI Cards - all clickable */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total Contractors"
           value={totalContractors}
           icon={Users}
+          href="/contractors"
         />
         <StatCard
           title="Active Assignments"
           value={activeAssignments}
           icon={TrendingUp}
+          href="/assignments"
         />
         <StatCard
           title="Pending Timesheets"
           value={pendingTimesheets}
           icon={Clock}
+          href="/timesheets?status=Submitted"
         />
         <StatCard
           title="Compliance Alerts"
           value={complianceAlerts}
           icon={AlertTriangle}
+          href="/compliance?status=Expiring"
         />
         <StatCard
           title="Companies"
           value={totalCompanies}
           icon={Building2}
+          href="/companies"
         />
         <StatCard
           title="Active Suppliers"
           value={activeSuppliers}
           icon={ShieldCheck}
+          href="/suppliers"
         />
       </div>
 
@@ -104,10 +112,16 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Recent Contractors */}
         <div className="rounded-xl border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
             <h2 className="text-lg font-semibold text-gray-900">
               Recent Contractors
             </h2>
+            <Link
+              href="/contractors"
+              className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+            >
+              View all <ChevronRight className="h-3 w-3" />
+            </Link>
           </div>
           <div className="divide-y divide-gray-100">
             {recentContractors.length === 0 ? (
@@ -116,9 +130,10 @@ export default async function DashboardPage() {
               </div>
             ) : (
               recentContractors.map((contractor) => (
-                <div
+                <Link
                   key={contractor.id}
-                  className="flex items-center gap-4 px-6 py-4"
+                  href={`/contractors/${contractor.id}`}
+                  className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-medium text-blue-700">
                     {getInitials(contractor.firstName, contractor.lastName)}
@@ -139,7 +154,7 @@ export default async function DashboardPage() {
                       {formatDate(contractor.createdAt)}
                     </span>
                   </div>
-                </div>
+                </Link>
               ))
             )}
           </div>
@@ -151,18 +166,27 @@ export default async function DashboardPage() {
             <h2 className="text-lg font-semibold text-gray-900">
               Compliance Alerts
             </h2>
-            <ComplianceScoreRing score={complianceScore} />
+            <div className="flex items-center gap-3">
+              <ComplianceScoreRing score={complianceScore} />
+              <Link
+                href="/compliance"
+                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+              >
+                View all <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
           </div>
           <div className="divide-y divide-gray-100">
             {recentAlerts.length === 0 ? (
               <div className="px-6 py-8 text-center text-sm text-gray-500">
-                No compliance alerts.
+                No compliance alerts. ✅
               </div>
             ) : (
               recentAlerts.map((record) => (
-                <div
+                <Link
                   key={record.id}
-                  className="flex items-center gap-4 px-6 py-4"
+                  href={`/compliance/${record.id}`}
+                  className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50">
                     <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -180,7 +204,7 @@ export default async function DashboardPage() {
                     </p>
                   </div>
                   <Badge variant={record.status}>{record.status}</Badge>
-                </div>
+                </Link>
               ))
             )}
           </div>
