@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Clock, ShieldCheck, LogOut, User } from "lucide-react";
+import { LayoutDashboard, Clock, ShieldCheck, FileUp, LogOut, User } from "lucide-react";
 
 const portalNav = [
-  { name: "My Dashboard", href: "/portal", icon: LayoutDashboard },
-  { name: "My Timesheets", href: "/portal/timesheets", icon: Clock },
-  { name: "My Compliance", href: "/portal/compliance", icon: ShieldCheck },
+  { name: "Dashboard", href: "/portal", icon: LayoutDashboard },
+  { name: "Timesheets", href: "/portal/timesheets", icon: Clock },
+  { name: "Documents", href: "/portal/documents", icon: FileUp },
+  { name: "Compliance", href: "/portal/compliance", icon: ShieldCheck },
 ];
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {

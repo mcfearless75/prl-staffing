@@ -46,7 +46,29 @@
       "Bash(gh repo:*)",
       "Bash(openssl rand:*)",
       "WebFetch(domain:prl-staffing-production.up.railway.app)",
-      "Bash(grep -iE \"\\\\.\\(png|jpg|jpeg|svg|webp\\)$\")"
+      "Bash(grep -iE \"\\\\.\\(png|jpg|jpeg|svg|webp\\)$\")",
+      "Bash(rm -rf .next)",
+      "Bash(npx next:*)",
+      "Bash(node -e \"const docx = require\\(''docx''\\); console.log\\(Object.keys\\(docx\\).sort\\(\\).join\\('', ''\\)\\)\")",
+      "Bash(node -e \"const docx = require\\(''docx''\\); console.log\\(''version:'', require\\(''docx/package.json''\\).version\\)\")",
+      "Bash(node generate-docs.js)",
+      "Bash(node -e \"const docx = require\\(''docx''\\); console.log\\(typeof docx.PageNumber, docx.PageNumber\\)\")",
+      "Bash(node -e \"const docx = require\\(''docx''\\); console.log\\(typeof docx.PageNumberElement\\); console.log\\(typeof docx.SimpleField\\)\")",
+      "Bash(ls -la \"/c/Users/LAPTOP80/OneDrive - prlsitesolutions.co.uk/Desktop/prl_req/src/app/\\(dashboard\\)/assignments/\")",
+      "Bash(ls -la \"/c/Users/LAPTOP80/OneDrive - prlsitesolutions.co.uk/Desktop/prl_req/src/app/\\(dashboard\\)/assignments/[id]/\")",
+      "Bash(ls -la \"/c/Users/LAPTOP80/OneDrive - prlsitesolutions.co.uk/Desktop/prl_req/src/app/\\(dashboard\\)/assignments/new/\")",
+      "Bash(ls -la \"/c/Users/LAPTOP80/OneDrive - prlsitesolutions.co.uk/Desktop/prl_req/src/app/\\(dashboard\\)/assignments/[id]/edit/\")",
+      "Bash(find \"/c/Users/LAPTOP80/OneDrive - prlsitesolutions.co.uk/Desktop/prl_req/src/app/\\(dashboard\\)/assignments/\" -type f)",
+      "Bash(npm ls:*)",
+      "Bash(npm view:*)",
+      "WebSearch",
+      "Bash(ls -la \"/c/Users/LAPTOP80/OneDrive - prlsitesolutions.co.uk/Desktop/prl_req/src/app/\\(portal\\)/\")",
+      "Bash(find '/c/Users/LAPTOP80/OneDrive - prlsitesolutions.co.uk/Desktop/prl_req' -type f \\\\\\(-name manifest.* -o -name *service*worker* \\\\\\))",
+      "Bash(mkdir -p prisma/migrations/20260322_add_documents_push)",
+      "Bash(prisma/migrations/20260322_add_documents_push/migration.sql:*)",
+      "Bash(mkdir -p public/icons)",
+      "Bash(node -e \":*)",
+      "Bash(npx web-push:*)"
     ]
   }
 }

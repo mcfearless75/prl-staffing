@@ -77,6 +77,7 @@ model Contractor {
   compliances      ComplianceRecord[]
   invoiceLines     InvoiceLine[]
   contractorLogin  ContractorLogin?
+  documents        Document[]
 }
 
 // ─── Assignments (contractor <-> company placement) ───
@@ -290,6 +291,47 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@index([email])
+}
+
+// ─── Document Uploads ───
+model Document {
+  id            String     @id @default(cuid())
+  contractorId  String
+  contractor    Contractor @relation(fields: [contractorId], references: [id])
+  type          String     // CSCS, CV, P45, P60, Passport, DBS, Insurance, Qualification, Other
+  fileName      String
+  fileSize      Int        // bytes
+  mimeType      String
+  storageKey    String     // R2 object key
+  storageUrl    String?    // public URL if needed
+  version       Int        @default(1)
+  uploadedBy    String?    // "contractor" or user email
+  notes         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+// ─── Push Notification Subscriptions ───
+model PushSubscription {
+  id             String   @id @default(cuid())
+  contractorId   String?
+  userId         String?
+  endpoint       String   @unique
+  p256dh         String
+  auth           String
+  createdAt      DateTime @default(now())
+}
+
+// ─── Notifications ───
+model Notification {
+  id            String   @id @default(cuid())
+  recipientType String   // "contractor" or "user"
+  recipientId   String
+  title         String
+  body          String
+  url           String?  // link to open when tapped
+  isRead        Boolean  @default(false)
+  sentAt        DateTime @default(now())
 }
 
 // ─── Rate Cards ───
