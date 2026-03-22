@@ -56,7 +56,8 @@ export async function POST(request: Request) {
         totalHours,
         overtimeHours,
         notes: notes || null,
-        status: "Draft",
+        status: "Submitted",
+        submittedAt: new Date(),
         entries: {
           create: hours.map((h: number, i: number) => ({
             dayOfWeek: i, // 0=Mon, 1=Tue, ... 6=Sun

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -23,23 +23,48 @@ import {
 } from "lucide-react";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Intelligence", href: "/intelligence", icon: Brain },
-  { name: "Contractors", href: "/contractors", icon: Users },
-  { name: "Companies", href: "/companies", icon: Building2 },
-  { name: "Assignments", href: "/assignments", icon: ClipboardList },
-  { name: "Timesheets", href: "/timesheets", icon: Clock },
-  { name: "Billing", href: "/billing", icon: Receipt },
-  { name: "Compliance", href: "/compliance", icon: ShieldCheck },
-  { name: "Rates", href: "/rates", icon: TrendingUp },
-  { name: "Suppliers", href: "/suppliers", icon: Truck },
-  { name: "Activity Log", href: "/activity", icon: Activity },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, badgeKey: null },
+  { name: "Intelligence", href: "/intelligence", icon: Brain, badgeKey: null },
+  { name: "Contractors", href: "/contractors", icon: Users, badgeKey: null },
+  { name: "Companies", href: "/companies", icon: Building2, badgeKey: null },
+  { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
+  { name: "Timesheets", href: "/timesheets", icon: Clock, badgeKey: "pendingTimesheets" as const },
+  { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
+  { name: "Compliance", href: "/compliance", icon: ShieldCheck, badgeKey: "complianceAlerts" as const },
+  { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
+  { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
+  { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
 ];
+
+type Counts = {
+  pendingTimesheets: number;
+  complianceAlerts: number;
+  draftInvoices: number;
+};
 
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
+  const [counts, setCounts] = useState<Counts>({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0 });
+
+  // Fetch badge counts on mount and every 30 seconds
+  useEffect(() => {
+    async function fetchCounts() {
+      try {
+        const res = await fetch("/api/counts");
+        if (res.ok) {
+          const data = await res.json();
+          setCounts(data);
+        }
+      } catch {
+        // silently fail
+      }
+    }
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30000); // refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   const navContent = (
     <>
@@ -71,6 +96,7 @@ export function Sidebar() {
           const isActive =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href));
+          const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0;
           return (
             <Link
               key={item.name}
@@ -84,7 +110,19 @@ export function Sidebar() {
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />
-              {item.name}
+              <span className="flex-1">{item.name}</span>
+              {badgeCount > 0 && (
+                <span className={cn(
+                  "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
+                  item.badgeKey === "pendingTimesheets"
+                    ? "bg-red-500 text-white animate-pulse"
+                    : item.badgeKey === "complianceAlerts"
+                    ? "bg-orange-500 text-white"
+                    : "bg-blue-500 text-white"
+                )}>
+                  {badgeCount > 99 ? "99+" : badgeCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -115,9 +153,16 @@ export function Sidebar() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileOpen(true)}
-            className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100"
+            className="relative rounded-lg p-1.5 text-gray-600 hover:bg-gray-100"
           >
             <Menu className="h-6 w-6" />
+            {/* Red dot on hamburger when there are pending timesheets */}
+            {counts.pendingTimesheets > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+              </span>
+            )}
           </button>
           <img
             src="/prl_logo.jpg"
