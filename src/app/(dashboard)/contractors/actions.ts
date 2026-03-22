@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import bcrypt from "bcryptjs";
 
 export async function createContractor(formData: FormData) {
   const firstName = formData.get("firstName") as string;
@@ -20,7 +21,7 @@ export async function createContractor(formData: FormData) {
   const ir35Status = formData.get("ir35Status") as string;
   const notes = formData.get("notes") as string;
 
-  await prisma.contractor.create({
+  const contractor = await prisma.contractor.create({
     data: {
       firstName,
       lastName,
@@ -38,6 +39,20 @@ export async function createContractor(formData: FormData) {
       notes,
     },
   });
+
+  // Auto-create contractor portal login (password set via forgot-password flow)
+  const tempHash = await bcrypt.hash(`temp-${Date.now()}`, 10);
+  try {
+    await prisma.contractorLogin.create({
+      data: {
+        contractorId: contractor.id,
+        email: contractor.email,
+        passwordHash: tempHash,
+      },
+    });
+  } catch {
+    // ContractorLogin may already exist if email was reused — safe to ignore
+  }
 
   redirect("/contractors");
 }
