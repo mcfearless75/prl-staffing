@@ -1,15 +1,5 @@
 import { Resend } from "resend";
 
-// Lazy init to avoid build-time errors when key is missing
-let resendClient: Resend | null = null;
-function getResend(): Resend | null {
-  if (!process.env.RESEND_API_KEY) return null;
-  if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
-  return resendClient;
-}
-
-const FROM_EMAIL = process.env.EMAIL_FROM || "PRL Site Solutions <onboarding@resend.dev>";
-
 /**
  * Send password reset / set password email
  */
@@ -19,6 +9,17 @@ export async function sendPasswordResetEmail(
   resetUrl: string,
   isNewAccount: boolean = false
 ) {
+  // Read env vars INSIDE the function (not at module level) so they're always fresh
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <onboarding@resend.dev>";
+
+  if (!apiKey) {
+    console.warn("RESEND_API_KEY not set. Email not sent to:", to);
+    return { success: false, error: "RESEND_API_KEY not configured" };
+  }
+
+  const resend = new Resend(apiKey);
+
   const subject = isNewAccount
     ? "Set Up Your PRL Site Solutions Account"
     : "Reset Your PRL Site Solutions Password";
@@ -78,14 +79,8 @@ export async function sendPasswordResetEmail(
   `;
 
   try {
-    const resend = getResend();
-    if (!resend) {
-      console.warn("RESEND_API_KEY not set. Email not sent to:", to);
-      return { success: false, error: "Email service not configured (RESEND_API_KEY missing)" };
-    }
-
     const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: fromEmail,
       to: [to],
       subject,
       html,
@@ -103,4 +98,3 @@ export async function sendPasswordResetEmail(
     return { success: false, error: String(error) };
   }
 }
-// force redeploy Sun Mar 22 10:55:28 GMTST 2026
