@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate, getInitials } from "@/lib/utils";
 import { deleteComplianceRecord } from "../actions";
+import { StaffDocUploader } from "./edit/staff-doc-uploader";
+import { QuickVerifyButton } from "./quick-verify";
 
 export default async function ComplianceRecordPage({
   params,
@@ -21,6 +23,15 @@ export default async function ComplianceRecordPage({
   if (!record) {
     notFound();
   }
+
+  // Get existing documents
+  const documents = await prisma.document.findMany({
+    where: {
+      contractorId: record.contractorId,
+      type: record.type,
+    },
+    orderBy: { version: "desc" },
+  });
 
   const deleteAction = deleteComplianceRecord.bind(null, record.id);
 
@@ -121,8 +132,11 @@ export default async function ComplianceRecordPage({
             <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
               Status
             </p>
-            <div className="mt-1">
+            <div className="mt-1 flex items-center gap-3">
               <Badge variant={record.status}>{record.status}</Badge>
+              {record.status !== "Verified" && (
+                <QuickVerifyButton recordId={record.id} />
+              )}
             </div>
           </div>
 
@@ -136,6 +150,49 @@ export default async function ComplianceRecordPage({
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Upload & Documents Section */}
+      <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-6">
+        <h3 className="text-sm font-semibold text-blue-900 mb-1">
+          📎 Upload Document
+        </h3>
+        <p className="text-xs text-blue-600 mb-4">
+          Upload a document for {record.contractor.firstName}&apos;s {record.type} record.
+        </p>
+
+        <StaffDocUploader
+          contractorId={record.contractorId}
+          docType={record.type}
+        />
+
+        {/* Existing documents */}
+        {documents.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <p className="text-xs font-medium text-gray-600">
+              📁 Stored documents ({documents.length}):
+            </p>
+            {documents.map((doc) => (
+              <div key={doc.id} className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-900 truncate">{doc.fileName}</p>
+                  <p className="text-[10px] text-gray-500">
+                    v{doc.version} · {formatDate(doc.createdAt)} · {doc.uploadedBy}
+                    {doc.fileSize > 1048576
+                      ? ` · ${(doc.fileSize / 1048576).toFixed(1)}MB`
+                      : ` · ${(doc.fileSize / 1024).toFixed(0)}KB`}
+                  </p>
+                </div>
+                <a
+                  href={`/api/documents/download?id=${doc.id}`}
+                  className="shrink-0 rounded-lg bg-white border border-blue-200 px-3 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                >
+                  Download
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
