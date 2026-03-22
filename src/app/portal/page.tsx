@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
+import { Clock, ShieldCheck, FileUp, User, Plus, ChevronRight } from "lucide-react";
 
 export default async function PortalDashboard() {
   const session = await auth();
@@ -25,9 +26,7 @@ export default async function PortalDashboard() {
         include: { assignment: { include: { company: true } } },
       },
       compliances: {
-        where: { status: { in: ["Expiring", "Expired"] } },
         orderBy: { expiryDate: "asc" },
-        take: 5,
       },
     },
   });
@@ -36,10 +35,13 @@ export default async function PortalDashboard() {
 
   const pendingTimesheets = contractor.timesheets.filter((t) => t.status === "Draft").length;
   const approvedTimesheets = contractor.timesheets.filter((t) => t.status === "Approved").length;
-  const complianceAlerts = contractor.compliances.length;
+  const expiringCompliance = contractor.compliances.filter((c) => c.status === "Expiring" || c.status === "Expired").length;
+  const totalCompliance = contractor.compliances.length;
+  const verifiedCompliance = contractor.compliances.filter((c) => c.status === "Verified").length;
+  const complianceScore = totalCompliance > 0 ? Math.round((verifiedCompliance / totalCompliance) * 100) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Welcome */}
       <div>
         <h1 className="text-xl font-bold text-gray-900">
@@ -48,6 +50,58 @@ export default async function PortalDashboard() {
         <p className="text-sm text-gray-500">
           Welcome to your contractor portal
         </p>
+      </div>
+
+      {/* Quick Action Buttons */}
+      <div className="grid grid-cols-2 gap-3">
+        <Link
+          href="/portal/timesheets/new"
+          className="flex items-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 p-4 hover:bg-blue-100 transition-colors"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+            <Plus className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-blue-900">New Timesheet</p>
+            <p className="text-[10px] text-blue-600">Submit your hours</p>
+          </div>
+        </Link>
+        <Link
+          href="/portal/documents"
+          className="flex items-center gap-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 p-4 hover:bg-emerald-100 transition-colors"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+            <FileUp className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-emerald-900">Upload Docs</p>
+            <p className="text-[10px] text-emerald-600">CSCS, CV, P45 etc</p>
+          </div>
+        </Link>
+        <Link
+          href="/portal/compliance"
+          className="flex items-center gap-3 rounded-xl border-2 border-orange-200 bg-orange-50 p-4 hover:bg-orange-100 transition-colors"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-orange-900">Compliance</p>
+            <p className="text-[10px] text-orange-600">{complianceScore}% verified</p>
+          </div>
+        </Link>
+        <Link
+          href="/portal/profile"
+          className="flex items-center gap-3 rounded-xl border-2 border-gray-200 bg-gray-50 p-4 hover:bg-gray-100 transition-colors"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-600 text-white">
+            <User className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">My Profile</p>
+            <p className="text-[10px] text-gray-500">View your details</p>
+          </div>
+        </Link>
       </div>
 
       {/* Quick Stats */}
@@ -61,8 +115,8 @@ export default async function PortalDashboard() {
           <p className="text-[10px] text-gray-500 mt-1">Approved</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-          <p className={`text-2xl font-bold ${complianceAlerts > 0 ? "text-red-600" : "text-gray-400"}`}>
-            {complianceAlerts}
+          <p className={`text-2xl font-bold ${expiringCompliance > 0 ? "text-red-600" : "text-gray-400"}`}>
+            {expiringCompliance}
           </p>
           <p className="text-[10px] text-gray-500 mt-1">Compliance Alerts</p>
         </div>
@@ -95,16 +149,18 @@ export default async function PortalDashboard() {
       <div className="rounded-xl border border-gray-200 bg-white">
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-gray-900">Recent Timesheets</h2>
-          <Link
-            href="/portal/timesheets"
-            className="text-xs font-medium text-blue-600"
-          >
-            View all
+          <Link href="/portal/timesheets" className="flex items-center gap-1 text-xs font-medium text-blue-600">
+            View all <ChevronRight className="h-3 w-3" />
           </Link>
         </div>
         <div className="divide-y divide-gray-100">
           {contractor.timesheets.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-gray-500">No timesheets yet</div>
+            <div className="px-4 py-6 text-center">
+              <p className="text-sm text-gray-500">No timesheets yet</p>
+              <Link href="/portal/timesheets/new" className="mt-2 inline-block text-sm font-medium text-blue-600">
+                Submit your first timesheet →
+              </Link>
+            </div>
           ) : (
             contractor.timesheets.map((ts) => (
               <Link key={ts.id} href={`/portal/timesheets/${ts.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
@@ -124,23 +180,28 @@ export default async function PortalDashboard() {
       </div>
 
       {/* Compliance Alerts */}
-      {complianceAlerts > 0 && (
+      {expiringCompliance > 0 && (
         <div className="rounded-xl border border-red-200 bg-red-50">
-          <div className="border-b border-red-200 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-red-200 px-4 py-3">
             <h2 className="text-sm font-semibold text-red-800">Compliance Alerts</h2>
+            <Link href="/portal/compliance" className="flex items-center gap-1 text-xs font-medium text-red-600">
+              View all <ChevronRight className="h-3 w-3" />
+            </Link>
           </div>
           <div className="divide-y divide-red-100">
-            {contractor.compliances.map((c) => (
-              <div key={c.id} className="px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-red-900">{c.type}</p>
-                  <Badge variant={c.status}>{c.status}</Badge>
+            {contractor.compliances
+              .filter((c) => c.status === "Expiring" || c.status === "Expired")
+              .map((c) => (
+                <div key={c.id} className="px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-red-900">{c.type}</p>
+                    <Badge variant={c.status}>{c.status}</Badge>
+                  </div>
+                  {c.expiryDate && (
+                    <p className="text-xs text-red-600 mt-0.5">Expires {formatDate(c.expiryDate)}</p>
+                  )}
                 </div>
-                {c.expiryDate && (
-                  <p className="text-xs text-red-600 mt-0.5">Expires {formatDate(c.expiryDate)}</p>
-                )}
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}

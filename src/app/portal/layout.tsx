@@ -7,10 +7,11 @@ import { cn } from "@/lib/utils";
 import { LayoutDashboard, Clock, ShieldCheck, FileUp, LogOut, User } from "lucide-react";
 
 const portalNav = [
-  { name: "Dashboard", href: "/portal", icon: LayoutDashboard },
+  { name: "Home", href: "/portal", icon: LayoutDashboard },
   { name: "Timesheets", href: "/portal/timesheets", icon: Clock },
   { name: "Documents", href: "/portal/documents", icon: FileUp },
   { name: "Compliance", href: "/portal/compliance", icon: ShieldCheck },
+  { name: "Profile", href: "/portal/profile", icon: User },
 ];
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
