@@ -111,21 +111,30 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center gap-3 border-b border-gray-200 bg-white px-4 lg:hidden">
+      <div className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 lg:hidden">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <img
+            src="/prl_logo.jpg"
+            alt="PRL"
+            width={32}
+            height={32}
+            className="rounded-full"
+          />
+          <span className="text-sm font-bold text-gray-900">PRL Site Solutions</span>
+        </div>
         <button
-          onClick={() => setMobileOpen(true)}
-          className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100"
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          title="Sign out"
         >
-          <Menu className="h-6 w-6" />
+          <LogOut className="h-5 w-5" />
         </button>
-        <img
-          src="/prl_logo.jpg"
-          alt="PRL"
-          width={32}
-          height={32}
-          className="rounded-full"
-        />
-        <span className="text-sm font-bold text-gray-900">PRL Site Solutions</span>
       </div>
 
       {/* Mobile overlay */}
