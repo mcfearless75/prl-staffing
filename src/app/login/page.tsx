@@ -145,13 +145,26 @@ export default function LoginPage() {
                     onClick={async () => {
                       if (!email) return;
                       setForgotLoading(true);
-                      await fetch("/api/auth/forgot-password", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ email }),
-                      });
+                      setError("");
+                      try {
+                        const res = await fetch("/api/auth/forgot-password", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ email }),
+                        });
+                        const data = await res.json();
+                        console.log("Forgot password response:", data);
+                        if (data.debug && !data.debug.emailSent) {
+                          setError(`Email failed: ${data.debug.error || "Unknown error"}. FROM: ${data.debug.from}. Key set: ${data.debug.resendKeySet}`);
+                        } else if (data.debug && !data.debug.emailFound) {
+                          setError("No account found with that email. Have you been added as a contractor?");
+                        } else {
+                          setForgotSent(true);
+                        }
+                      } catch (err) {
+                        setError("Network error — please try again");
+                      }
                       setForgotLoading(false);
-                      setForgotSent(true);
                     }}
                     disabled={forgotLoading || !email}
                     className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
