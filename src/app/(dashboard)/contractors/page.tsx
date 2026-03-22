@@ -9,10 +9,11 @@ import { Plus, Search } from "lucide-react";
 export default async function ContractorsPage({
   searchParams,
 }: {
-  searchParams?: { search?: string; status?: string };
+  searchParams?: Promise<{ search?: string; status?: string }>;
 }) {
-  const search = searchParams?.search || "";
-  const status = searchParams?.status || "";
+  const params = await searchParams;
+  const search = params?.search || "";
+  const status = params?.status || "";
 
   const where: Record<string, unknown> = {};
 

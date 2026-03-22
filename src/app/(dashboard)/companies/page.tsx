@@ -8,9 +8,10 @@ import { Plus, Search } from "lucide-react";
 export default async function CompaniesPage({
   searchParams,
 }: {
-  searchParams?: { search?: string };
+  searchParams?: Promise<{ search?: string }>;
 }) {
-  const search = searchParams?.search || "";
+  const params = await searchParams;
+  const search = params?.search || "";
 
   const where: Record<string, unknown> = {};
 
