@@ -69,6 +69,14 @@ model Contractor {
   niNumber     String?
   utrNumber    String?
   ir35Status   String?            // Inside, Outside, TBD
+  emergencyContactName     String?
+  emergencyContactPhone    String?
+  emergencyContactRelation String?   // Spouse, Parent, Partner, Sibling, Friend, Other
+  dateOfBirth              DateTime?
+  address                  String?
+  postcode                 String?
+  nextOfKin                String?
+  medicalNotes             String?   // allergies, conditions (confidential)
   notes        String?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt

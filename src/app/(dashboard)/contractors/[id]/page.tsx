@@ -165,6 +165,67 @@ export default async function ContractorDetailPage({
         </div>
       </div>
 
+      {/* Emergency Contact */}
+      <div className="rounded-xl border border-red-200 bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold text-red-900 flex items-center gap-2">
+          🚨 Emergency Contact
+        </h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Contact Name</p>
+            <p className="text-sm text-gray-900">{contractor.emergencyContactName || "-"}</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Contact Phone</p>
+            <p className="text-sm text-gray-900">
+              {contractor.emergencyContactPhone ? (
+                <a href={`tel:${contractor.emergencyContactPhone}`} className="text-blue-600 hover:underline">
+                  {contractor.emergencyContactPhone}
+                </a>
+              ) : "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Relationship</p>
+            <p className="text-sm text-gray-900">{contractor.emergencyContactRelation || "-"}</p>
+          </div>
+        </div>
+        {!contractor.emergencyContactName && (
+          <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2">
+            <p className="text-xs text-red-600">⚠️ No emergency contact on file. <Link href={`/contractors/${contractor.id}/edit`} className="font-medium underline">Add one now</Link></p>
+          </div>
+        )}
+      </div>
+
+      {/* Personal Details */}
+      <div className="rounded-xl border bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">Personal Details</h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Date of Birth</p>
+            <p className="text-sm text-gray-900">
+              {contractor.dateOfBirth ? new Date(contractor.dateOfBirth).toLocaleDateString("en-GB") : "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Address</p>
+            <p className="text-sm text-gray-900">{contractor.address || "-"}</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Postcode</p>
+            <p className="text-sm text-gray-900">{contractor.postcode || "-"}</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Next of Kin</p>
+            <p className="text-sm text-gray-900">{contractor.nextOfKin || "-"}</p>
+          </div>
+          <div className="md:col-span-2">
+            <p className="text-sm font-medium text-gray-500">Medical Notes</p>
+            <p className="text-sm text-gray-900">{contractor.medicalNotes || "-"}</p>
+          </div>
+        </div>
+      </div>
+
       {/* Assignments */}
       <div className="rounded-xl border bg-white p-6">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">

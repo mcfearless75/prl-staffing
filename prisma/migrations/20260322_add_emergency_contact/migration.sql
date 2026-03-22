@@ -1,0 +1,9 @@
+-- Add emergency contact and personal details fields to Contractor
+ALTER TABLE "Contractor" ADD COLUMN IF NOT EXISTS "emergencyContactName" TEXT;
+ALTER TABLE "Contractor" ADD COLUMN IF NOT EXISTS "emergencyContactPhone" TEXT;
+ALTER TABLE "Contractor" ADD COLUMN IF NOT EXISTS "emergencyContactRelation" TEXT;
+ALTER TABLE "Contractor" ADD COLUMN IF NOT EXISTS "dateOfBirth" TIMESTAMP(3);
+ALTER TABLE "Contractor" ADD COLUMN IF NOT EXISTS "address" TEXT;
+ALTER TABLE "Contractor" ADD COLUMN IF NOT EXISTS "postcode" TEXT;
+ALTER TABLE "Contractor" ADD COLUMN IF NOT EXISTS "nextOfKin" TEXT;
+ALTER TABLE "Contractor" ADD COLUMN IF NOT EXISTS "medicalNotes" TEXT;

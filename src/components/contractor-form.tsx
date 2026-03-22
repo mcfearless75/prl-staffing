@@ -272,6 +272,106 @@ export function ContractorForm({
           </div>
         </div>
 
+        {/* Emergency Contact Section */}
+        <div className="mt-8 border-t border-gray-200 pt-6">
+          <h3 className="mb-4 text-lg font-semibold text-red-900">🚨 Emergency Contact</h3>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div>
+              <label htmlFor="emergencyContactName" className="block text-sm font-medium text-gray-700">
+                Contact Name
+              </label>
+              <input type="text" id="emergencyContactName" name="emergencyContactName"
+                defaultValue={contractor?.emergencyContactName ?? ""}
+                placeholder="e.g. Jane Smith"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="emergencyContactPhone" className="block text-sm font-medium text-gray-700">
+                Contact Phone
+              </label>
+              <input type="tel" id="emergencyContactPhone" name="emergencyContactPhone"
+                defaultValue={contractor?.emergencyContactPhone ?? ""}
+                placeholder="e.g. 07700 900123"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="emergencyContactRelation" className="block text-sm font-medium text-gray-700">
+                Relationship
+              </label>
+              <select id="emergencyContactRelation" name="emergencyContactRelation"
+                defaultValue={contractor?.emergencyContactRelation ?? ""}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">Select...</option>
+                <option value="Spouse">Spouse</option>
+                <option value="Partner">Partner</option>
+                <option value="Parent">Parent</option>
+                <option value="Sibling">Sibling</option>
+                <option value="Child">Child</option>
+                <option value="Friend">Friend</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Personal Details Section */}
+        <div className="mt-8 border-t border-gray-200 pt-6">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">Personal Details</h3>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div>
+              <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">
+                Date of Birth
+              </label>
+              <input type="date" id="dateOfBirth" name="dateOfBirth"
+                defaultValue={contractor?.dateOfBirth ? new Date(contractor.dateOfBirth).toISOString().split("T")[0] : ""}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                Address
+              </label>
+              <input type="text" id="address" name="address"
+                defaultValue={contractor?.address ?? ""}
+                placeholder="Full address"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="postcode" className="block text-sm font-medium text-gray-700">
+                Postcode
+              </label>
+              <input type="text" id="postcode" name="postcode"
+                defaultValue={contractor?.postcode ?? ""}
+                placeholder="e.g. M1 2AB"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="nextOfKin" className="block text-sm font-medium text-gray-700">
+                Next of Kin
+              </label>
+              <input type="text" id="nextOfKin" name="nextOfKin"
+                defaultValue={contractor?.nextOfKin ?? ""}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div className="md:col-span-3">
+              <label htmlFor="medicalNotes" className="block text-sm font-medium text-gray-700">
+                Medical Notes <span className="text-xs text-gray-400">(confidential - allergies, conditions, etc.)</span>
+              </label>
+              <textarea id="medicalNotes" name="medicalNotes" rows={2}
+                defaultValue={contractor?.medicalNotes ?? ""}
+                placeholder="Any relevant medical information..."
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Actions */}
         <div className="mt-6 flex items-center justify-end gap-3">
           <Link
