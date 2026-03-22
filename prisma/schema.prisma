@@ -355,3 +355,41 @@ model RateCard {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
+
+// ─── Supply Agreements (Onboarding) ───
+model SupplyAgreement {
+  id              String   @id @default(cuid())
+  // Company details
+  companyName     String
+  companyAddress  String?
+  companyRegNo    String?
+  contactName     String
+  contactEmail    String
+  contactPhone    String?
+  // Supply details
+  supplyOf        String?   // e.g. "Bolting Technicians"
+  siteLocation    String?
+  startDate       DateTime?
+  // Rates (stored as JSON)
+  rates           String?   // JSON array of {description, rate, basis}
+  breakdown       String?   // JSON array of strings
+  additionalInfo  String?
+  // Contractor personal details (if individual)
+  firstName       String?
+  lastName        String?
+  dateOfBirth     DateTime?
+  niNumber        String?
+  utrNumber       String?
+  address         String?
+  postcode        String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  emergencyContactRelation String?
+  // Status
+  status          String   @default("Pending")  // Pending, Reviewed, Approved, Rejected
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
