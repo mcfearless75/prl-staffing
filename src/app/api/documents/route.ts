@@ -112,6 +112,46 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Auto-update ComplianceRecord when compliance-related docs are uploaded
+    const COMPLIANCE_DOC_TYPES = [
+      "CSCS", "DBS", "Insurance", "Qualification", "Right to Work", "IR35 Assessment", "Passport",
+    ];
+
+    if (COMPLIANCE_DOC_TYPES.includes(type)) {
+      // Map document types to compliance types
+      const complianceType = type === "Passport" ? "Right to Work" : type;
+
+      // Check for existing compliance record
+      const existingCompliance = await prisma.complianceRecord.findFirst({
+        where: { contractorId, type: complianceType },
+      });
+
+      if (existingCompliance) {
+        // Update existing record — mark as Pending review (staff will verify)
+        await prisma.complianceRecord.update({
+          where: { id: existingCompliance.id },
+          data: {
+            status: "Pending",
+            documentName: file.name,
+            filePath: storageKey,
+            notes: `Document uploaded by contractor (v${version}) on ${new Date().toISOString().split("T")[0]}. Awaiting verification.`,
+          },
+        });
+      } else {
+        // Create new compliance record
+        await prisma.complianceRecord.create({
+          data: {
+            contractorId,
+            type: complianceType,
+            documentName: file.name,
+            status: "Pending", // Staff needs to verify
+            filePath: storageKey,
+            notes: `Document uploaded by contractor (v${version}) on ${new Date().toISOString().split("T")[0]}. Awaiting verification.`,
+          },
+        });
+      }
+    }
+
     return NextResponse.json({
       message: "Document uploaded successfully",
       document: {
@@ -120,6 +160,7 @@ export async function POST(request: NextRequest) {
         fileName: document.fileName,
         version: document.version,
       },
+      complianceUpdated: COMPLIANCE_DOC_TYPES.includes(type),
     });
   } catch (error) {
     console.error("Document upload error:", error);
