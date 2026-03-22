@@ -1,3 +1,6 @@
+const docx = require("docx");
+const fs = require("fs");
+
 const {
   Document,
   Packer,
@@ -5,224 +8,150 @@ const {
   TextRun,
   HeadingLevel,
   AlignmentType,
+  PageBreak,
+  TableOfContents,
+  Header,
+  Footer,
   PageNumber,
   NumberFormat,
-  Footer,
-  Header,
   Tab,
   TabStopType,
   TabStopPosition,
   BorderStyle,
   ShadingType,
-  TableOfContents,
+  convertInchesToTwip,
   StyleLevel,
   LevelFormat,
-  convertInchesToTwip,
-  PageBreak,
-} = require("docx");
-const fs = require("fs");
+} = docx;
 
-// ─── Helper factories ───────────────────────────────────────────────
+// ─── Colour palette ────────────────────────────────────────────────
+const BLUE = "1E40AF";
+const LIGHT_BLUE = "DBEAFE";
+const ORANGE = "EA580C";
+const LIGHT_ORANGE = "FFF7ED";
+const GREEN = "15803D";
+const LIGHT_GREEN = "F0FDF4";
+const GREY = "6B7280";
+const DARK = "111827";
+const WHITE = "FFFFFF";
+const PRL_BLUE = "2563EB";
 
-function heading1(text) {
+// ─── Helper: coloured callout box ──────────────────────────────────
+function calloutBox(label, text, bgColour, textColour) {
   return new Paragraph({
-    heading: HeadingLevel.HEADING_1,
-    spacing: { before: 400, after: 200 },
-    children: [new TextRun({ text, bold: true, size: 36, font: "Calibri", color: "1F4E79" })],
-  });
-}
-
-function heading2(text) {
-  return new Paragraph({
-    heading: HeadingLevel.HEADING_2,
-    spacing: { before: 300, after: 150 },
-    children: [new TextRun({ text, bold: true, size: 28, font: "Calibri", color: "2E75B6" })],
-  });
-}
-
-function heading3(text) {
-  return new Paragraph({
-    heading: HeadingLevel.HEADING_3,
-    spacing: { before: 200, after: 100 },
-    children: [new TextRun({ text, bold: true, size: 24, font: "Calibri", color: "404040" })],
-  });
-}
-
-function para(text) {
-  return new Paragraph({
-    spacing: { after: 120 },
-    children: [new TextRun({ text, size: 22, font: "Calibri" })],
-  });
-}
-
-function boldPara(parts) {
-  // parts is array of { text, bold? }
-  return new Paragraph({
-    spacing: { after: 120 },
-    children: parts.map(
-      (p) => new TextRun({ text: p.text, bold: !!p.bold, size: 22, font: "Calibri" })
-    ),
-  });
-}
-
-function numberedStep(num, textParts) {
-  // textParts is array of {text, bold?}
-  return new Paragraph({
-    numbering: { reference: "steps-numbering", level: 0 },
-    spacing: { after: 80 },
-    children: textParts.map(
-      (p) => new TextRun({ text: p.text, bold: !!p.bold, size: 22, font: "Calibri" })
-    ),
-  });
-}
-
-function bulletPoint(textParts) {
-  return new Paragraph({
-    numbering: { reference: "bullet-numbering", level: 0 },
-    spacing: { after: 60 },
-    children: textParts.map(
-      (p) => new TextRun({ text: p.text, bold: !!p.bold, size: 22, font: "Calibri" })
-    ),
+    spacing: { before: 200, after: 200 },
+    shading: { type: ShadingType.CLEAR, fill: bgColour },
+    border: {
+      top: { style: BorderStyle.SINGLE, size: 1, color: textColour },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: textColour },
+      left: { style: BorderStyle.SINGLE, size: 6, color: textColour },
+      right: { style: BorderStyle.SINGLE, size: 1, color: textColour },
+    },
+    children: [
+      new TextRun({ text: `${label}: `, bold: true, color: textColour, size: 20, font: "Calibri" }),
+      new TextRun({ text, color: textColour, size: 20, font: "Calibri" }),
+    ],
   });
 }
 
 function topTip(text) {
-  return new Paragraph({
-    spacing: { before: 120, after: 120 },
-    shading: { type: ShadingType.CLEAR, fill: "DAEEF7" },
-    border: {
-      left: { style: BorderStyle.SINGLE, size: 12, color: "2E75B6" },
-    },
-    indent: { left: convertInchesToTwip(0.2), right: convertInchesToTwip(0.2) },
-    children: [
-      new TextRun({ text: "TOP TIP: ", bold: true, size: 22, font: "Calibri", color: "1F4E79" }),
-      new TextRun({ text, size: 22, font: "Calibri", color: "1F4E79" }),
-    ],
-  });
+  return calloutBox("TOP TIP", text, LIGHT_BLUE, BLUE);
 }
 
 function watchOut(text) {
+  return calloutBox("WATCH OUT", text, LIGHT_ORANGE, ORANGE);
+}
+
+function commonQuestion(q, a) {
+  return calloutBox("COMMON QUESTION", `${q} -- ${a}`, LIGHT_GREEN, GREEN);
+}
+
+// ─── Helper: numbered step ─────────────────────────────────────────
+function step(num, text) {
   return new Paragraph({
-    spacing: { before: 120, after: 120 },
-    shading: { type: ShadingType.CLEAR, fill: "FDE9D9" },
-    border: {
-      left: { style: BorderStyle.SINGLE, size: 12, color: "E36C09" },
-    },
-    indent: { left: convertInchesToTwip(0.2), right: convertInchesToTwip(0.2) },
+    spacing: { before: 80, after: 80 },
+    indent: { left: convertInchesToTwip(0.3) },
     children: [
-      new TextRun({ text: "WATCH OUT: ", bold: true, size: 22, font: "Calibri", color: "C00000" }),
-      new TextRun({ text, size: 22, font: "Calibri", color: "C00000" }),
+      new TextRun({ text: `${num}. `, bold: true, color: PRL_BLUE, size: 22, font: "Calibri" }),
+      new TextRun({ text, size: 22, font: "Calibri", color: DARK }),
     ],
   });
 }
 
-function commonQuestion(question, answer) {
+// ─── Helper: body paragraph ────────────────────────────────────────
+function body(text) {
   return new Paragraph({
-    spacing: { before: 120, after: 120 },
-    shading: { type: ShadingType.CLEAR, fill: "E2EFDA" },
-    border: {
-      left: { style: BorderStyle.SINGLE, size: 12, color: "548235" },
-    },
-    indent: { left: convertInchesToTwip(0.2), right: convertInchesToTwip(0.2) },
-    children: [
-      new TextRun({ text: "COMMON QUESTION: ", bold: true, size: 22, font: "Calibri", color: "375623" }),
-      new TextRun({ text: question, bold: true, size: 22, font: "Calibri", color: "375623" }),
-      new TextRun({ text: " ", size: 22, font: "Calibri" }),
-      new TextRun({ text: answer, size: 22, font: "Calibri", color: "375623" }),
-    ],
+    spacing: { before: 60, after: 60 },
+    children: [new TextRun({ text, size: 22, font: "Calibri", color: DARK })],
   });
 }
 
-function spacer() {
-  return new Paragraph({ spacing: { after: 80 }, children: [] });
+function bodyBold(text) {
+  return new Paragraph({
+    spacing: { before: 60, after: 60 },
+    children: [new TextRun({ text, size: 22, font: "Calibri", color: DARK, bold: true })],
+  });
 }
 
-function pageBreakPara() {
+// ─── Helper: headings ──────────────────────────────────────────────
+function h1(text) {
+  return new Paragraph({
+    heading: HeadingLevel.HEADING_1,
+    spacing: { before: 400, after: 200 },
+    children: [new TextRun({ text, bold: true, size: 32, font: "Calibri", color: BLUE })],
+  });
+}
+
+function h2(text) {
+  return new Paragraph({
+    heading: HeadingLevel.HEADING_2,
+    spacing: { before: 300, after: 150 },
+    children: [new TextRun({ text, bold: true, size: 26, font: "Calibri", color: PRL_BLUE })],
+  });
+}
+
+function h3(text) {
+  return new Paragraph({
+    heading: HeadingLevel.HEADING_3,
+    spacing: { before: 200, after: 100 },
+    children: [new TextRun({ text, bold: true, size: 24, font: "Calibri", color: DARK })],
+  });
+}
+
+function pageBreak() {
   return new Paragraph({ children: [new PageBreak()] });
 }
 
-// ─── Document assembly ──────────────────────────────────────────────
+function spacer() {
+  return new Paragraph({ spacing: { before: 100, after: 100 }, children: [] });
+}
 
+// ─── Build the document ────────────────────────────────────────────
 const doc = new Document({
-  creator: "PRL Site Solutions",
-  title: "PRL Site Solutions - Complete User Guide",
-  description: "A comprehensive dummies guide for the PRL contractor management webapp",
-  numbering: {
-    config: [
-      {
-        reference: "steps-numbering",
-        levels: [
-          {
-            level: 0,
-            format: LevelFormat.DECIMAL,
-            text: "%1.",
-            alignment: AlignmentType.START,
-            style: { paragraph: { indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) } } },
-          },
-        ],
-      },
-      {
-        reference: "bullet-numbering",
-        levels: [
-          {
-            level: 0,
-            format: LevelFormat.BULLET,
-            text: "\u2022",
-            alignment: AlignmentType.START,
-            style: { paragraph: { indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) } } },
-          },
-        ],
-      },
-    ],
-  },
-  features: {
-    updateFields: true,
-  },
   styles: {
-    paragraphStyles: [
-      {
-        id: "Heading1",
-        name: "Heading 1",
-        basedOn: "Normal",
-        next: "Normal",
-        run: { size: 36, bold: true, font: "Calibri", color: "1F4E79" },
-        paragraph: { spacing: { before: 400, after: 200 } },
+    default: {
+      document: {
+        run: { font: "Calibri", size: 22, color: DARK },
       },
-      {
-        id: "Heading2",
-        name: "Heading 2",
-        basedOn: "Normal",
-        next: "Normal",
-        run: { size: 28, bold: true, font: "Calibri", color: "2E75B6" },
-        paragraph: { spacing: { before: 300, after: 150 } },
-      },
-      {
-        id: "Heading3",
-        name: "Heading 3",
-        basedOn: "Normal",
-        next: "Normal",
-        run: { size: 24, bold: true, font: "Calibri", color: "404040" },
-        paragraph: { spacing: { before: 200, after: 100 } },
-      },
-    ],
+    },
   },
   sections: [
-    // ═══ COVER PAGE ═══
+    // ════════════════════════════════════════════════════════════════
+    //  COVER PAGE
+    // ════════════════════════════════════════════════════════════════
     {
       properties: {
         page: {
-          size: { width: 11906, height: 16838 }, // A4
-          margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+          size: { width: convertInchesToTwip(8.27), height: convertInchesToTwip(11.69) },
+          margin: { top: convertInchesToTwip(1), bottom: convertInchesToTwip(1), left: convertInchesToTwip(1.2), right: convertInchesToTwip(1.2) },
         },
       },
       headers: {
         default: new Header({
           children: [
             new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({ text: "PRL Site Solutions - Complete User Guide", bold: true, size: 18, font: "Calibri", color: "808080" }),
-              ],
+              alignment: AlignmentType.RIGHT,
+              children: [new TextRun({ text: "PRL Site Solutions", italics: true, size: 18, color: GREY, font: "Calibri" })],
             }),
           ],
         }),
@@ -233,655 +162,799 @@ const doc = new Document({
             new Paragraph({
               alignment: AlignmentType.CENTER,
               children: [
-                new TextRun({ text: "Page ", size: 18, font: "Calibri", color: "808080" }),
-                new TextRun({ children: [PageNumber.CURRENT], size: 18, font: "Calibri", color: "808080" }),
-                new TextRun({ text: " of ", size: 18, font: "Calibri", color: "808080" }),
-                new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, font: "Calibri", color: "808080" }),
+                new TextRun({ text: "Page ", size: 18, color: GREY, font: "Calibri" }),
+                new TextRun({ children: [PageNumber.CURRENT], size: 18, color: GREY, font: "Calibri" }),
+                new TextRun({ text: " of ", size: 18, color: GREY, font: "Calibri" }),
+                new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, color: GREY, font: "Calibri" }),
               ],
             }),
           ],
         }),
       },
       children: [
-        spacer(), spacer(), spacer(), spacer(), spacer(),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 200 },
-          children: [new TextRun({ text: "PRL SITE SOLUTIONS", bold: true, size: 56, font: "Calibri", color: "1F4E79" })],
-        }),
+        spacer(), spacer(), spacer(), spacer(), spacer(), spacer(),
         new Paragraph({
           alignment: AlignmentType.CENTER,
           spacing: { after: 100 },
-          children: [new TextRun({ text: "Recruitment Specialists", size: 32, font: "Calibri", color: "808080" })],
+          children: [new TextRun({ text: "PRL SITE SOLUTIONS", bold: true, size: 52, font: "Calibri", color: BLUE })],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 80 },
+          children: [new TextRun({ text: "Recruitment Specialists", italics: true, size: 28, font: "Calibri", color: GREY })],
         }),
         spacer(), spacer(),
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          spacing: { after: 200 },
-          children: [new TextRun({ text: "Complete User Guide", bold: true, size: 44, font: "Calibri", color: "2E75B6" })],
+          spacing: { after: 100 },
+          children: [new TextRun({ text: "COMPLETE USER GUIDE", bold: true, size: 44, font: "Calibri", color: PRL_BLUE })],
         }),
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          spacing: { after: 100 },
-          children: [new TextRun({ text: "The Dummies Guide to Managing Contractors", size: 28, font: "Calibri", color: "808080", italics: true })],
-        }),
-        spacer(), spacer(), spacer(),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 100 },
-          children: [new TextRun({ text: "Written so simply, a 12-year-old could follow it!", size: 24, font: "Calibri", color: "548235", bold: true })],
+          spacing: { after: 80 },
+          children: [new TextRun({ text: "Contractor Management System", size: 28, font: "Calibri", color: DARK })],
         }),
         spacer(), spacer(), spacer(), spacer(),
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          children: [new TextRun({ text: `Version 1.0  |  March 2026`, size: 22, font: "Calibri", color: "808080" })],
+          children: [new TextRun({ text: `Version 2.0  |  March 2026`, size: 22, font: "Calibri", color: GREY })],
         }),
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          spacing: { after: 100 },
-          children: [new TextRun({ text: "CONFIDENTIAL - For PRL Staff and Contractors Only", size: 20, font: "Calibri", color: "C00000", bold: true })],
+          spacing: { before: 100 },
+          children: [new TextRun({ text: "CONFIDENTIAL - For Internal Use Only", bold: true, size: 20, font: "Calibri", color: ORANGE })],
         }),
 
-        // ═══ TABLE OF CONTENTS ═══
-        pageBreakPara(),
-        heading1("Table of Contents"),
-        para("Open this document in Microsoft Word and press Ctrl+A then F9 to update the table of contents below. The page numbers will fill in automatically."),
+        // ══════════════════════════════════════════════════════════
+        //  TABLE OF CONTENTS
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("Table of Contents"),
+        body("Use Ctrl+A then F9 in Microsoft Word to update page numbers after opening this document."),
         spacer(),
         new TableOfContents("Table of Contents", {
           hyperlink: true,
           headingStyleRange: "1-3",
         }),
 
-        // ═══ SECTION 1: LOGGING IN ═══
-        pageBreakPara(),
-        heading1("1. Logging In"),
-        para("This is the first thing you will do every time you use the system. Don't worry, it is dead simple!"),
-        spacer(),
-
-        heading2("1.1 Staff Login"),
-        para("Staff members use their PRL email addresses. There are three types of staff accounts:"),
-        bulletPoint([{ text: "admin@prlsitesolutions.co.uk", bold: true }, { text: " - Full access to everything. The boss account!" }]),
-        bulletPoint([{ text: "adella@prlsitesolutions.co.uk", bold: true }, { text: " - Standard staff access for day-to-day work." }]),
-        bulletPoint([{ text: "accounts@prlsitesolutions.co.uk", bold: true }, { text: " - Accounts team access, focused on billing and timesheets." }]),
-        spacer(),
-        para("Here is how to sign in:"),
-        numberedStep(1, [{ text: "Open your web browser (Chrome, Edge, Safari - any will do)." }]),
-        numberedStep(2, [{ text: "Go to the PRL webapp URL (your manager will give you this)." }]),
-        numberedStep(3, [{ text: "You will see the PRL logo and a sign-in box." }]),
-        numberedStep(4, [{ text: "Type your ", bold: false }, { text: "email address", bold: true }, { text: " in the Email box." }]),
-        numberedStep(5, [{ text: "Type your ", bold: false }, { text: "password", bold: true }, { text: " in the Password box." }]),
-        numberedStep(6, [{ text: "Click the big blue ", bold: false }, { text: '"Sign in"', bold: true }, { text: " button." }]),
-        numberedStep(7, [{ text: "You will land on the Dashboard. You are in!" }]),
-        topTip("Bookmark the login page in your browser so you can find it quickly next time."),
-        watchOut("If you see \"Invalid email or password\" - double-check for typos. Passwords are case-sensitive, so make sure Caps Lock is off!"),
-        spacer(),
-
-        heading2("1.2 Contractor Login"),
-        para("Contractors have their own separate login. When a contractor is added to the system, they automatically get a login created for them."),
-        numberedStep(1, [{ text: "Go to the same webapp URL." }]),
-        numberedStep(2, [{ text: "Enter the email address that PRL registered you with." }]),
-        numberedStep(3, [{ text: "Enter your password (sent to you by email when your account was created)." }]),
-        numberedStep(4, [{ text: 'Click ', bold: false }, { text: '"Sign in"', bold: true }, { text: "." }]),
-        numberedStep(5, [{ text: "You will be taken to the Contractor Portal (a simpler version of the system just for you)." }]),
-        commonQuestion("I never received my login details?", "Ask your PRL contact to check your email address is correct in the system. They can resend your details."),
-
-        // ═══ SECTION 2: FORGOT PASSWORD ═══
-        pageBreakPara(),
-        heading1("2. Forgot Password"),
-        para("Forgotten your password? No stress! Here is how to reset it:"),
-        numberedStep(1, [{ text: "Go to the login page." }]),
-        numberedStep(2, [{ text: 'Click the ', bold: false }, { text: '"Forgot your password?"', bold: true }, { text: " link below the Sign in button." }]),
-        numberedStep(3, [{ text: "A new box will appear asking for your email." }]),
-        numberedStep(4, [{ text: "Type in the ", bold: false }, { text: "email address", bold: true }, { text: " linked to your account." }]),
-        numberedStep(5, [{ text: 'Click the ', bold: false }, { text: '"Send"', bold: true }, { text: " button." }]),
-        numberedStep(6, [{ text: "You will see a green message saying a reset link has been sent." }]),
-        numberedStep(7, [{ text: "Check your email inbox (and spam/junk folder!)." }]),
-        numberedStep(8, [{ text: "Click the reset link in the email." }]),
-        numberedStep(9, [{ text: "Enter your new password and confirm it." }]),
-        numberedStep(10, [{ text: "Go back to the login page and sign in with your new password." }]),
-        topTip("If the email does not arrive within 5 minutes, check your spam folder first. If it is still not there, try again or contact your PRL admin."),
-        watchOut("If you see an error message about email not being found, it means there is no account with that email address. Double-check the spelling or ask your admin."),
-        commonQuestion("Can I change my password without forgetting it?", "Currently, password changes go through the forgot password flow. Just use the reset link process above."),
-
-        // ═══ SECTION 3: DASHBOARD ═══
-        pageBreakPara(),
-        heading1("3. Dashboard"),
-        para("The Dashboard is your home page. Think of it as your mission control - one quick look tells you everything important about your workforce."),
-        spacer(),
-
-        heading2("3.1 The KPI Cards"),
-        para("At the top, you will see six coloured cards. Here is what each one means:"),
-        bulletPoint([{ text: "Total Contractors", bold: true }, { text: " - The total number of contractors registered in the system." }]),
-        bulletPoint([{ text: "Active Assignments", bold: true }, { text: " - How many contractors are currently placed and working on jobs." }]),
-        bulletPoint([{ text: "Pending Timesheets", bold: true }, { text: " - Timesheets waiting to be reviewed (Draft or Submitted status). If this number is high, someone needs to get approving!" }]),
-        bulletPoint([{ text: "Compliance Alerts", bold: true }, { text: " - Documents that are expiring, expired, or non-compliant. RED ALERT territory - these need attention ASAP!" }]),
-        bulletPoint([{ text: "Companies", bold: true }, { text: " - Total number of client companies you work with." }]),
-        bulletPoint([{ text: "Active Suppliers", bold: true }, { text: " - Number of active supplier agencies providing contractors." }]),
-        spacer(),
-
-        heading2("3.2 Recent Contractors"),
-        para("On the left side below the cards, you will see the 5 most recently added contractors. Each one shows their name, job title, status badge (Active/Inactive/On Hold), and when they were added."),
-        spacer(),
-
-        heading2("3.3 Compliance Alerts Panel"),
-        para("On the right side, you will see a list of compliance issues sorted by urgency. The Compliance Score Ring in the corner gives you a quick percentage showing how compliant your workforce is overall."),
-        topTip("Check the Dashboard first thing every morning. If Compliance Alerts are above zero, deal with those first!"),
-        commonQuestion("What is a good compliance score?", "Aim for 90% or above. Below 80% means you have serious gaps that need fixing urgently."),
-
-        // ═══ SECTION 4: INTELLIGENCE ═══
-        pageBreakPara(),
-        heading1("4. Intelligence"),
-        para("This is the clever bit! The Intelligence module uses smart analysis to spot problems before they become disasters. Think of it as your early warning system."),
-        spacer(),
-
-        heading2("4.1 Workforce Insights (Main Page)"),
-        para("When you click Intelligence in the menu, you will see:"),
-        bulletPoint([{ text: "System Health panel", bold: true }, { text: " - Four category boxes (Compliance, Financial, Workforce, Operational). Green means healthy, amber means attention needed, red means action required." }]),
-        bulletPoint([{ text: "Actionable Insights feed", bold: true }, { text: " - A list of alerts with colour-coded severity. Critical items are red, warnings are amber, info is blue, and success is green." }]),
-        para("Each insight has a title, description, and sometimes a number (the metric). Many also have a \"View\" button that takes you straight to the relevant page to fix the issue."),
-        spacer(),
-
-        heading2("4.2 Smart Matching"),
-        numberedStep(1, [{ text: 'Click the purple ', bold: false }, { text: '"Smart Matching"', bold: true }, { text: " button at the top of the Intelligence page." }]),
-        numberedStep(2, [{ text: "The system analyses your contractors and available roles to find the best matches." }]),
-        numberedStep(3, [{ text: "Review the suggested matches - the system scores each one." }]),
-        para("This helps you quickly find the right contractor for a new assignment based on skills, location, and availability."),
-        spacer(),
-
-        heading2("4.3 Risk Engine"),
-        numberedStep(1, [{ text: 'Click the amber ', bold: false }, { text: '"Risk Engine"', bold: true }, { text: " button." }]),
-        numberedStep(2, [{ text: "You will see a risk assessment across your entire workforce." }]),
-        numberedStep(3, [{ text: "Each risk is scored and categorised so you know what to tackle first." }]),
-        spacer(),
-
-        heading2("4.4 Anomaly Detection"),
-        numberedStep(1, [{ text: 'Click the red ', bold: false }, { text: '"Anomalies"', bold: true }, { text: " button." }]),
-        numberedStep(2, [{ text: "The system flags anything unusual - weird timesheet patterns, compliance gaps, billing oddities." }]),
-        numberedStep(3, [{ text: "Review each anomaly and take action if needed." }]),
-        topTip("Check the Intelligence page at least once a week. It catches things humans often miss!"),
-        watchOut("A \"Critical\" alert means something needs fixing TODAY. Do not ignore red alerts!"),
-
-        // ═══ SECTION 5: CONTRACTORS ═══
-        pageBreakPara(),
-        heading1("5. Contractors"),
-        para("This is where you manage all your contractor records. Every person who works for PRL through a contract appears here."),
-        spacer(),
-
-        heading2("5.1 Viewing the Contractor List"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Contractors"', bold: true }, { text: " in the left-hand menu." }]),
-        numberedStep(2, [{ text: "You will see a table showing every contractor with their name, email, job title, day rate, status, and supplier." }]),
-        numberedStep(3, [{ text: "The list is sorted alphabetically by last name." }]),
-        spacer(),
-
-        heading2("5.2 Searching and Filtering"),
-        numberedStep(1, [{ text: "Use the ", bold: false }, { text: "search box", bold: true }, { text: " at the top to type a name or email. It searches first name, last name, and email." }]),
-        numberedStep(2, [{ text: "Use the ", bold: false }, { text: "status dropdown", bold: true }, { text: " to filter by Active, Inactive, or On Hold." }]),
-        numberedStep(3, [{ text: 'Click ', bold: false }, { text: '"Filter"', bold: true }, { text: " to apply your search." }]),
-        numberedStep(4, [{ text: "To clear filters, click the \"Clear filters\" link or go back to /contractors." }]),
-        topTip("If you cannot find a contractor, try searching just their first name. The search is not fussy about upper/lower case."),
-        spacer(),
-
-        heading2("5.3 Adding a New Contractor"),
-        numberedStep(1, [{ text: 'Click the blue ', bold: false }, { text: '"Add Contractor"', bold: true }, { text: " button in the top right." }]),
-        numberedStep(2, [{ text: "Fill in the form: first name, last name, email, phone, job title, day rate, etc." }]),
-        numberedStep(3, [{ text: "Select their supplier from the dropdown (if they come through an agency)." }]),
-        numberedStep(4, [{ text: "Set their status (usually \"Active\" for new starters)." }]),
-        numberedStep(5, [{ text: 'Click ', bold: false }, { text: '"Save"', bold: true }, { text: " at the bottom." }]),
-        numberedStep(6, [{ text: "A contractor portal login is automatically created for them - they will be able to log in with their email!" }]),
-        watchOut("Double-check the email address! This is how they will log into the contractor portal. A wrong email means they cannot access their account."),
-        spacer(),
-
-        heading2("5.4 Viewing and Editing a Contractor"),
-        numberedStep(1, [{ text: 'Find the contractor in the list and click ', bold: false }, { text: '"View"', bold: true }, { text: " on the right." }]),
-        numberedStep(2, [{ text: "You will see all their details, assignments, timesheets, and compliance records." }]),
-        numberedStep(3, [{ text: "To edit, click the Edit button and update whatever needs changing." }]),
-        numberedStep(4, [{ text: "Click Save when you are done." }]),
-        commonQuestion("Can I delete a contractor?", "It is better to set their status to \"Inactive\" rather than deleting. This keeps the historical records intact."),
-
-        // ═══ SECTION 6: COMPANIES ═══
-        pageBreakPara(),
-        heading1("6. Companies"),
-        para("Companies are your clients - the businesses where contractors get placed to work."),
-        spacer(),
-
-        heading2("6.1 Viewing Companies"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Companies"', bold: true }, { text: " in the left-hand menu." }]),
-        numberedStep(2, [{ text: "You will see a table with company name, city, contact name, contact email, phone, and active status." }]),
-        spacer(),
-
-        heading2("6.2 Searching"),
-        numberedStep(1, [{ text: "Type in the search box to find a company by name." }]),
-        numberedStep(2, [{ text: 'Click ', bold: false }, { text: '"Search"', bold: true }, { text: "." }]),
-        spacer(),
-
-        heading2("6.3 Adding a New Company"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Add Company"', bold: true }, { text: " (blue button, top right)." }]),
-        numberedStep(2, [{ text: "Fill in the company name, address details, and contact information." }]),
-        numberedStep(3, [{ text: 'Click ', bold: false }, { text: '"Save"', bold: true }, { text: "." }]),
-        spacer(),
-
-        heading2("6.4 Editing a Company"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"View"', bold: true }, { text: " next to the company you want to edit." }]),
-        numberedStep(2, [{ text: "Make your changes." }]),
-        numberedStep(3, [{ text: "Save." }]),
-        topTip("Always fill in the contact email and phone. You will need these when chasing invoices or sorting compliance issues."),
-
-        // ═══ SECTION 7: ASSIGNMENTS ═══
-        pageBreakPara(),
-        heading1("7. Assignments"),
-        para("An assignment is the link between a contractor and a company. It says \"this person is working at this place, doing this role, from this date.\""),
-        spacer(),
-
-        heading2("7.1 The Kanban Board"),
-        para("The main assignments page has a drag-and-drop Kanban board at the top. It has four columns:"),
-        bulletPoint([{ text: "Placed", bold: true }, { text: " - Contractor has been matched to a role but has not started yet." }]),
-        bulletPoint([{ text: "Active", bold: true }, { text: " - Contractor is currently working." }]),
-        bulletPoint([{ text: "Ending", bold: true }, { text: " - Assignment is winding down or notice has been given." }]),
-        bulletPoint([{ text: "Completed", bold: true }, { text: " - All done, assignment is finished." }]),
-        spacer(),
-
-        heading3("How to Drag Cards"),
-        numberedStep(1, [{ text: "Find the assignment card you want to move." }]),
-        numberedStep(2, [{ text: "Click and hold your mouse button down on the card." }]),
-        numberedStep(3, [{ text: "While holding, drag it to the column you want." }]),
-        numberedStep(4, [{ text: "Release the mouse button to drop it." }]),
-        numberedStep(5, [{ text: "The status updates automatically. No need to save!" }]),
-        topTip("The Kanban board is brilliant for Monday morning reviews. You can see at a glance where everyone is."),
-        spacer(),
-
-        heading2("7.2 Status Filter Pills"),
-        para("Above the board, you will see filter pills: All, Placed, Active, Ending, Completed. Click any pill to show only assignments with that status."),
-        spacer(),
-
-        heading2("7.3 Creating a New Assignment"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"New Assignment"', bold: true }, { text: " (blue button, top right)." }]),
-        numberedStep(2, [{ text: "Select the ", bold: false }, { text: "contractor", bold: true }, { text: " from the dropdown." }]),
-        numberedStep(3, [{ text: "Select the ", bold: false }, { text: "company", bold: true }, { text: " they will be working at." }]),
-        numberedStep(4, [{ text: "Enter the ", bold: false }, { text: "role title", bold: true }, { text: " (e.g., Site Manager, Electrician)." }]),
-        numberedStep(5, [{ text: "Enter the ", bold: false }, { text: "location", bold: true }, { text: " and ", bold: false }, { text: "start date", bold: true }, { text: "." }]),
-        numberedStep(6, [{ text: "Optionally add an end date." }]),
-        numberedStep(7, [{ text: 'Click ', bold: false }, { text: '"Save"', bold: true }, { text: "." }]),
-        spacer(),
-
-        heading2("7.4 The Table View"),
-        para("Below the Kanban board, there is a traditional table showing all assignments. This is handy when you need to see details like exact dates and locations at a glance. Click \"View\" on any row to see full details."),
-        watchOut("Make sure you set an end date when you know one. This helps the system flag assignments that are about to end."),
-
-        // ═══ SECTION 8: TIMESHEETS ═══
-        pageBreakPara(),
-        heading1("8. Timesheets"),
-        para("Timesheets track how many hours each contractor works each week. Getting these right is critical because they drive billing and pay."),
-        spacer(),
-
-        heading2("8.1 Viewing Timesheets"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Timesheets"', bold: true }, { text: " in the menu." }]),
-        numberedStep(2, [{ text: "You will see a count of total timesheets, exceptions, and auto-approved timesheets at the top." }]),
-        numberedStep(3, [{ text: "Use the status filter pills (All, Draft, Submitted, Approved, Rejected) to narrow down the list." }]),
-        numberedStep(4, [{ text: "The table shows contractor name, week starting, hours, overtime, status, and assignment." }]),
-        spacer(),
-
-        heading2("8.2 Creating a New Timesheet"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"New Timesheet"', bold: true }, { text: " (blue button, top right)." }]),
-        numberedStep(2, [{ text: "Select the ", bold: false }, { text: "contractor", bold: true }, { text: "." }]),
-        numberedStep(3, [{ text: "Select the ", bold: false }, { text: "assignment", bold: true }, { text: " this timesheet is for." }]),
-        numberedStep(4, [{ text: "Pick the ", bold: false }, { text: "week starting date", bold: true }, { text: " (always a Monday)." }]),
-        numberedStep(5, [{ text: "Enter hours for each day of the week." }]),
-        numberedStep(6, [{ text: "The system automatically calculates the total hours and overtime." }]),
-        numberedStep(7, [{ text: "Save as Draft or Submit for approval." }]),
-        spacer(),
-
-        heading2("8.3 Overtime Rules"),
-        para("The system has built-in overtime calculations. Hours over the standard threshold automatically get flagged as overtime and highlighted in orange. Timesheets with overtime are called \"exceptions\" and get a special amber badge so approvers can easily spot them."),
-        topTip("Timesheets flagged as exceptions need extra attention during approval. The amber \"Exception\" badge makes them easy to spot."),
-        spacer(),
-
-        heading2("8.4 Approving or Rejecting Timesheets"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"View"', bold: true }, { text: " on a Submitted timesheet." }]),
-        numberedStep(2, [{ text: "Review the hours for each day." }]),
-        numberedStep(3, [{ text: "If everything looks good, click ", bold: false }, { text: '"Approve"', bold: true }, { text: "." }]),
-        numberedStep(4, [{ text: "If something is wrong, click ", bold: false }, { text: '"Reject"', bold: true }, { text: " and add a reason." }]),
-        para("Some timesheets may show an \"Auto\" badge - these were automatically approved by the system based on approval chain rules."),
-        spacer(),
-
-        heading2("8.5 Approval Chains"),
-        numberedStep(1, [{ text: 'Click the ', bold: false }, { text: '"Approval Chains"', bold: true }, { text: " button (gear icon, top right area)." }]),
-        numberedStep(2, [{ text: "Here you can set up who needs to approve timesheets and in what order." }]),
-        numberedStep(3, [{ text: "You can also set rules for auto-approval (e.g., timesheets under a certain number of hours get approved automatically)." }]),
-        watchOut("Rejected timesheets go back to the contractor. Make sure you write a clear reason so they know what to fix!"),
-        commonQuestion("What happens after a timesheet is approved?", "Approved timesheets can be used to generate invoices in the Billing section."),
-
-        // ═══ SECTION 9: BILLING ═══
-        pageBreakPara(),
-        heading1("9. Billing & Invoices"),
-        para("The Billing section handles everything to do with money. Invoices are generated from approved timesheets, so make sure your timesheets are sorted first!"),
-        spacer(),
-
-        heading2("9.1 Summary Cards"),
-        para("At the top of the page, you will see three cards:"),
-        bulletPoint([{ text: "Outstanding", bold: true }, { text: " - Total amount of unpaid approved/sent invoices (shown in amber)." }]),
-        bulletPoint([{ text: "Paid (Total)", bold: true }, { text: " - Total amount already paid (shown in green)." }]),
-        bulletPoint([{ text: "Draft", bold: true }, { text: " - Invoices still being prepared (shown in grey)." }]),
-        spacer(),
-
-        heading2("9.2 Invoice Statuses"),
-        para("Invoices go through a lifecycle:"),
-        bulletPoint([{ text: "Draft", bold: true }, { text: " - Just created, not yet ready." }]),
-        bulletPoint([{ text: "Reconciling", bold: true }, { text: " - Being checked and matched." }]),
-        bulletPoint([{ text: "Approved", bold: true }, { text: " - Ready to send." }]),
-        bulletPoint([{ text: "Sent", bold: true }, { text: " - Sent to the client." }]),
-        bulletPoint([{ text: "Paid", bold: true }, { text: " - Money received. Job done!" }]),
-        bulletPoint([{ text: "Disputed", bold: true }, { text: " - Client has raised a query." }]),
-        spacer(),
-
-        heading2("9.3 Generating Invoices"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Generate Invoices"', bold: true }, { text: " (blue button, top right)." }]),
-        numberedStep(2, [{ text: "The system finds all approved timesheets that have not been invoiced yet." }]),
-        numberedStep(3, [{ text: "Select which timesheets to include." }]),
-        numberedStep(4, [{ text: "Review the generated invoice details." }]),
-        numberedStep(5, [{ text: "Confirm to create the invoice." }]),
-        spacer(),
-
-        heading2("9.4 Three-Way Matching"),
-        para("You will notice a \"Match\" column in the invoices table. This shows whether the invoice matches up correctly across three things: the timesheet, the rate card, and the purchase order. Matched means everything lines up. Partial means something is off. Unmatched means there is a problem to investigate."),
-        topTip("Green \"Matched\" is what you want to see. Amber \"Partial\" means check the rates. No match means investigate before sending!"),
-        spacer(),
-
-        heading2("9.5 Spend Dashboard"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Spend Dashboard"', bold: true }, { text: " (the chart icon button)." }]),
-        numberedStep(2, [{ text: "See a visual breakdown of spending by company, period, and contractor." }]),
-        numberedStep(3, [{ text: "Use this to spot trends and keep costs under control." }]),
-        spacer(),
-
-        heading2("9.6 Sage Export"),
-        para("The billing system supports exporting data to Sage accounting software. Look for export/download buttons when viewing invoices."),
-        watchOut("Always check the three-way match status before sending an invoice to a client. Sending a mismatched invoice is embarrassing and creates extra work!"),
-
-        // ═══ SECTION 10: COMPLIANCE ═══
-        pageBreakPara(),
-        heading1("10. Compliance"),
-        para("Compliance is arguably the MOST important section. It tracks whether your contractors have all the required documents, certifications, and checks they need to legally and safely work. Get this wrong and you could face huge fines."),
-        spacer(),
-
-        heading2("10.1 The Compliance Dashboard"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Compliance"', bold: true }, { text: " in the menu." }]),
-        numberedStep(2, [{ text: "At the top you will see the Compliance Overview with the score ring showing your overall percentage." }]),
-        numberedStep(3, [{ text: "Three summary cards show: Compliant (green), Expiring (amber), and Non-Compliant (red) counts." }]),
-        spacer(),
-
-        heading2("10.2 Compliance Types"),
-        para("The system tracks these types of compliance records:"),
-        bulletPoint([{ text: "Right to Work", bold: true }, { text: " - Proof the person can legally work in the UK." }]),
-        bulletPoint([{ text: "DBS", bold: true }, { text: " - Criminal record check (Disclosure and Barring Service)." }]),
-        bulletPoint([{ text: "CSCS", bold: true }, { text: " - Construction Skills Certification Scheme card." }]),
-        bulletPoint([{ text: "Insurance", bold: true }, { text: " - Professional indemnity or public liability insurance." }]),
-        bulletPoint([{ text: "IR35 Assessment", bold: true }, { text: " - Tax status determination (inside or outside IR35)." }]),
-        bulletPoint([{ text: "Qualification", bold: true }, { text: " - Relevant professional qualifications." }]),
-        bulletPoint([{ text: "Other", bold: true }, { text: " - Anything else that needs tracking." }]),
-        spacer(),
-
-        heading2("10.3 Progress Bars"),
-        para("Below the summary cards, you will see a progress bar for each compliance type. Each bar shows how many are verified out of the total, with colour coding to show the worst status in that category."),
-        spacer(),
-
-        heading2("10.4 Compliance Gaps"),
-        para("If contractors are missing mandatory requirements, a red \"Compliance Gaps\" panel appears. This shows which contractor is missing what, and links directly to their profile so you can sort it."),
-        spacer(),
-
-        heading2("10.5 Adding a Compliance Record"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Add Record"', bold: true }, { text: " (blue button, top right)." }]),
-        numberedStep(2, [{ text: "Select the contractor." }]),
-        numberedStep(3, [{ text: "Choose the type (Right to Work, DBS, CSCS, etc)." }]),
-        numberedStep(4, [{ text: "Enter the document name, reference number, issue date, and expiry date." }]),
-        numberedStep(5, [{ text: "Set the status (Pending until verified)." }]),
-        numberedStep(6, [{ text: "Save." }]),
-        spacer(),
-
-        heading2("10.6 Checklists and Requirements"),
-        numberedStep(1, [{ text: 'Click the ', bold: false }, { text: '"Checklists"', bold: true }, { text: " button at the top." }]),
-        numberedStep(2, [{ text: "Here you can manage which compliance types are mandatory for different roles." }]),
-        numberedStep(3, [{ text: "This is what drives the Compliance Gaps detection." }]),
-        spacer(),
-
-        heading2("10.7 Filtering Compliance Records"),
-        numberedStep(1, [{ text: "Use the search box to find records by contractor name." }]),
-        numberedStep(2, [{ text: "Use the status dropdown (Verified, Pending, Expiring, Expired, Non-Compliant)." }]),
-        numberedStep(3, [{ text: "Use the type dropdown to filter by compliance type." }]),
-        numberedStep(4, [{ text: 'Click ', bold: false }, { text: '"Filter"', bold: true }, { text: "." }]),
-        topTip("Set a calendar reminder to check compliance every Monday. Expiring documents can sneak up on you!"),
-        watchOut("An \"Expired\" status means the document is out of date and the contractor should NOT be working until it is renewed. This is a legal requirement!"),
-        commonQuestion("What is IR35?", "IR35 is UK tax legislation that determines whether a contractor is really a disguised employee. The system helps track whether each contractor has been assessed and their determination."),
-
-        // ═══ SECTION 11: RATES ═══
-        pageBreakPara(),
-        heading1("11. Rates"),
-        para("Rate cards set how much contractors get paid and how much you charge the client. The difference is your margin."),
-        spacer(),
-
-        heading2("11.1 Viewing Rate Cards"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Rates"', bold: true }, { text: " in the menu." }]),
-        numberedStep(2, [{ text: "You will see a table showing: Role, Location, Pay/Hr, Charge/Hr, Margin %, and effective dates." }]),
-        para("The margin percentage is colour-coded: green (30%+) is great, amber (20-30%) is okay, red (under 20%) needs attention."),
-        spacer(),
-
-        heading2("11.2 Adding a Rate Card"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Add Rate Card"', bold: true }, { text: " (blue button)." }]),
-        numberedStep(2, [{ text: "Enter the role, location, pay rate per hour, and charge rate per hour." }]),
-        numberedStep(3, [{ text: "The margin is calculated automatically." }]),
-        numberedStep(4, [{ text: "Set the effective from date (and optionally an effective to date)." }]),
-        numberedStep(5, [{ text: "Save." }]),
-        spacer(),
-
-        heading2("11.3 Editing a Rate Card"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Edit"', bold: true }, { text: " on the rate card row." }]),
-        numberedStep(2, [{ text: "Update the rates as needed." }]),
-        numberedStep(3, [{ text: "Save." }]),
-        topTip("When rates change, create a new rate card with the new effective date rather than editing the old one. This keeps your historical data accurate."),
-        watchOut("A margin below 20% (shown in red) means you are barely covering your costs. Review these rates urgently!"),
-
-        // ═══ SECTION 12: SUPPLIERS ═══
-        pageBreakPara(),
-        heading1("12. Suppliers"),
-        para("Suppliers are the agencies or umbrella companies that provide contractors to PRL. Each supplier has a performance score and tier."),
-        spacer(),
-
-        heading2("12.1 Viewing Suppliers"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Suppliers"', bold: true }, { text: " in the menu." }]),
-        numberedStep(2, [{ text: "You will see supplier cards showing: name, tier badge, number of contractors, performance score bar, and contact details." }]),
-        spacer(),
-
-        heading2("12.2 Performance Scores"),
-        para("Each supplier has a score out of 100:"),
-        bulletPoint([{ text: "75+ (green bar)", bold: true }, { text: " - Great supplier, keep using them." }]),
-        bulletPoint([{ text: "50-74 (amber bar)", bold: true }, { text: " - Average, room for improvement." }]),
-        bulletPoint([{ text: "Below 50 (red bar)", bold: true }, { text: " - Poor performance, consider alternatives." }]),
-        spacer(),
-
-        heading2("12.3 Adding a Supplier"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Add Supplier"', bold: true }, { text: " (blue button)." }]),
-        numberedStep(2, [{ text: "Enter the supplier name, contact details, and set their initial tier." }]),
-        numberedStep(3, [{ text: "Save." }]),
-        spacer(),
-
-        heading2("12.4 Viewing Supplier Details"),
-        numberedStep(1, [{ text: "Click on any supplier card to see their full details." }]),
-        numberedStep(2, [{ text: "You can see all contractors linked to this supplier." }]),
-        commonQuestion("What are the supplier tiers?", "Tiers help you categorise suppliers by importance and reliability. Higher tiers get priority when placing contractors."),
-
-        // ═══ SECTION 13: ACTIVITY LOG ═══
-        pageBreakPara(),
-        heading1("13. Activity Log"),
-        para("The Activity Log is your complete audit trail. Every action anyone takes in the system is recorded here. Think of it as CCTV for your data."),
-        spacer(),
-
-        heading2("13.1 Viewing the Log"),
-        numberedStep(1, [{ text: 'Click ', bold: false }, { text: '"Activity Log"', bold: true }, { text: " in the menu." }]),
-        numberedStep(2, [{ text: "You will see a list of all actions, newest first." }]),
-        numberedStep(3, [{ text: "Each entry shows: who did it, what they did, which type of record was affected, details, and when." }]),
-        spacer(),
-
-        heading2("13.2 Understanding the Icons"),
-        para("Each log entry has an icon showing what happened:"),
-        bulletPoint([{ text: "+ (Created)", bold: true }, { text: " - Something new was added." }]),
-        bulletPoint([{ text: "Pencil (Updated)", bold: true }, { text: " - Something was changed." }]),
-        bulletPoint([{ text: "Tick (Approved)", bold: true }, { text: " - Something was approved." }]),
-        bulletPoint([{ text: "X (Rejected)", bold: true }, { text: " - Something was rejected." }]),
-        bulletPoint([{ text: "Arrow (Submitted)", bold: true }, { text: " - Something was submitted." }]),
-        bulletPoint([{ text: "Key (Logged In)", bold: true }, { text: " - Someone signed in." }]),
-        bulletPoint([{ text: "Download (Exported)", bold: true }, { text: " - Data was exported." }]),
-        spacer(),
-
-        heading2("13.3 Filtering the Log"),
-        numberedStep(1, [{ text: "Use the ", bold: false }, { text: "User dropdown", bold: true }, { text: " to see actions by a specific person." }]),
-        numberedStep(2, [{ text: "Use the ", bold: false }, { text: "Entity dropdown", bold: true }, { text: " to filter by type (Contractor, Timesheet, Invoice, etc)." }]),
-        numberedStep(3, [{ text: 'Click ', bold: false }, { text: '"Filter"', bold: true }, { text: "." }]),
-        para("The log supports pagination - use the page numbers at the bottom to browse through older entries (50 per page)."),
-        topTip("If something goes wrong or someone says \"I didn't change that!\" - the Activity Log will tell you exactly who did what and when."),
-
-        // ═══ SECTION 14: CONTRACTOR PORTAL ═══
-        pageBreakPara(),
-        heading1("14. Contractor Portal"),
-        para("The Contractor Portal is a simpler, cut-down version of the system designed specifically for contractors. They can only see their own data."),
-        spacer(),
-
-        heading2("14.1 What Contractors See"),
-        para("When a contractor logs in, they get their own portal with:"),
-        bulletPoint([{ text: "Welcome message", bold: true }, { text: " with their name." }]),
-        bulletPoint([{ text: "Quick Stats", bold: true }, { text: " - Three cards showing Draft Timesheets, Approved Timesheets, and Compliance Alerts." }]),
-        bulletPoint([{ text: "Active Assignments", bold: true }, { text: " - Their current roles with company name, location, and status." }]),
-        bulletPoint([{ text: "Recent Timesheets", bold: true }, { text: " - Their last 5 timesheets with status badges." }]),
-        bulletPoint([{ text: "Compliance Alerts", bold: true }, { text: " - Any documents that are expiring or expired (shown in red)." }]),
-        spacer(),
-
-        heading2("14.2 Submitting Timesheets (as a Contractor)"),
-        numberedStep(1, [{ text: "Log into the portal." }]),
-        numberedStep(2, [{ text: 'Click ', bold: false }, { text: '"View all"', bold: true }, { text: " next to Recent Timesheets, or navigate to Timesheets." }]),
-        numberedStep(3, [{ text: "Find your draft timesheet or create a new one." }]),
-        numberedStep(4, [{ text: "Enter your hours for each day of the week." }]),
-        numberedStep(5, [{ text: "Review the total." }]),
-        numberedStep(6, [{ text: "Submit for approval." }]),
-        numberedStep(7, [{ text: "Wait for PRL staff to approve or reject it." }]),
-        topTip("Contractors should submit their timesheets every Friday before they leave site. The earlier the better!"),
-        spacer(),
-
-        heading2("14.3 Checking Compliance (as a Contractor)"),
-        numberedStep(1, [{ text: "Look at the Compliance Alerts section on the portal dashboard." }]),
-        numberedStep(2, [{ text: "If any documents show as Expiring or Expired, contact PRL immediately to provide updated documents." }]),
-        numberedStep(3, [{ text: "Navigate to the compliance section for full details of all your records." }]),
-        watchOut("Contractors: If your compliance shows red alerts, you may not be allowed on site until they are resolved. Do not ignore these!"),
-        commonQuestion("Can contractors edit their own compliance records?", "No. Contractors can only view their compliance status. PRL staff manage the records to ensure accuracy."),
-
-        // ═══ SECTION 15: MOBILE ═══
-        pageBreakPara(),
-        heading1("15. Using on Mobile"),
-        para("Great news - the entire webapp works on your phone! The design automatically adjusts to fit smaller screens."),
-        spacer(),
-
-        heading2("15.1 Mobile Navigation"),
-        numberedStep(1, [{ text: "On mobile, the sidebar menu is hidden. Tap the ", bold: false }, { text: "hamburger menu icon", bold: true }, { text: " (three horizontal lines) at the top left." }]),
-        numberedStep(2, [{ text: "The menu slides out from the left." }]),
-        numberedStep(3, [{ text: "Tap any menu item to navigate there." }]),
-        numberedStep(4, [{ text: "The menu automatically closes when you select something." }]),
-        numberedStep(5, [{ text: "To sign out on mobile, tap the ", bold: false }, { text: "logout icon", bold: true }, { text: " in the top right corner of the mobile bar." }]),
-        spacer(),
-
-        heading2("15.2 Adding to Home Screen (PWA)"),
-        para("You can add the webapp to your phone's home screen so it feels like a real app:"),
-        spacer(),
-        heading3("On iPhone (Safari)"),
-        numberedStep(1, [{ text: "Open the webapp in Safari." }]),
-        numberedStep(2, [{ text: "Tap the ", bold: false }, { text: "Share button", bold: true }, { text: " (the square with an arrow pointing up)." }]),
-        numberedStep(3, [{ text: "Scroll down and tap ", bold: false }, { text: '"Add to Home Screen"', bold: true }, { text: "." }]),
-        numberedStep(4, [{ text: "Give it a name (e.g., \"PRL\") and tap Add." }]),
-        numberedStep(5, [{ text: "You will now see a PRL icon on your home screen!" }]),
-        spacer(),
-        heading3("On Android (Chrome)"),
-        numberedStep(1, [{ text: "Open the webapp in Chrome." }]),
-        numberedStep(2, [{ text: "Tap the ", bold: false }, { text: "three dots menu", bold: true }, { text: " at the top right." }]),
-        numberedStep(3, [{ text: 'Tap ', bold: false }, { text: '"Add to Home screen"', bold: true }, { text: "." }]),
-        numberedStep(4, [{ text: "Tap Add to confirm." }]),
-        numberedStep(5, [{ text: "Done! Open it like any other app." }]),
-        topTip("Adding to your home screen makes the app launch full-screen without the browser address bar. It looks and feels like a native app!"),
-        commonQuestion("Does it work offline?", "No - you need an internet connection to use the webapp. But it works great on 4G/5G mobile data."),
-
-        // ═══ SECTION 16: TROUBLESHOOTING ═══
-        pageBreakPara(),
-        heading1("16. Troubleshooting & FAQ"),
-        para("Something not working? Here are the most common issues and how to fix them."),
-        spacer(),
-
-        heading2("16.1 Login Problems"),
-        commonQuestion("I cannot log in - it says invalid email or password.", "Double-check your email address for typos. Make sure Caps Lock is off. Try the Forgot Password flow to reset your password."),
-        commonQuestion("The page just shows a blank white screen.", "Try refreshing the page (press F5 or Ctrl+R). If that does not work, clear your browser cache or try a different browser."),
-        commonQuestion("I got logged out randomly.", "Sessions expire after a period of inactivity. Just log back in. Your data is safe."),
-        spacer(),
-
-        heading2("16.2 Timesheet Issues"),
-        commonQuestion("I cannot see the contractor I want when creating a timesheet.", "The contractor must be in the system first. Go to Contractors and add them, then come back to create the timesheet."),
-        commonQuestion("A timesheet was rejected - what do I do?", "Open the rejected timesheet, check the rejection reason, fix the hours, and resubmit."),
-        commonQuestion("What counts as overtime?", "Overtime is any hours over the standard weekly or daily threshold set up in the system. These are highlighted in orange automatically."),
-        spacer(),
-
-        heading2("16.3 Billing Issues"),
-        commonQuestion("No invoices are being generated.", "Make sure there are approved timesheets that have not been invoiced yet. Invoices are only generated from approved timesheets."),
-        commonQuestion("An invoice shows as Disputed.", "Contact the client to find out what the issue is. Check the timesheet and rates match up. Resolve the dispute and update the status."),
-        commonQuestion("What is three-way matching?", "It checks that the timesheet hours, the rate card prices, and the purchase order all match up. Green = matched, Amber = partially matched, Grey = not matched."),
-        spacer(),
-
-        heading2("16.4 Compliance Issues"),
-        commonQuestion("A contractor shows as Non-Compliant but their documents are up to date.", "Make sure the expiry date in the compliance record is correct. The system automatically flags records as expired based on the date."),
-        commonQuestion("How do I update an expired document?", "Add a new compliance record with the updated document details and new expiry date. The old record stays for audit purposes."),
-        spacer(),
-
-        heading2("16.5 General Tips"),
-        bulletPoint([{ text: "Use Chrome or Edge", bold: true }, { text: " for the best experience." }]),
-        bulletPoint([{ text: "Clear your cache", bold: true }, { text: " if things look odd (Ctrl+Shift+Delete)." }]),
-        bulletPoint([{ text: "Check your internet connection", bold: true }, { text: " if pages are slow to load." }]),
-        bulletPoint([{ text: "Use the search and filter features", bold: true }, { text: " - they are there to save you time!" }]),
-        bulletPoint([{ text: "Bookmark the main URL", bold: true }, { text: " so you can get to it quickly." }]),
-        spacer(),
-
-        heading2("16.6 Getting Help"),
-        para("If you are stuck and this guide has not answered your question:"),
-        numberedStep(1, [{ text: "Check the Activity Log to see if something unexpected happened." }]),
-        numberedStep(2, [{ text: "Ask a colleague - they might have seen the same issue before." }]),
-        numberedStep(3, [{ text: "Contact your PRL system administrator." }]),
-        numberedStep(4, [{ text: "Describe what you were doing, what you expected to happen, and what actually happened." }]),
-        topTip("When reporting a problem, take a screenshot! It makes it ten times easier for someone to help you."),
-        spacer(),
-        spacer(),
-
-        // ═══ END NOTE ═══
+        // ══════════════════════════════════════════════════════════
+        //  1. GETTING STARTED
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("1. Getting Started"),
+
+        h2("1.1 About This Guide"),
+        body("This guide covers every feature of the PRL Site Solutions Contractor Management System. The system is a web application accessible from any modern browser on desktop, tablet, or mobile phone. It has two main portals:"),
+        body("  - Staff Dashboard: The full management interface for PRL staff (Marianne, Jenni, Helen, Accounts, Keenan, Adella)."),
+        body("  - Contractor Portal: A self-service portal for contractors to submit timesheets, upload documents, track compliance, and view their profile."),
+
+        h2("1.2 System Requirements"),
+        body("The system works in Google Chrome, Microsoft Edge, Safari, or Firefox. It is fully responsive and works on mobile phones with a slide-out navigation menu and bottom navigation bar. The system is also a Progressive Web App (PWA) that can be installed on a phone's home screen for an app-like experience."),
+        topTip("On your phone, open the site in Chrome or Safari, tap 'Add to Home Screen' to get an app icon. This gives you full-screen access without the browser bar."),
+
+        h2("1.3 Logging In"),
+        body("Navigate to the login page. You will see the PRL Site Solutions logo and a simple login form."),
+        step(1, "Enter your email address (e.g. marianne@prlsitesolutions.co.uk for staff, or your contractor email)."),
+        step(2, "Enter your password."),
+        step(3, "Click 'Sign in'."),
+        step(4, "Staff users are taken to the main Dashboard. Contractors are taken to their Contractor Portal dashboard."),
+        watchOut("If you see 'Invalid email or password', double-check your email and password. Remember passwords are case-sensitive."),
+
+        h2("1.4 Forgot Password"),
+        body("If you have forgotten your password, you can reset it from the login page."),
+        step(1, "On the login page, click 'Forgot your password?' below the Sign in button."),
+        step(2, "Enter your email address in the field that appears."),
+        step(3, "Click 'Send'. The system will email you a password reset link."),
+        step(4, "Check your inbox for an email from PRL Site Solutions. Click the link in the email."),
+        step(5, "You will be taken to the 'Set Your Password' page. Enter your new password (minimum 6 characters) and confirm it."),
+        step(6, "Click 'Set Password'. You will see a success message."),
+        step(7, "Click 'Go to Login' and sign in with your new password."),
+        topTip("The reset link is valid for 24 hours. If it expires, simply request a new one."),
+        commonQuestion("I didn't receive the reset email -- what do I do?", "Check your spam/junk folder. The email comes from PRL Site Solutions. If still not found, contact Marianne or your admin to have them trigger the setup-staff or contractor-logins process again."),
+
+        h2("1.5 Staff User Account Setup"),
+        body("Staff accounts are provisioned by calling the setup-staff API endpoint with the setup key. This creates accounts for all PRL staff members with temporary passwords. Each staff member should then use the 'Forgot Password' flow on the login page to set their own secure password."),
+        step(1, "An admin visits the setup-staff API URL with the correct key parameter."),
+        step(2, "The system creates user accounts for all listed PRL staff (Marianne, Jenni, Helen, Accounts, Keenan, Adella)."),
+        step(3, "Each staff member goes to the login page and clicks 'Forgot your password?'"),
+        step(4, "They receive an email with a link to set their own password."),
+        watchOut("Never share the setup key publicly. This endpoint is for initial provisioning only."),
+
+        // ══════════════════════════════════════════════════════════
+        //  2. DASHBOARD
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("2. Staff Dashboard"),
+
+        h2("2.1 Overview"),
+        body("The Dashboard is the first page you see after logging in. It provides an at-a-glance summary of your entire contractor workforce with six clickable KPI cards, a Recent Contractors list, and a Compliance Alerts panel."),
+
+        h2("2.2 KPI Cards"),
+        body("The top of the Dashboard displays six key performance indicator cards. Each card is clickable and takes you directly to the relevant module:"),
+        body("  - Total Contractors: Shows the total number of contractors in the system. Clicking navigates to the Contractors page."),
+        body("  - Active Assignments: Shows the count of currently active assignments. Clicking navigates to Assignments."),
+        body("  - Pending Timesheets: Shows timesheets in Draft or Submitted status awaiting action. Clicking navigates to Timesheets filtered to Submitted."),
+        body("  - Compliance Alerts: Shows the count of Expiring, Expired, or Non-Compliant compliance records. Clicking navigates to Compliance filtered to Expiring."),
+        body("  - Companies: Shows total client companies. Clicking navigates to Companies."),
+        body("  - Active Suppliers: Shows the number of active suppliers. Clicking navigates to Suppliers."),
+        topTip("Click any KPI card to jump straight to the relevant module. The numbers update in real-time every time you load the Dashboard."),
+
+        h2("2.3 Recent Contractors"),
+        body("Below the KPI cards on the left, the Dashboard shows the five most recently added contractors with their name, job title, status badge, and date added. Click any contractor row to view their full profile. Click 'View all' to go to the full Contractors list."),
+
+        h2("2.4 Compliance Alerts"),
+        body("On the right side, the Compliance Alerts panel shows the five most urgent compliance issues (sorted by expiry date, earliest first). Each alert shows the contractor name, compliance type, expiry date, and status badge. A compliance score ring shows the overall percentage of verified records. Click any alert to view the full compliance record, or click 'View all' to go to the Compliance Dashboard."),
+        watchOut("Red compliance alerts mean a contractor's document has expired or is non-compliant. Address these immediately to avoid compliance risk on active sites."),
+
+        // ══════════════════════════════════════════════════════════
+        //  3. SIDEBAR & NAVIGATION
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("3. Navigation & Sidebar"),
+
+        h2("3.1 Desktop Sidebar"),
+        body("On desktop, a fixed sidebar appears on the left side of the screen. It shows the PRL Site Solutions logo, your signed-in email, and navigation links to all modules:"),
+        body("Dashboard, Intelligence, Contractors, Companies, Assignments, Timesheets, Billing, Compliance, Rates, Suppliers, Activity Log."),
+        body("The currently active page is highlighted in blue. At the bottom, a Sign out button lets you log out."),
+
+        h2("3.2 Live Badge Notifications"),
+        body("Three sidebar items display live notification badges that update automatically every 30 seconds:"),
+        body("  - Timesheets: A red pulsing badge shows the count of pending timesheets (Draft + Submitted) that need attention."),
+        body("  - Billing: A blue badge shows the count of draft invoices waiting to be processed."),
+        body("  - Compliance: An orange badge shows the count of compliance alerts (Expiring, Expired, Non-Compliant records)."),
+        topTip("These badges update automatically every 30 seconds without needing to refresh the page. If the badge count drops to zero, the badge disappears."),
+
+        h2("3.3 Mobile Navigation"),
+        body("On mobile devices, the sidebar is hidden by default. A top bar shows the PRL logo, company name, a hamburger menu button, and a logout button."),
+        step(1, "Tap the hamburger menu (three lines) in the top-left to open the slide-out navigation drawer."),
+        step(2, "The navigation drawer slides in from the left with all the same menu items as the desktop sidebar."),
+        step(3, "Tap any menu item to navigate. The drawer closes automatically."),
+        step(4, "Tap the X button or tap outside the drawer to close it."),
+        body("When there are pending timesheets, a small red pulsing dot appears on the hamburger menu icon to alert you."),
+        body("The logout button is always visible in the top-right corner of the mobile top bar for quick access."),
+        topTip("Use the PWA 'Add to Home Screen' feature for the best mobile experience. The app loads faster and feels native."),
+
+        // ══════════════════════════════════════════════════════════
+        //  4. INTELLIGENCE MODULE
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("4. Workforce Intelligence"),
+
+        h2("4.1 Intelligence Hub"),
+        body("The Intelligence page provides AI-powered insights and predictions across your entire workforce. It analyses your data to detect patterns, risks, and opportunities automatically."),
+        body("At the top, three quick-link buttons take you to the sub-modules: Smart Matching, Risk Engine, and Anomalies."),
+        body("The System Health panel shows four category indicators (Compliance, Financial, Workforce, Operational), each colour-coded green (healthy), amber (attention), or red (action needed)."),
+        body("Below that, an Actionable Insights feed lists all detected insights sorted by severity (critical first). Each insight shows a severity-coloured card with category icon, title, description, trend arrow, metric value, and an action button linking to the relevant module."),
+
+        h2("4.2 Smart Contractor Matching"),
+        body("The Smart Matching page helps you find the best contractor for a specific role using an AI scoring system."),
+        step(1, "Navigate to Intelligence and click 'Smart Matching' (or go to /intelligence/matching)."),
+        step(2, "Enter the Role Required (e.g. 'Electrician'). The field auto-suggests from existing assignment roles."),
+        step(3, "Optionally enter a Location and Max Rate per hour."),
+        step(4, "Click 'Find Best Match'."),
+        step(5, "Results appear ranked by match score (0-100). Each result shows the contractor name, IR35 status, charge rate, compliance percentage, availability, and a breakdown of five scoring factors (Skills, Compliance, Rate, Availability, History)."),
+        step(6, "Click 'View Profile' to see the full contractor record."),
+        topTip("The matching algorithm considers job title similarity, compliance status, rate budget, current availability, and past assignment history to produce an overall score."),
+
+        h2("4.3 Predictive Risk Engine"),
+        body("The Risk Engine forecasts compliance gaps, staffing shortfalls, and financial risks before they happen."),
+        body("The page shows a Risk Score (lower is better), counts of Critical, High, and Medium/Low risks, then groups all risks by category (Compliance, Financial, Staffing). Each risk shows severity, title, description, probability percentage, impact level, due date, and an action button."),
+        watchOut("Critical risks require immediate action. Check the Risk Engine regularly, especially before month-end or major project deadlines."),
+
+        h2("4.4 Anomaly Detection"),
+        body("The Anomaly Detection page automatically flags unusual patterns across your data. It detects:"),
+        body("  - Excessive Hours: Timesheets with more than 60 hours per week."),
+        body("  - Zero Hours: Timesheets submitted with 0 hours."),
+        body("  - Duplicates: Multiple timesheets for the same contractor in the same week."),
+        body("  - Hour Spikes: Hours more than 50% above a contractor's average."),
+        body("  - PO Mismatch: Invoices without a linked Purchase Order."),
+        body("  - Expired Active: Contractors on active assignments with expired compliance documents."),
+        body("Anomalies are grouped by type (Timesheet, Billing, Compliance, Pattern) and colour-coded by severity with data points and 'Investigate' links."),
+
+        // ══════════════════════════════════════════════════════════
+        //  5. CONTRACTORS
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("5. Contractors"),
+
+        h2("5.1 Contractor List"),
+        body("The Contractors page shows a searchable, filterable table of all contractors in the system. Columns include Name (with initials avatar), Email, Job Title, Day Rate, Status, Supplier, and Actions."),
+
+        h2("5.2 Searching and Filtering"),
+        step(1, "Type a name or email in the search box."),
+        step(2, "Optionally select a status filter (Active, Inactive, On Hold) from the dropdown."),
+        step(3, "Click 'Filter' to apply."),
+        step(4, "To clear filters, click 'Clear filters' or navigate back to /contractors."),
+
+        h2("5.3 Adding a New Contractor"),
+        step(1, "Click the blue 'Add Contractor' button in the top right."),
+        step(2, "Fill in the contractor details: First Name, Last Name, Email, Phone, Job Title, Day Rate, NI Number, UTR Number, IR35 Status, Status, Supplier, and Notes."),
+        step(3, "Click 'Save' to create the contractor record."),
+        step(4, "The system automatically creates a Contractor Login account, allowing the contractor to access the Contractor Portal. They will need to use the 'Forgot Password' flow to set their password."),
+        topTip("When you add a contractor via the dashboard, a portal login account is auto-created for them. Just tell them to visit the login page and click 'Forgot Password' to set up their access."),
+
+        h2("5.4 Viewing a Contractor"),
+        body("Click 'View' on any contractor row to see their full profile, including all personal details, assigned supplier, IR35 status, day rate, notes, and links to their assignments and compliance records."),
+
+        h2("5.5 Editing a Contractor"),
+        step(1, "From the contractor profile page, click 'Edit'."),
+        step(2, "Update any fields as needed."),
+        step(3, "Click 'Save' to apply changes."),
+
+        h2("5.6 IR35 Assessment"),
+        body("Each contractor has a dedicated IR35 assessment page accessible from their profile. This page tracks the contractor's IR35 determination (Inside, Outside, or Undetermined) and related assessment details."),
+        watchOut("Always ensure IR35 status is correctly recorded. Incorrect determinations can lead to significant tax liabilities for PRL or the client company."),
+
+        // ══════════════════════════════════════════════════════════
+        //  6. COMPANIES
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("6. Companies"),
+
+        h2("6.1 Company List"),
+        body("The Companies page shows all client companies in a searchable table with columns: Name, City, Contact Name, Contact Email, Phone, Active status, and Actions."),
+
+        h2("6.2 Searching Companies"),
+        step(1, "Type a company name in the search box."),
+        step(2, "Click 'Search' to filter."),
+        step(3, "Click 'Clear search' to remove the filter."),
+
+        h2("6.3 Adding a New Company"),
+        step(1, "Click the blue 'Add Company' button."),
+        step(2, "Fill in the company details: Name, Address, City, Postcode, Contact Name, Contact Email, Contact Phone, and Active status."),
+        step(3, "Click 'Save'."),
+
+        h2("6.4 Viewing and Editing a Company"),
+        body("Click 'View' on any company row to see full details. From the detail page, click 'Edit' to modify the company record."),
+        topTip("Keep company contact details up to date. These are used when generating invoices and in compliance gap reporting."),
+
+        // ══════════════════════════════════════════════════════════
+        //  7. ASSIGNMENTS
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("7. Assignments"),
+
+        h2("7.1 Overview"),
+        body("The Assignments page has two views: a visual Kanban Board at the top and a detailed table below. Assignments flow through four statuses: Placed, Active, Ending, and Completed."),
+
+        h2("7.2 Kanban Board"),
+        body("The Kanban board displays assignment cards in four columns, one per status. Each card shows the contractor name, company, role, location, and start date."),
+        h3("7.2.1 Drag and Drop"),
+        step(1, "Click and hold an assignment card (or long-press on mobile)."),
+        step(2, "Drag the card to a different status column."),
+        step(3, "Drop the card in the target column. A 'Drop here!' indicator appears when you hover over a valid drop zone."),
+        step(4, "The status updates immediately (optimistic update) and saves to the server. A 'Saving...' indicator appears briefly."),
+        topTip("Drag and drop works on both desktop (mouse) and mobile (touch). On mobile, long-press for 200ms to start dragging."),
+        watchOut("If the server save fails, the card automatically snaps back to its original column and an error message appears."),
+
+        h3("7.2.2 Search and Company Filter"),
+        step(1, "Use the search box above the Kanban board to filter by contractor name or role."),
+        step(2, "Use the company dropdown to filter by a specific company."),
+        step(3, "The filter count shows 'X of Y shown' when filters are active."),
+        step(4, "Click 'Clear filters' to reset."),
+
+        h2("7.3 Status Filter Pills"),
+        body("Below the page header, status filter pills (All, Placed, Active, Ending, Completed) filter the table view. The Kanban board always shows all assignments regardless of the table filter."),
+
+        h2("7.4 Assignment Table"),
+        body("The table view shows columns: Contractor, Company, Role, Location, Start Date, End Date, Status, and Actions. Click 'View' to see full assignment details."),
+
+        h2("7.5 Creating a New Assignment"),
+        step(1, "Click the blue 'New Assignment' button."),
+        step(2, "Select a Contractor and Company from the dropdowns."),
+        step(3, "Enter the Role, Location, Start Date, End Date (optional), and Status."),
+        step(4, "Click 'Save'."),
+
+        h2("7.6 Editing an Assignment"),
+        body("From the assignment detail page, click 'Edit' to update any fields."),
+
+        // ══════════════════════════════════════════════════════════
+        //  8. TIMESHEETS
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("8. Timesheets"),
+
+        h2("8.1 Overview"),
+        body("The Timesheets page displays all timesheets grouped by week with summary cards, status filters, and collapsible weekly groups. At the top, two action buttons: 'Approval Chains' (gear icon) to configure approval workflows, and 'New Timesheet' to create a timesheet."),
+
+        h2("8.2 Summary Cards"),
+        body("Four summary cards show at the top of the page:"),
+        body("  - Total: All timesheets matching the current filter."),
+        body("  - Awaiting Approval: Timesheets in Submitted status (orange)."),
+        body("  - Draft: Timesheets still being prepared (blue)."),
+        body("  - Approved: Timesheets that have been approved (green)."),
+
+        h2("8.3 Status Filter Pills"),
+        body("Filter timesheets by clicking: All, Draft, Submitted, Approved, or Rejected. The active filter is highlighted in blue."),
+
+        h2("8.4 Weekly Collapsible Groups"),
+        body("Timesheets are grouped by the week starting date. Each week group is collapsible -- click the week header to expand or collapse it. Within each group, timesheets are shown as rows with contractor name, company, total hours, overtime hours, status badge, and actions."),
+        topTip("The weekly grouping makes it easy to review and approve an entire week's timesheets at once. Expand the current week to focus on what needs attention now."),
+
+        h2("8.5 Creating a New Timesheet"),
+        step(1, "Click 'New Timesheet' in the top right."),
+        step(2, "Select the Contractor, Assignment, and Week Starting date."),
+        step(3, "Enter the Total Hours, Overtime Hours, and any notes."),
+        step(4, "Click 'Save'. The timesheet is created in Draft status."),
+
+        h2("8.6 Viewing and Editing Timesheets"),
+        body("Click a timesheet row to view details. From the detail page, click 'Edit' to modify hours, notes, or status. You can approve, reject, or submit timesheets from the detail page."),
+
+        h2("8.7 Timesheet Approval"),
+        body("When a timesheet is submitted, it enters the approval workflow:"),
+        step(1, "The timesheet moves to 'Submitted' status."),
+        step(2, "If an Approval Chain is configured for the company, the timesheet follows the multi-step chain."),
+        step(3, "Standard timesheets (40 hours or less, no overtime, no exceptions) are auto-approved."),
+        step(4, "Exception timesheets (overtime, bank holidays, excessive hours, zero hours) are flagged for manual review."),
+        step(5, "Approvers can Approve or Reject the timesheet from the detail page."),
+
+        h2("8.8 Approval Chains"),
+        body("Navigate to Timesheets then click 'Approval Chains' to configure multi-step approval workflows."),
+        step(1, "Click 'New Chain'."),
+        step(2, "Name the chain and optionally assign it to a specific company (or leave blank for default)."),
+        step(3, "Add approval steps in order (e.g. Step 1: Line Manager, Step 2: Finance)."),
+        step(4, "Each step specifies a label and an approver role."),
+        body("Without a chain configured, timesheets use simple single-step approval. Standard timesheets are auto-approved."),
+        commonQuestion("What counts as an 'exception' timesheet?", "Bank holiday hours, overtime, hours over 60 per week, and zero-hour submissions are all flagged as exceptions requiring manual review."),
+
+        // ══════════════════════════════════════════════════════════
+        //  9. BILLING & INVOICES
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("9. Billing & Invoices"),
+
+        h2("9.1 Overview"),
+        body("The Billing page manages invoices from creation to payment. Invoices are auto-generated from approved timesheets and support Sage accounting export and three-way matching."),
+
+        h2("9.2 Summary Cards"),
+        body("Three summary cards at the top show Outstanding, Paid (Total), and Draft amounts in GBP. Overdue invoices are highlighted with a red tint in the table."),
+
+        h2("9.3 Status Filter Pills"),
+        body("Filter invoices by: All, Draft, Reconciling, Approved, Sent, Paid, Disputed."),
+
+        h2("9.4 Invoice Table"),
+        body("The table shows: Invoice number, Company, Period, Lines count, Total amount, Status with Overdue tag, Match status (Matched/Partial/Unmatched), Due date, and Actions. Click 'View' to see full invoice details."),
+
+        h2("9.5 Generating Invoices"),
+        step(1, "Click 'Generate Invoices' from the Billing page."),
+        step(2, "Select the billing Period Start and Period End dates."),
+        step(3, "Optionally select a specific Company, or leave as 'All Companies' to generate separate invoices per company."),
+        step(4, "Set the VAT Rate (defaults to 20%)."),
+        step(5, "Click 'Generate Invoices'. The system finds all approved timesheets in the period, groups them by company, calculates amounts using contractor charge rates, and creates invoices with VAT."),
+        body("The info panel on the right shows 'Ready to Invoice' count of approved timesheets."),
+        watchOut("Only approved timesheets are included. If the count shows 0, make sure timesheets are approved before generating invoices."),
+
+        h2("9.6 Invoice Detail & Actions"),
+        body("The invoice detail page shows:"),
+        body("  - Header: Supplier (PRL), Client, Period, Due Date, PO Reference."),
+        body("  - Line items table: Description, Hours, OT Hours, Rate, Amount."),
+        body("  - Subtotal, VAT, and Total."),
+        body("  - Three-Way Matching panel (see below)."),
+        body("  - Action buttons depending on status:"),
+        body("    Draft: Approve Invoice, Delete Draft."),
+        body("    Approved: Mark as Sent, Mark as Paid."),
+        body("    Sent: Mark as Paid."),
+        body("  - Export for Sage button (available on all invoices)."),
+
+        h2("9.7 Three-Way Matching"),
+        body("Each invoice displays a Three-Way Matching panel that verifies three elements:"),
+        body("  1. Purchase Order (PO): Whether a PO number is linked to the invoice."),
+        body("  2. Timesheets: Whether the invoice lines are linked to approved timesheets."),
+        body("  3. Invoice: The invoice itself (always matched)."),
+        body("A badge shows 'X/3 checks complete'. A fully matched invoice (3/3) shows green, partial match shows amber, and low match shows red."),
+        topTip("Always add a PO number when creating or editing invoices to achieve a full three-way match. This is best practice for audit compliance."),
+
+        h2("9.8 Sage Export"),
+        body("To export an invoice for import into Sage accounting software:"),
+        step(1, "Open the invoice detail page."),
+        step(2, "Click 'Export for Sage'."),
+        step(3, "A CSV file downloads in Sage 50/200 compatible format with columns: Type, Account Ref, Nominal A/C Ref, Department, Date, Reference, Details, Net Amount, Tax Code, Tax Amount, Exchange Rate, Extra Reference, Project Ref."),
+        step(4, "Import the CSV file into Sage using the standard Sage import function."),
+        commonQuestion("What format is the Sage export?", "It produces a standard Sales Invoice (SI) CSV with T1 tax code for UK VAT. Each invoice line becomes a separate row. The account reference is derived from the company name."),
+
+        h2("9.9 Spend Dashboard"),
+        body("Click 'Spend Dashboard' from the Billing page to access real-time spend analysis."),
+        body("The Spend Dashboard includes:"),
+        body("  - KPI Cards: Total Spend, Paid, Outstanding, and Overdue amounts."),
+        body("  - Variance Alerts: Automatic alerts for overdue invoices, high overtime percentages, and invoice amount variances above average."),
+        body("  - Monthly Spend Trend: A visual bar chart showing spend for the last 6 months."),
+        body("  - Spend by Company: Ranked list of companies by total spend with percentage breakdown."),
+        body("  - Top Contractors by Spend: Table showing highest-spend contractors with hours, total, average rate, and percentage of total spend."),
+        watchOut("If overtime exceeds 15% of total hours, the Spend Dashboard displays a warning. Review staffing levels to manage costs."),
+
+        // ══════════════════════════════════════════════════════════
+        //  10. COMPLIANCE
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("10. Compliance Dashboard"),
+
+        h2("10.1 Overview"),
+        body("The Compliance Dashboard provides a complete view of workforce compliance across all contractors. It features a risk score ring, per-type progress bars, compliance gap detection, search/filter, and a detailed records table."),
+
+        h2("10.2 Compliance Score Ring"),
+        body("A circular score ring in the top-right shows the overall compliance percentage (verified records divided by total records). This same ring also appears on the main Dashboard."),
+
+        h2("10.3 Summary Cards"),
+        body("Three colour-coded summary cards show: Compliant (green), Expiring (amber), and Non-Compliant (red) counts."),
+
+        h2("10.4 Per-Type Progress Bars"),
+        body("For each compliance type in the system (Right to Work, DBS, CSCS, Insurance, IR35 Assessment, Qualification, Other), a progress bar shows how many records are verified out of the total. Each bar includes:"),
+        body("  - A status icon (check, warning triangle, or clock)."),
+        body("  - The type name."),
+        body("  - A fraction showing verified/total."),
+        body("  - A coloured progress bar (green for verified, amber for expiring, red for non-compliant)."),
+        body("  - A status badge."),
+
+        h2("10.5 Compliance Gaps"),
+        body("If any active contractors are missing mandatory compliance requirements, a red Compliance Gaps panel appears showing:"),
+        body("  - The contractor name (clickable link to their profile)."),
+        body("  - Their assignment role and company."),
+        body("  - The missing or expired requirement type."),
+        body("  - Status badge (Missing, Expired, Expiring)."),
+        watchOut("Compliance Gaps mean contractors are working on site without required documents. Address these immediately -- they represent a legal and safety risk."),
+
+        h2("10.6 Compliance Requirements Checklists"),
+        body("Click 'Checklists' from the Compliance page header to manage compliance requirement templates. You can create checklists that define which document types are mandatory for specific assignment roles or companies."),
+        step(1, "Click 'Checklists' on the Compliance page."),
+        step(2, "Click 'New Requirement' to create a new checklist."),
+        step(3, "Define the required compliance types, which roles they apply to, and whether they are mandatory."),
+
+        h2("10.7 Search, Status Filter, and Type Filter"),
+        step(1, "Use the search box to find compliance records by contractor name."),
+        step(2, "Use the Status dropdown to filter: Verified, Pending, Expiring, Expired, Non-Compliant."),
+        step(3, "Use the Type dropdown to filter by document type (populated from actual types in the database)."),
+        step(4, "Click 'Filter' to apply. Click 'Clear filters' to reset."),
+
+        h2("10.8 Compliance Records Table"),
+        body("The table shows: Contractor (with avatar), Type, Document/Reference, Issue Date, Expiry Date, Status (with colour-coded left border for urgency), and Actions. Click 'View' to see full record details."),
+
+        h2("10.9 Viewing a Compliance Record"),
+        body("The compliance record detail page shows all fields (contractor, type, document name, reference, issue/expiry dates, status, notes). Key features:"),
+        body("  - Quick Verify Button: If the record is not yet verified, a 'Quick Verify' button appears next to the status badge. Click it to instantly mark the record as Verified without navigating to the edit form."),
+        body("  - Staff Document Upload: A blue upload section allows staff to upload supporting documents directly on the compliance record. Upload a file by choosing a file and clicking upload. Uploaded files appear in a list with filename, version, date, uploader, file size, and a Download button."),
+        body("  - Edit and Delete buttons in the header."),
+
+        h2("10.10 Adding a New Compliance Record"),
+        step(1, "Click 'Add Record' from the Compliance Dashboard."),
+        step(2, "Select a Contractor, Type (Right to Work, DBS, CSCS, Insurance, IR35 Assessment, Qualification, Other)."),
+        step(3, "Fill in Document Name, Reference, Issue Date, Expiry Date, Notes, and Status."),
+        step(4, "Click 'Save'."),
+
+        h2("10.11 Quick Verify"),
+        body("The Quick Verify feature allows staff to mark a compliance record as Verified with a single click, without opening the edit form."),
+        step(1, "Navigate to a compliance record detail page."),
+        step(2, "If the status is not Verified, a green 'Quick Verify' button appears next to the status badge."),
+        step(3, "Click 'Quick Verify'. The status changes to Verified immediately."),
+        topTip("Quick Verify is perfect for when you have verified a document externally and just need to update the system status. It saves several clicks compared to Edit, change status, Save."),
+
+        h2("10.12 Staff Document Upload on Compliance Records"),
+        body("Staff can upload documents directly on any compliance record:"),
+        step(1, "Open a compliance record."),
+        step(2, "In the blue 'Upload Document' section, click Choose File and select the document."),
+        step(3, "Click Upload. The document is stored and linked to the contractor and compliance type."),
+        step(4, "Previously uploaded documents appear in a list below with version numbers, dates, uploaders, and Download buttons."),
+        body("Documents are versioned -- uploading a new file for the same type creates a new version; previous versions are retained."),
+
+        // ══════════════════════════════════════════════════════════
+        //  11. RATES
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("11. Rate Cards"),
+
+        h2("11.1 Overview"),
+        body("The Rates page manages pay and charge rate cards. Each rate card defines the pay rate (what you pay the contractor), charge rate (what you charge the client), and the resulting margin percentage."),
+
+        h2("11.2 Rate Cards Table"),
+        body("The table shows: Role, Location, Pay/Hr, Charge/Hr, Margin % (colour-coded: green for 30%+, amber for 20-30%, red for under 20%), Effective From, Effective To, and Actions."),
+
+        h2("11.3 Adding a New Rate Card"),
+        step(1, "Click 'Add Rate Card'."),
+        step(2, "Enter the Role, Location, Pay Rate per hour, Charge Rate per hour, Effective From date, and optional Effective To date."),
+        step(3, "The margin is calculated automatically."),
+        step(4, "Click 'Save'."),
+
+        h2("11.4 Editing a Rate Card"),
+        body("Click 'Edit' on any rate card row to update the rates or dates."),
+        topTip("Use effective dates to manage rate changes. Create a new rate card with a future Effective From date to plan ahead for rate reviews."),
+        commonQuestion("How is the margin calculated?", "Margin = ((Charge Rate - Pay Rate) / Charge Rate) x 100. For example, if you pay 30 GBP/h and charge 45 GBP/h, the margin is 33.3%."),
+
+        // ══════════════════════════════════════════════════════════
+        //  12. SUPPLIERS
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("12. Suppliers"),
+
+        h2("12.1 Overview"),
+        body("The Suppliers page displays all supplier agencies as visual cards in a grid layout. Suppliers provide contractors to PRL Site Solutions."),
+
+        h2("12.2 Supplier Cards"),
+        body("Each supplier card shows:"),
+        body("  - Supplier Name and Tier badge (Gold, Silver, Bronze)."),
+        body("  - Contractor count (number of contractors from this supplier)."),
+        body("  - Performance Score bar (0-100, colour-coded: green 75+, amber 50-74, red under 50)."),
+        body("  - Contact details: Name, Email, Phone."),
+        body("Click any card to view the full supplier profile."),
+
+        h2("12.3 Adding a New Supplier"),
+        step(1, "Click the blue 'Add Supplier' button."),
+        step(2, "Fill in: Name, Tier (Gold/Silver/Bronze), Score, Contact Name, Contact Email, Contact Phone, and Active status."),
+        step(3, "Click 'Save'."),
+
+        h2("12.4 Viewing and Editing a Supplier"),
+        body("Click a supplier card to view details. From the detail page, click 'Edit' to modify the record."),
+        topTip("Use the Performance Score to track supplier quality over time. Review scores quarterly and use them in contract renewal discussions."),
+
+        // ══════════════════════════════════════════════════════════
+        //  13. ACTIVITY LOG
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("13. Activity Log"),
+
+        h2("13.1 Overview"),
+        body("The Activity Log provides a complete audit trail of all actions taken in the system. Every create, update, delete, approval, rejection, login, and export is recorded automatically."),
+
+        h2("13.2 Activity Feed"),
+        body("The feed shows a chronological list of events, each with:"),
+        body("  - An action icon (e.g. + for Created, pencil for Updated, tick for Approved, key for Logged In, download for Exported)."),
+        body("  - The user who performed the action."),
+        body("  - The action description."),
+        body("  - The entity type (Contractor, Timesheet, Invoice, etc.) as a label."),
+        body("  - Additional details about what changed."),
+        body("  - Timestamp and user email."),
+
+        h2("13.3 Filtering the Activity Log"),
+        step(1, "Use the User dropdown to filter by a specific user's email."),
+        step(2, "Use the Entity dropdown to filter by entity type (Contractor, Timesheet, Invoice, Compliance, etc.)."),
+        step(3, "Click 'Filter' to apply."),
+        body("The log is paginated with 50 entries per page. Use the page numbers at the bottom to navigate."),
+        topTip("The Activity Log is invaluable for audit purposes. If there is ever a question about who changed what and when, the Activity Log has the answer."),
+        commonQuestion("Is the Activity Log tamper-proof?", "Activity log entries are write-only records. They cannot be edited or deleted through the application interface."),
+
+        // ══════════════════════════════════════════════════════════
+        //  14. CONTRACTOR PORTAL
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("14. Contractor Portal"),
+
+        h2("14.1 Overview"),
+        body("The Contractor Portal is a separate self-service interface for contractors. It is designed with a mobile-first approach and gives contractors access to their own timesheets, documents, compliance records, and profile."),
+        body("Contractors log in using the same login page as staff but are redirected to /portal instead of the staff dashboard."),
+
+        h2("14.2 Portal Dashboard"),
+        body("After logging in, contractors see a personalised dashboard with:"),
+        body("  - A welcome message ('Hello, [First Name]')."),
+        body("  - Four Quick Action buttons:"),
+        body("    1. New Timesheet (blue): Submit hours for the current week."),
+        body("    2. Upload Docs (green): Go to the Document Vault."),
+        body("    3. Compliance (orange): View and upload compliance documents, showing current compliance percentage."),
+        body("    4. My Profile (grey): View personal and work details."),
+        body("  - Quick Stats: Three cards showing Draft Timesheets, Approved count, and Compliance Alerts."),
+        body("  - Active Assignments: A list of the contractor's current assignments with role, company, location, status, and start date."),
+        body("  - Recent Timesheets: The last 5 timesheets with week, hours, overtime, status badge, and clickable to view detail."),
+        body("  - Compliance Alerts: If any compliance items are expiring or expired, a red alert section appears showing each item, its status, and expiry date."),
+
+        h2("14.3 Contractor Timesheets"),
+        body("The portal Timesheets page lets contractors create and view their timesheets."),
+        h3("14.3.1 Submitting a New Timesheet"),
+        step(1, "From the portal dashboard, click 'New Timesheet' or navigate to Portal > Timesheets."),
+        step(2, "Select an Assignment from the dropdown (only active/placed assignments are shown)."),
+        step(3, "Select the Week Starting date (must be a Monday)."),
+        step(4, "Click 'Create Timesheet'."),
+        step(5, "The timesheet is created and can be edited to add hours before submission."),
+
+        h3("14.3.2 Viewing Timesheets"),
+        body("All timesheets appear in a list showing date, assignment (role and company), hours, overtime, and status badge. Tap any timesheet to view its full details."),
+
+        h2("14.4 Document Vault"),
+        body("The Document Vault is a secure file storage area for the contractor's personal documents."),
+        h3("14.4.1 Storage Summary"),
+        body("At the top, three summary cards show: Total Files, Document Types uploaded, and Storage Used (in KB or MB)."),
+
+        h3("14.4.2 Uploading Documents"),
+        step(1, "Navigate to Portal > Documents."),
+        step(2, "In the upload section, select the Document Type (CSCS Card, CV/Resume, P45, P60, Passport/ID, DBS Check, Insurance, Qualification/Cert, Right to Work, IR35 Assessment, Other)."),
+        step(3, "Choose the file from your device."),
+        step(4, "Click 'Upload'. The file is securely stored."),
+
+        h3("14.4.3 Document Vault Display"),
+        body("The vault shows every document type as a row with:"),
+        body("  - Type icon and label."),
+        body("  - If uploaded: filename, version number, upload date, file size, and a Download button."),
+        body("  - If not uploaded: 'Not uploaded' label with a 'Missing' indicator."),
+        body("If multiple versions exist for a type, a collapsible 'Previous versions' section appears showing older versions with individual download buttons."),
+        body("Documents are securely stored and only accessible by the contractor and PRL staff."),
+        topTip("When you upload a new version of a document (e.g. updated CSCS card), the old version is kept. PRL staff can see all versions."),
+
+        h2("14.5 Contractor Compliance Self-Service"),
+        body("The portal Compliance page shows the contractor their compliance status and lets them upload documents for each required type."),
+
+        h3("14.5.1 Compliance Score"),
+        body("A large compliance score percentage is shown at the top, colour-coded (green 80%+, amber 50-80%, red under 50%). Below it, a progress bar shows how many of the required types have been submitted."),
+
+        h3("14.5.2 Required Documents"),
+        body("Each required compliance type (CSCS, Right to Work, DBS, Insurance, Qualification, IR35 Assessment) is shown as a card with:"),
+        body("  - Icon, label, and description."),
+        body("  - Status badge (Verified, Pending, Expiring, Expired, Non-Compliant, or Required)."),
+        body("  - If a record exists: reference number, issue date, expiry date, and linked file details."),
+        body("  - If Verified: A green footer saying 'Verified by PRL Site Solutions'."),
+        body("  - If Pending: A blue footer saying 'Submitted -- awaiting verification by PRL staff'."),
+        body("  - If not submitted, expired, or expiring: An upload section appears allowing the contractor to upload the document."),
+
+        h3("14.5.3 Uploading Compliance Documents"),
+        step(1, "Find the required compliance type that needs attention (marked 'Required', 'Expired', or 'Expiring')."),
+        step(2, "In the upload section, enter a reference number and expiry date."),
+        step(3, "Choose the file from your device."),
+        step(4, "Click 'Upload'. The system creates or updates the compliance record and stores the document."),
+        step(5, "The status changes to 'Pending'. PRL staff will then verify the document and mark it as Verified."),
+        commonQuestion("How do I know when my document has been verified?", "When PRL staff verify your document, the status changes from 'Pending' to 'Verified' and a green 'Verified by PRL Site Solutions' footer appears on that compliance item."),
+
+        h2("14.6 Contractor Profile"),
+        body("The Profile page shows the contractor's personal and work information."),
+        body("  - Profile Header: Initials avatar, full name, job title, and status badge."),
+        body("  - Contact Details: Email, phone, and notes."),
+        body("  - Work Details: Role/Trade, UTR Number, IR35 Status, NI Number."),
+        body("  - Assignment History: Complete list of all assignments (current and past) with role, company, location, status, and dates."),
+        body("  - Compliance Summary: List of all compliance records with type, expiry date, and status badge."),
+        body("A note at the bottom tells contractors to contact PRL Site Solutions to update their personal details."),
+
+        // ══════════════════════════════════════════════════════════
+        //  15. MOBILE USAGE
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("15. Mobile Usage"),
+
+        h2("15.1 Responsive Design"),
+        body("The entire system is fully responsive and works on all screen sizes. Tables scroll horizontally on small screens, and cards stack vertically. The Kanban board columns stack on narrow screens."),
+
+        h2("15.2 Mobile Top Bar"),
+        body("On mobile, a fixed top bar appears with the PRL logo, company name, hamburger menu, and logout button. The hamburger menu shows a red dot notification when there are pending timesheets."),
+
+        h2("15.3 Mobile Sidebar Drawer"),
+        body("Tapping the hamburger menu opens a slide-out drawer from the left with all navigation items plus badge counts. Tapping outside the drawer or pressing the X button closes it."),
+
+        h2("15.4 PWA Installation"),
+        step(1, "Open the system URL in Chrome (Android) or Safari (iPhone)."),
+        step(2, "On Android: Tap the three-dot menu and select 'Add to Home screen'. On iPhone: Tap the share icon and select 'Add to Home Screen'."),
+        step(3, "The app icon appears on your home screen. Tap it to launch the system in full-screen mode."),
+        topTip("Installing the PWA gives you push notification support, faster loading, and an app-like full-screen experience."),
+
+        h2("15.5 Touch Interactions"),
+        body("All interactive elements are touch-optimised:"),
+        body("  - Buttons have large touch targets."),
+        body("  - Kanban board drag-and-drop works with long-press (200ms) to start dragging."),
+        body("  - Forms use mobile-appropriate input types (e.g. date pickers, number keyboards)."),
+        body("  - The contractor portal is specifically designed mobile-first."),
+
+        // ══════════════════════════════════════════════════════════
+        //  16. QUICK REFERENCE
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("16. Quick Reference"),
+
+        h2("16.1 Keyboard Shortcuts"),
+        body("While there are no custom keyboard shortcuts, standard browser shortcuts work:"),
+        body("  - Ctrl+F (Cmd+F on Mac): Browser find on page."),
+        body("  - Tab/Shift+Tab: Navigate between form fields."),
+        body("  - Enter: Submit forms."),
+
+        h2("16.2 Status Reference"),
+        h3("Contractor Statuses"),
+        body("  Active: Currently available for assignments."),
+        body("  Inactive: Not currently working."),
+        body("  On Hold: Temporarily paused."),
+
+        h3("Assignment Statuses"),
+        body("  Placed: Contract signed, not yet started."),
+        body("  Active: Currently working on site."),
+        body("  Ending: Assignment ending soon."),
+        body("  Completed: Assignment finished."),
+
+        h3("Timesheet Statuses"),
+        body("  Draft: Being prepared, not yet submitted."),
+        body("  Submitted: Sent for approval."),
+        body("  Approved: Approved and ready for billing."),
+        body("  Rejected: Sent back for correction."),
+
+        h3("Invoice Statuses"),
+        body("  Draft: Generated but not yet reviewed."),
+        body("  Reconciling: Being checked against records."),
+        body("  Approved: Reviewed and approved for sending."),
+        body("  Sent: Sent to the client."),
+        body("  Paid: Payment received."),
+        body("  Disputed: Client has raised a query."),
+
+        h3("Compliance Statuses"),
+        body("  Verified: Document checked and confirmed valid."),
+        body("  Pending: Submitted and awaiting staff verification."),
+        body("  Expiring: Document will expire within 30 days."),
+        body("  Expired: Document has passed its expiry date."),
+        body("  Non-Compliant: Document is missing or invalid."),
+
+        h2("16.3 Compliance Document Types"),
+        body("  Right to Work: Passport, visa, or share code proving UK work eligibility."),
+        body("  DBS: Disclosure and Barring Service certificate."),
+        body("  CSCS: Construction Skills Certification Scheme card."),
+        body("  Insurance: Public liability or professional indemnity insurance."),
+        body("  IR35 Assessment: Status Determination Statement for off-payroll working."),
+        body("  Qualification: Trade qualifications, NVQs, or professional certificates."),
+        body("  Other: Any additional documents."),
+
+        h2("16.4 Supplier Tiers"),
+        body("  Gold: Highest tier supplier with proven track record."),
+        body("  Silver: Reliable supplier meeting most performance criteria."),
+        body("  Bronze: New or developing supplier relationship."),
+
+        // ══════════════════════════════════════════════════════════
+        //  17. TROUBLESHOOTING
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
+        h1("17. Troubleshooting"),
+
+        h2("17.1 Cannot Log In"),
+        body("  - Check your email address is correct (case does not matter for email, but password is case-sensitive)."),
+        body("  - Use the 'Forgot Password' flow to reset your password."),
+        body("  - If you are a new staff member, ask an admin to run the setup-staff endpoint to create your account."),
+        body("  - If you are a contractor, ask PRL staff to ensure your contractor record exists and the contractor-login has been created."),
+
+        h2("17.2 Badge Counts Not Updating"),
+        body("  - Badge counts refresh automatically every 30 seconds."),
+        body("  - If counts seem stale, refresh the page with F5 or pull-to-refresh on mobile."),
+
+        h2("17.3 Kanban Drag Not Working on Mobile"),
+        body("  - Long-press (hold) on the card for about 200 milliseconds before dragging."),
+        body("  - Ensure you are pressing on the card body, not on the 'View' link."),
+        body("  - If using Safari on iPhone, make sure you are not accidentally triggering the browser's long-press context menu."),
+
+        h2("17.4 Invoice Generation Shows 'No Timesheets'"),
+        body("  - Ensure there are approved timesheets within the selected date range."),
+        body("  - Check the company filter -- timesheets must be linked to assignments for the selected company."),
+        body("  - Timesheets must be in 'Approved' status; Draft or Submitted timesheets are not included."),
+
+        h2("17.5 Compliance Document Upload Fails"),
+        body("  - Check the file size (maximum varies by hosting configuration)."),
+        body("  - Ensure the file is a valid document format (PDF, JPG, PNG, or DOCX)."),
+        body("  - Try uploading on a stable internet connection."),
+
+        h2("17.6 Password Reset Email Not Arriving"),
+        body("  - Check your spam/junk folder."),
+        body("  - Ensure your email address matches exactly what is in the system."),
+        body("  - The email may take a few minutes to arrive depending on email server processing."),
+        body("  - If the email consistently fails, contact your system administrator to check the email configuration."),
+
+        // ══════════════════════════════════════════════════════════
+        //  END
+        // ══════════════════════════════════════════════════════════
+        pageBreak(),
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          spacing: { before: 400 },
-          children: [
-            new TextRun({ text: "--- End of Guide ---", bold: true, size: 24, font: "Calibri", color: "808080" }),
-          ],
+          spacing: { before: 2000 },
+          children: [new TextRun({ text: "End of Guide", bold: true, size: 28, font: "Calibri", color: GREY })],
+        }),
+        spacer(),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: "PRL Site Solutions - Contractor Management System", size: 22, font: "Calibri", color: GREY })],
         }),
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          spacing: { after: 200 },
-          children: [
-            new TextRun({ text: "PRL Site Solutions | Recruitment Specialists | March 2026", size: 20, font: "Calibri", color: "808080" }),
-          ],
+          spacing: { before: 60 },
+          children: [new TextRun({ text: "For support, contact your system administrator.", size: 20, font: "Calibri", color: GREY })],
         }),
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({ text: "You have got this! If you have read this far, you are already a pro.", size: 22, font: "Calibri", color: "2E75B6", bold: true }),
-          ],
+          spacing: { before: 200 },
+          children: [new TextRun({ text: "Document generated: " + new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }), size: 18, font: "Calibri", color: GREY })],
         }),
       ],
     },
   ],
 });
 
-// ─── Generate the file ──────────────────────────────────────────────
-
+// ─── Generate the .docx file ───────────────────────────────────────
 Packer.toBuffer(doc).then((buffer) => {
-  const outputPath = __dirname + "/PRL_Complete_User_Guide.docx";
-  fs.writeFileSync(outputPath, buffer);
-  console.log("Guide generated successfully!");
-  console.log("Output: " + outputPath);
-  console.log("Size: " + (buffer.length / 1024).toFixed(1) + " KB");
+  const outPath = __dirname + "/PRL_Complete_User_Guide.docx";
+  fs.writeFileSync(outPath, buffer);
+  const sizeKB = (buffer.length / 1024).toFixed(1);
+  console.log(`Guide generated successfully: ${outPath}`);
+  console.log(`File size: ${sizeKB} KB`);
 });
