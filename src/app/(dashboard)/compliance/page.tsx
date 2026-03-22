@@ -66,9 +66,12 @@ export default async function CompliancePage({
       include: { contractor: true },
       orderBy: { expiryDate: "asc" },
     }),
-    prisma.complianceRecord.findMany(),
+    prisma.complianceRecord.findMany({ include: { contractor: true } }),
     getComplianceGaps(),
   ]);
+
+  // Get actual types from DB for the filter dropdown
+  const actualTypes = Array.from(new Set(allRecords.map((r) => r.type))).sort();
 
   const mandatoryGaps = gaps.filter((g) => g.isMandatory);
   const criticalGaps = gaps.filter(
@@ -377,7 +380,7 @@ export default async function CompliancePage({
           className="rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">All Types</option>
-          {COMPLIANCE_TYPES.map((t) => (
+          {actualTypes.map((t) => (
             <option key={t} value={t}>
               {t}
             </option>
