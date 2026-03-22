@@ -154,10 +154,10 @@ export default function LoginPage() {
                         });
                         const data = await res.json();
                         console.log("Forgot password response:", data);
-                        if (data.debug && !data.debug.emailSent) {
-                          setError(`Email failed: ${data.debug.error || "Unknown error"}. FROM: ${data.debug.from}. Key set: ${data.debug.resendKeySet}`);
-                        } else if (data.debug && !data.debug.emailFound) {
-                          setError("No account found with that email. Have you been added as a contractor?");
+                        if (data.debug && data.debug.emailFound === false) {
+                          setError("No account found with that email. Have you been added as a contractor? Run the contractor-logins API first.");
+                        } else if (data.debug && data.debug.emailSent === false) {
+                          setError(`Email failed: ${data.debug.error || "Unknown error"}. FROM: ${data.debug.from || "not set"}. Key set: ${data.debug.resendKeySet ?? "unknown"}`);
                         } else {
                           setForgotSent(true);
                         }
