@@ -7,16 +7,25 @@ import { PWARegister } from "@/components/pwa-register";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PRL Site Solutions - Contractor Management",
-  description: "PRL Site Solutions - Recruitment Specialists",
+  title: "PRISM | PRL Site Solutions",
+  description: "PRISM — Workforce Intelligence & Compliance Platform by PRL Site Solutions",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "PRL Site Solutions",
+    title: "PRISM",
   },
   icons: {
-    apple: "/icons/apple-touch-icon.png",
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180" },
+    ],
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
 };
 
