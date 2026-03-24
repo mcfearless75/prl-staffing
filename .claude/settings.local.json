@@ -68,7 +68,18 @@
       "Bash(prisma/migrations/20260322_add_documents_push/migration.sql:*)",
       "Bash(mkdir -p public/icons)",
       "Bash(node -e \":*)",
-      "Bash(npx web-push:*)"
+      "Bash(npx web-push:*)",
+      "Bash(node create-guide.js)",
+      "Bash(mkdir -p prisma/migrations/20260324_add_qms_iso9001)",
+      "Bash(prisma/migrations/20260324_add_qms_iso9001/migration.sql:*)",
+      "Bash(ls -la \"C:\\\\Users\\\\LAPTOP80\\\\OneDrive - prlsitesolutions.co.uk\\\\Desktop\\\\prl_req\\\\src\\\\app\\\\\\(dashboard\\)\\\\qms\\\\ncr\\\\page.tsx\" \"C:\\\\Users\\\\LAPTOP80\\\\OneDrive - prlsitesolutions.co.uk\\\\Desktop\\\\prl_req\\\\src\\\\app\\\\\\(dashboard\\)\\\\qms\\\\audits\\\\page.tsx\" \"C:\\\\Users\\\\LAPTOP80\\\\OneDrive - prlsitesolutions.co.uk\\\\Desktop\\\\prl_req\\\\src\\\\app\\\\\\(dashboard\\)\\\\qms\\\\management-review\\\\page.tsx\" \"C:\\\\Users\\\\LAPTOP80\\\\OneDrive - prlsitesolutions.co.uk\\\\Desktop\\\\prl_req\\\\src\\\\app\\\\\\(dashboard\\)\\\\qms\\\\risk-register\\\\page.tsx\" \"C:\\\\Users\\\\LAPTOP80\\\\OneDrive - prlsitesolutions.co.uk\\\\Desktop\\\\prl_req\\\\src\\\\app\\\\\\(dashboard\\)\\\\qms\\\\improvements\\\\page.tsx\" \"C:\\\\Users\\\\LAPTOP80\\\\OneDrive - prlsitesolutions.co.uk\\\\Desktop\\\\prl_req\\\\src\\\\app\\\\\\(dashboard\\)\\\\qms\\\\policy\\\\page.tsx\")",
+      "Bash(ls \"C:\\\\Users\\\\LAPTOP80\\\\OneDrive - prlsitesolutions.co.uk\\\\Desktop\\\\prl_req\\\\src\\\\app\\\\\\(dashboard\\)\\\\qms\\\\policy\\\\page.tsx\")",
+      "Bash(node create-iso-docs.js)",
+      "Bash(file public/icons/*.png)",
+      "Bash(node create-privacy-policy.js)",
+      "Bash(node create-sales-sheet.js)",
+      "Bash(node create-pitch-deck.js)",
+      "Bash(node create-roi-calculator.js)"
     ]
   }
 }

@@ -15,7 +15,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
 
-  if (key !== "prl-setup-2026") {
+  const expectedKey = process.env.ADMIN_SECRET || "prl-setup-2026"; // fallback for local dev only
+  if (key !== expectedKey) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -36,51 +36,74 @@ function extractContractorData(formData: FormData) {
 }
 
 export async function createContractor(formData: FormData) {
-  const data = extractContractorData(formData);
-
-  const contractor = await prisma.contractor.create({
-    data: {
-      ...data,
-      supplierId: data.supplierId === "" ? null : data.supplierId,
-    },
-  });
-
-  // Auto-create contractor portal login (password set via forgot-password flow)
-  const tempHash = await bcrypt.hash(`temp-${Date.now()}`, 10);
   try {
-    await prisma.contractorLogin.create({
+    const data = extractContractorData(formData);
+
+    const contractor = await prisma.contractor.create({
       data: {
-        contractorId: contractor.id,
-        email: contractor.email,
-        passwordHash: tempHash,
+        ...data,
+        supplierId: data.supplierId === "" ? null : data.supplierId,
       },
     });
-  } catch {
-    // ContractorLogin may already exist if email was reused — safe to ignore
-  }
 
-  redirect("/contractors");
+    // Auto-create contractor portal login (password set via forgot-password flow)
+    const tempHash = await bcrypt.hash(`temp-${Date.now()}`, 10);
+    try {
+      await prisma.contractorLogin.create({
+        data: {
+          contractorId: contractor.id,
+          email: contractor.email,
+          passwordHash: tempHash,
+        },
+      });
+    } catch {
+      // ContractorLogin may already exist if email was reused — safe to ignore
+    }
+
+    revalidatePath("/contractors");
+    redirect("/contractors");
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error("Failed to create contractor:", error);
+    throw new Error("Failed to create contractor. Please try again.");
+  }
 }
 
 export async function updateContractor(id: string, formData: FormData) {
-  const data = extractContractorData(formData);
+  try {
+    const data = extractContractorData(formData);
 
-  await prisma.contractor.update({
-    where: { id },
-    data: {
-      ...data,
-      supplierId: data.supplierId === "" ? null : data.supplierId,
-    },
-  });
+    await prisma.contractor.update({
+      where: { id },
+      data: {
+        ...data,
+        supplierId: data.supplierId === "" ? null : data.supplierId,
+      },
+    });
 
-  revalidatePath(`/contractors/${id}`);
-  redirect(`/contractors/${id}`);
+    revalidatePath(`/contractors/${id}`);
+    redirect(`/contractors/${id}`);
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error("Failed to update contractor:", error);
+    throw new Error("Failed to update contractor. Please try again.");
+  }
 }
 
 export async function deleteContractor(id: string) {
-  await prisma.contractor.delete({
-    where: { id },
-  });
+  try {
+    await prisma.contractor.delete({
+      where: { id },
+    });
 
-  redirect("/contractors");
+    revalidatePath("/contractors");
+    redirect("/contractors");
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error("Failed to delete contractor:", error);
+    throw new Error("Failed to delete contractor. Please try again.");
+  }
 }

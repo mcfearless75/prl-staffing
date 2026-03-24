@@ -5,63 +5,86 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export async function createComplianceRecord(formData: FormData) {
-  const contractorId = formData.get("contractorId") as string;
-  const type = formData.get("type") as string;
-  const documentName = formData.get("documentName") as string;
-  const reference = formData.get("reference") as string;
-  const issueDateRaw = formData.get("issueDate") as string;
-  const expiryDateRaw = formData.get("expiryDate") as string;
-  const status = formData.get("status") as string;
-  const notes = formData.get("notes") as string;
+  try {
+    const contractorId = formData.get("contractorId") as string;
+    const type = formData.get("type") as string;
+    const documentName = formData.get("documentName") as string;
+    const reference = formData.get("reference") as string;
+    const issueDateRaw = formData.get("issueDate") as string;
+    const expiryDateRaw = formData.get("expiryDate") as string;
+    const status = formData.get("status") as string;
+    const notes = formData.get("notes") as string;
 
-  await prisma.complianceRecord.create({
-    data: {
-      contractorId,
-      type,
-      documentName,
-      reference,
-      issueDate: issueDateRaw ? new Date(issueDateRaw) : null,
-      expiryDate: expiryDateRaw ? new Date(expiryDateRaw) : null,
-      status,
-      notes,
-    },
-  });
+    await prisma.complianceRecord.create({
+      data: {
+        contractorId,
+        type,
+        documentName,
+        reference,
+        issueDate: issueDateRaw ? new Date(issueDateRaw) : null,
+        expiryDate: expiryDateRaw ? new Date(expiryDateRaw) : null,
+        status,
+        notes,
+      },
+    });
 
-  redirect("/compliance");
+    revalidatePath("/compliance");
+    redirect("/compliance");
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error("Failed to create compliance record:", error);
+    throw new Error("Failed to create compliance record. Please try again.");
+  }
 }
 
 export async function updateComplianceRecord(id: string, formData: FormData) {
-  const contractorId = formData.get("contractorId") as string;
-  const type = formData.get("type") as string;
-  const documentName = formData.get("documentName") as string;
-  const reference = formData.get("reference") as string;
-  const issueDateRaw = formData.get("issueDate") as string;
-  const expiryDateRaw = formData.get("expiryDate") as string;
-  const status = formData.get("status") as string;
-  const notes = formData.get("notes") as string;
+  try {
+    const contractorId = formData.get("contractorId") as string;
+    const type = formData.get("type") as string;
+    const documentName = formData.get("documentName") as string;
+    const reference = formData.get("reference") as string;
+    const issueDateRaw = formData.get("issueDate") as string;
+    const expiryDateRaw = formData.get("expiryDate") as string;
+    const status = formData.get("status") as string;
+    const notes = formData.get("notes") as string;
 
-  await prisma.complianceRecord.update({
-    where: { id },
-    data: {
-      contractorId,
-      type,
-      documentName,
-      reference,
-      issueDate: issueDateRaw ? new Date(issueDateRaw) : null,
-      expiryDate: expiryDateRaw ? new Date(expiryDateRaw) : null,
-      status,
-      notes,
-    },
-  });
+    await prisma.complianceRecord.update({
+      where: { id },
+      data: {
+        contractorId,
+        type,
+        documentName,
+        reference,
+        issueDate: issueDateRaw ? new Date(issueDateRaw) : null,
+        expiryDate: expiryDateRaw ? new Date(expiryDateRaw) : null,
+        status,
+        notes,
+      },
+    });
 
-  revalidatePath(`/compliance/${id}`);
-  redirect(`/compliance/${id}`);
+    revalidatePath(`/compliance/${id}`);
+    redirect(`/compliance/${id}`);
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error("Failed to update compliance record:", error);
+    throw new Error("Failed to update compliance record. Please try again.");
+  }
 }
 
 export async function deleteComplianceRecord(id: string) {
-  await prisma.complianceRecord.delete({
-    where: { id },
-  });
+  try {
+    await prisma.complianceRecord.delete({
+      where: { id },
+    });
 
-  redirect("/compliance");
+    revalidatePath("/compliance");
+    redirect("/compliance");
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error("Failed to delete compliance record:", error);
+    throw new Error("Failed to delete compliance record. Please try again.");
+  }
 }

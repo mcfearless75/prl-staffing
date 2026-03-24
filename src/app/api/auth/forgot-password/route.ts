@@ -24,11 +24,6 @@ export async function POST(request: Request) {
     if (!contractorLogin && !staffUser) {
       return NextResponse.json({
         message: "If that email exists, a reset link has been sent.",
-        debug: {
-          emailFound: false,
-          emailSent: false,
-          note: `No contractorLogin or user found for: ${email}`,
-        }
       });
     }
 
@@ -57,26 +52,10 @@ export async function POST(request: Request) {
 
     if (!result.success) {
       console.error("Failed to send reset email:", result.error);
-      // Return error details in development/debug
-      return NextResponse.json({
-        message: "If that email exists, a reset link has been sent.",
-        debug: {
-          emailFound: true,
-          emailSent: false,
-          error: result.error,
-          from: process.env.EMAIL_FROM || "NOT SET - using default",
-          resendKeySet: !!process.env.RESEND_API_KEY,
-        }
-      });
     }
 
     return NextResponse.json({
       message: "If that email exists, a reset link has been sent.",
-      debug: {
-        emailFound: true,
-        emailSent: true,
-        emailId: result.id,
-      }
     });
   } catch (error) {
     console.error("Forgot password error:", error);

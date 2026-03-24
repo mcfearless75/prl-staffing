@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 
 /**
  * Sage 50 / Sage 200 compatible CSV export
@@ -7,6 +8,11 @@ import { NextResponse } from "next/server";
  * Columns: Type, Account Ref, Nominal A/C, Date, Invoice No, Net Amount, Tax Code, Tax Amount, Description
  */
 export async function GET(request: Request) {
+  const session = await auth();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const invoiceId = searchParams.get("invoiceId");
 

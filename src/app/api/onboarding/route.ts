@@ -2,6 +2,15 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -69,9 +78,9 @@ export async function POST(request: Request) {
             </tr>
             ${ratesData.map((r: { description: string; rate: string; basis: string }) =>
               `<tr style="border-bottom:1px solid #e5e7eb;">
-                <td style="padding:6px 12px;font-size:12px;">${r.description || ""}</td>
-                <td style="padding:6px 12px;font-size:12px;text-align:right;font-weight:600;">${r.rate || ""}</td>
-                <td style="padding:6px 12px;font-size:12px;">${r.basis || ""}</td>
+                <td style="padding:6px 12px;font-size:12px;">${escapeHtml(r.description || "")}</td>
+                <td style="padding:6px 12px;font-size:12px;text-align:right;font-weight:600;">${escapeHtml(r.rate || "")}</td>
+                <td style="padding:6px 12px;font-size:12px;">${escapeHtml(r.basis || "")}</td>
               </tr>`
             ).join("")}
           </table>`
@@ -96,19 +105,19 @@ export async function POST(request: Request) {
             <!-- Company Details -->
             <h2 style="font-size:15px;color:#005f8c;border-bottom:2px solid #005f8c;padding-bottom:4px;margin:20px 0 12px;">Company Details</h2>
             <table style="width:100%;font-size:13px;">
-              <tr><td style="padding:4px 0;color:#666;width:160px;">Company Name:</td><td style="padding:4px 0;font-weight:600;">${companyName}</td></tr>
-              ${companyAddress ? `<tr><td style="padding:4px 0;color:#666;">Address:</td><td style="padding:4px 0;">${companyAddress}</td></tr>` : ""}
-              ${companyRegNo ? `<tr><td style="padding:4px 0;color:#666;">Reg No:</td><td style="padding:4px 0;">${companyRegNo}</td></tr>` : ""}
-              <tr><td style="padding:4px 0;color:#666;">Contact:</td><td style="padding:4px 0;font-weight:600;">${contactName}</td></tr>
-              <tr><td style="padding:4px 0;color:#666;">Email:</td><td style="padding:4px 0;"><a href="mailto:${contactEmail}" style="color:#005f8c;">${contactEmail}</a></td></tr>
-              ${contactPhone ? `<tr><td style="padding:4px 0;color:#666;">Phone:</td><td style="padding:4px 0;"><a href="tel:${contactPhone}" style="color:#005f8c;">${contactPhone}</a></td></tr>` : ""}
+              <tr><td style="padding:4px 0;color:#666;width:160px;">Company Name:</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(companyName)}</td></tr>
+              ${companyAddress ? `<tr><td style="padding:4px 0;color:#666;">Address:</td><td style="padding:4px 0;">${escapeHtml(companyAddress)}</td></tr>` : ""}
+              ${companyRegNo ? `<tr><td style="padding:4px 0;color:#666;">Reg No:</td><td style="padding:4px 0;">${escapeHtml(companyRegNo)}</td></tr>` : ""}
+              <tr><td style="padding:4px 0;color:#666;">Contact:</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(contactName)}</td></tr>
+              <tr><td style="padding:4px 0;color:#666;">Email:</td><td style="padding:4px 0;"><a href="mailto:${escapeHtml(contactEmail)}" style="color:#005f8c;">${escapeHtml(contactEmail)}</a></td></tr>
+              ${contactPhone ? `<tr><td style="padding:4px 0;color:#666;">Phone:</td><td style="padding:4px 0;"><a href="tel:${escapeHtml(contactPhone)}" style="color:#005f8c;">${escapeHtml(contactPhone)}</a></td></tr>` : ""}
             </table>
 
             <!-- Supply Details -->
             <h2 style="font-size:15px;color:#005f8c;border-bottom:2px solid #005f8c;padding-bottom:4px;margin:20px 0 12px;">Supply Details</h2>
             <table style="width:100%;font-size:13px;">
-              ${supplyOf ? `<tr><td style="padding:4px 0;color:#666;width:160px;">Supply of:</td><td style="padding:4px 0;">${supplyOf}</td></tr>` : ""}
-              ${siteLocation ? `<tr><td style="padding:4px 0;color:#666;">Site Location:</td><td style="padding:4px 0;">${siteLocation}</td></tr>` : ""}
+              ${supplyOf ? `<tr><td style="padding:4px 0;color:#666;width:160px;">Supply of:</td><td style="padding:4px 0;">${escapeHtml(supplyOf)}</td></tr>` : ""}
+              ${siteLocation ? `<tr><td style="padding:4px 0;color:#666;">Site Location:</td><td style="padding:4px 0;">${escapeHtml(siteLocation)}</td></tr>` : ""}
               ${startDate ? `<tr><td style="padding:4px 0;color:#666;">Start Date:</td><td style="padding:4px 0;">${new Date(startDate).toLocaleDateString("en-GB")}</td></tr>` : ""}
             </table>
 
@@ -119,25 +128,25 @@ export async function POST(request: Request) {
             ${breakdownData.length > 0 ? `
               <h2 style="font-size:15px;color:#005f8c;border-bottom:2px solid #005f8c;padding-bottom:4px;margin:20px 0 12px;">Breakdown</h2>
               <ul style="font-size:13px;padding-left:20px;margin:8px 0;">
-                ${breakdownData.map((b: string) => `<li style="padding:2px 0;">${b}</li>`).join("")}
+                ${breakdownData.map((b: string) => `<li style="padding:2px 0;">${escapeHtml(b)}</li>`).join("")}
               </ul>
             ` : ""}
 
             ${additionalInfo ? `
               <h2 style="font-size:15px;color:#005f8c;border-bottom:2px solid #005f8c;padding-bottom:4px;margin:20px 0 12px;">Additional Information</h2>
-              <p style="font-size:13px;color:#333;">${additionalInfo}</p>
+              <p style="font-size:13px;color:#333;">${escapeHtml(additionalInfo)}</p>
             ` : ""}
 
             <!-- Personal Details -->
             ${firstName || lastName ? `
               <h2 style="font-size:15px;color:#005f8c;border-bottom:2px solid #005f8c;padding-bottom:4px;margin:20px 0 12px;">Personal Details</h2>
               <table style="width:100%;font-size:13px;">
-                ${firstName || lastName ? `<tr><td style="padding:4px 0;color:#666;width:160px;">Name:</td><td style="padding:4px 0;font-weight:600;">${firstName || ""} ${lastName || ""}</td></tr>` : ""}
+                ${firstName || lastName ? `<tr><td style="padding:4px 0;color:#666;width:160px;">Name:</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(firstName || "")} ${escapeHtml(lastName || "")}</td></tr>` : ""}
                 ${dateOfBirth ? `<tr><td style="padding:4px 0;color:#666;">Date of Birth:</td><td style="padding:4px 0;">${new Date(dateOfBirth).toLocaleDateString("en-GB")}</td></tr>` : ""}
-                ${niNumber ? `<tr><td style="padding:4px 0;color:#666;">NI Number:</td><td style="padding:4px 0;">${niNumber}</td></tr>` : ""}
-                ${utrNumber ? `<tr><td style="padding:4px 0;color:#666;">UTR Number:</td><td style="padding:4px 0;">${utrNumber}</td></tr>` : ""}
-                ${address ? `<tr><td style="padding:4px 0;color:#666;">Address:</td><td style="padding:4px 0;">${address}</td></tr>` : ""}
-                ${postcode ? `<tr><td style="padding:4px 0;color:#666;">Postcode:</td><td style="padding:4px 0;">${postcode}</td></tr>` : ""}
+                ${niNumber ? `<tr><td style="padding:4px 0;color:#666;">NI Number:</td><td style="padding:4px 0;">${escapeHtml(niNumber)}</td></tr>` : ""}
+                ${utrNumber ? `<tr><td style="padding:4px 0;color:#666;">UTR Number:</td><td style="padding:4px 0;">${escapeHtml(utrNumber)}</td></tr>` : ""}
+                ${address ? `<tr><td style="padding:4px 0;color:#666;">Address:</td><td style="padding:4px 0;">${escapeHtml(address)}</td></tr>` : ""}
+                ${postcode ? `<tr><td style="padding:4px 0;color:#666;">Postcode:</td><td style="padding:4px 0;">${escapeHtml(postcode)}</td></tr>` : ""}
               </table>
             ` : ""}
 
@@ -145,9 +154,9 @@ export async function POST(request: Request) {
             ${emergencyContactName ? `
               <h2 style="font-size:15px;color:#dc2626;border-bottom:2px solid #dc2626;padding-bottom:4px;margin:20px 0 12px;">🚨 Emergency Contact</h2>
               <table style="width:100%;font-size:13px;">
-                <tr><td style="padding:4px 0;color:#666;width:160px;">Name:</td><td style="padding:4px 0;font-weight:600;">${emergencyContactName}</td></tr>
-                ${emergencyContactPhone ? `<tr><td style="padding:4px 0;color:#666;">Phone:</td><td style="padding:4px 0;"><a href="tel:${emergencyContactPhone}" style="color:#005f8c;">${emergencyContactPhone}</a></td></tr>` : ""}
-                ${emergencyContactRelation ? `<tr><td style="padding:4px 0;color:#666;">Relationship:</td><td style="padding:4px 0;">${emergencyContactRelation}</td></tr>` : ""}
+                <tr><td style="padding:4px 0;color:#666;width:160px;">Name:</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(emergencyContactName)}</td></tr>
+                ${emergencyContactPhone ? `<tr><td style="padding:4px 0;color:#666;">Phone:</td><td style="padding:4px 0;"><a href="tel:${escapeHtml(emergencyContactPhone)}" style="color:#005f8c;">${escapeHtml(emergencyContactPhone)}</a></td></tr>` : ""}
+                ${emergencyContactRelation ? `<tr><td style="padding:4px 0;color:#666;">Relationship:</td><td style="padding:4px 0;">${escapeHtml(emergencyContactRelation)}</td></tr>` : ""}
               </table>
             ` : ""}
 
@@ -174,7 +183,7 @@ export async function POST(request: Request) {
             "adella@prlsitesolutions.co.uk",
             "helen@prlsitesolutions.co.uk",
           ],
-          subject: `New Supply Agreement: ${companyName} — ${contactName}`,
+          subject: `New Supply Agreement: ${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
           html: emailHtml,
         });
       } catch (emailErr) {

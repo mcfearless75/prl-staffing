@@ -172,8 +172,8 @@ export default async function AssignmentDetailPage({
                 {assignment.timesheets.map((timesheet: any) => (
                   <tr key={timesheet.id}>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                      {timesheet.weekEnding
-                        ? formatDate(timesheet.weekEnding)
+                      {timesheet.weekStarting
+                        ? formatDate(timesheet.weekStarting)
                         : "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">

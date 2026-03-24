@@ -18,7 +18,8 @@ export async function GET(request: Request) {
   const limit = parseInt(searchParams.get("limit") || "50", 10);
   const sendEmails = searchParams.get("send") === "true";
 
-  if (key !== "prl-seed-2026") {
+  const expectedKey = process.env.ADMIN_SECRET || "prl-seed-2026"; // fallback for local dev only
+  if (key !== expectedKey) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
