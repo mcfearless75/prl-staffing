@@ -1,0 +1,207 @@
+export const dynamic = "force-dynamic";
+import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
+import { createNCR } from "../actions";
+
+export default async function NewNCRPage() {
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Raise Non-Conformance"
+        description="Log a new NCR with root cause analysis and corrective actions"
+        action={
+          <Link
+            href="/qms/ncr"
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Back to Register
+          </Link>
+        }
+      />
+
+      <form action={createNCR} className="mx-auto max-w-3xl">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-6">
+          {/* Basic Details */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">NCR Details</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  required
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Brief title for the non-conformance"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  required
+                  rows={3}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Describe the non-conformance in detail..."
+                />
+              </div>
+              <div>
+                <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="category"
+                  name="category"
+                  required
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Select category...</option>
+                  <option value="Process">Process</option>
+                  <option value="Product">Product</option>
+                  <option value="Service">Service</option>
+                  <option value="Compliance">Compliance</option>
+                  <option value="H&S">H&amp;S</option>
+                  <option value="Documentation">Documentation</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="severity" className="block text-sm font-medium text-gray-700 mb-1">
+                  Severity <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="severity"
+                  name="severity"
+                  required
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="Minor">Minor</option>
+                  <option value="Major">Major</option>
+                  <option value="Critical">Critical</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="source" className="block text-sm font-medium text-gray-700 mb-1">
+                  Source <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="source"
+                  name="source"
+                  required
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Select source...</option>
+                  <option value="Internal Audit">Internal Audit</option>
+                  <option value="Customer Complaint">Customer Complaint</option>
+                  <option value="Management Review">Management Review</option>
+                  <option value="Observation">Observation</option>
+                  <option value="Incident">Incident</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="raisedBy" className="block text-sm font-medium text-gray-700 mb-1">
+                  Raised By <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="raisedBy"
+                  name="raisedBy"
+                  required
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Name of person raising the NCR"
+                />
+              </div>
+              <div>
+                <label htmlFor="assignedTo" className="block text-sm font-medium text-gray-700 mb-1">
+                  Assigned To
+                </label>
+                <input
+                  type="text"
+                  id="assignedTo"
+                  name="assignedTo"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Person responsible for resolution"
+                />
+              </div>
+              <div>
+                <label htmlFor="targetDate" className="block text-sm font-medium text-gray-700 mb-1">
+                  Target Date
+                </label>
+                <input
+                  type="date"
+                  id="targetDate"
+                  name="targetDate"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* CAPA Section */}
+          <div className="border-t border-gray-200 pt-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Root Cause &amp; CAPA</h3>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="rootCause" className="block text-sm font-medium text-gray-700 mb-1">
+                  Root Cause
+                </label>
+                <textarea
+                  id="rootCause"
+                  name="rootCause"
+                  rows={3}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Identify the underlying root cause..."
+                />
+              </div>
+              <div>
+                <label htmlFor="correctiveAction" className="block text-sm font-medium text-gray-700 mb-1">
+                  Corrective Action
+                </label>
+                <textarea
+                  id="correctiveAction"
+                  name="correctiveAction"
+                  rows={3}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Action to correct the non-conformance..."
+                />
+              </div>
+              <div>
+                <label htmlFor="preventiveAction" className="block text-sm font-medium text-gray-700 mb-1">
+                  Preventive Action
+                </label>
+                <textarea
+                  id="preventiveAction"
+                  name="preventiveAction"
+                  rows={3}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Action to prevent recurrence..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Submit */}
+          <div className="flex justify-end gap-3 border-t border-gray-200 pt-6">
+            <Link
+              href="/qms/ncr"
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
+            >
+              Raise NCR
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}

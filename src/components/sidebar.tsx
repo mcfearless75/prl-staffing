@@ -20,6 +20,7 @@ import {
   Menu,
   X,
   Activity,
+  Shield,
 } from "lucide-react";
 
 const navigation = [
@@ -34,6 +35,7 @@ const navigation = [
   { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
   { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
   { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
+  { name: "QMS", href: "/qms", icon: Shield, badgeKey: null },
 ];
 
 type Counts = {

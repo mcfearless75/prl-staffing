@@ -356,6 +356,153 @@ model RateCard {
   updatedAt  DateTime @updatedAt
 }
 
+// ─── QMS: Non-Conformance / CAPA ───
+model NonConformance {
+  id            String   @id @default(cuid())
+  ncrNumber     String   @unique // NCR-001, NCR-002...
+  title         String
+  description   String
+  category      String   // Process, Product, Service, Compliance, H&S, Documentation
+  severity      String   @default("Minor") // Minor, Major, Critical
+  source        String   // Internal Audit, Customer Complaint, Management Review, Observation, Incident
+  raisedBy      String
+  raisedDate    DateTime @default(now())
+  assignedTo    String?
+  rootCause     String?
+  correctiveAction    String?
+  preventiveAction    String?
+  evidenceOfClosure   String?
+  targetDate    DateTime?
+  closedDate    DateTime?
+  closedBy      String?
+  status        String   @default("Open") // Open, In Progress, Awaiting Verification, Closed, Overdue
+  verifiedBy    String?
+  verifiedDate  DateTime?
+  effectivenessReview String?
+  effectivenessDate   DateTime?
+  filePath      String?  // uploaded evidence
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── QMS: Internal Audits ───
+model InternalAudit {
+  id            String   @id @default(cuid())
+  auditNumber   String   @unique // IA-2026-001
+  title         String
+  scope         String?  // which processes/areas
+  auditDate     DateTime
+  leadAuditor   String
+  auditTeam     String?  // comma separated
+  isoClause     String?  // e.g. "7.5, 8.1, 9.2"
+  status        String   @default("Planned") // Planned, In Progress, Completed, Cancelled
+  overallResult String?  // Conforming, Minor NC, Major NC, Observation
+  summary       String?
+  completedDate DateTime?
+  nextAuditDate DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  findings      AuditFinding[]
+}
+
+model AuditFinding {
+  id            String        @id @default(cuid())
+  auditId       String
+  audit         InternalAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  findingNumber Int           // 1, 2, 3...
+  type          String        // NC Major, NC Minor, Observation, Opportunity for Improvement, Positive
+  isoClause     String?       // specific clause reference
+  description   String
+  evidence      String?
+  correctiveAction String?
+  assignedTo    String?
+  targetDate    DateTime?
+  closedDate    DateTime?
+  status        String        @default("Open") // Open, In Progress, Closed, Overdue
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+// ─── QMS: Management Reviews ───
+model ManagementReview {
+  id            String   @id @default(cuid())
+  reviewNumber  String   @unique // MR-2026-Q1
+  title         String
+  reviewDate    DateTime
+  chairperson   String
+  attendees     String?  // comma separated
+  status        String   @default("Scheduled") // Scheduled, In Progress, Completed
+  // Agenda items (auto-populated from PRISM data)
+  kpiSummary    String?  // JSON: {contractors, assignments, compliance, timesheets, billing}
+  ncrSummary    String?  // JSON: {open, closed, overdue}
+  auditSummary  String?  // JSON: {completed, findings, overdue}
+  riskSummary   String?  // JSON: {high, medium, low}
+  // Minutes
+  minutes       String?  // rich text minutes
+  decisions     String?  // key decisions made
+  actions       String?  // JSON array of {action, owner, deadline}
+  // Review outputs
+  resourceNeeds String?
+  improvements  String?
+  nextReviewDate DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── QMS: Risk Register ───
+model Risk {
+  id            String   @id @default(cuid())
+  riskNumber    String   @unique // RISK-001
+  title         String
+  description   String
+  category      String   // Operational, Financial, Compliance, Reputational, H&S, IT/Data
+  likelihood    Int      @default(3) // 1-5
+  impact        Int      @default(3) // 1-5
+  riskScore     Int      @default(9) // likelihood x impact
+  riskLevel     String   @default("Medium") // Low, Medium, High, Critical
+  owner         String
+  existingControls String?
+  additionalActions String?
+  targetDate    DateTime?
+  reviewDate    DateTime?
+  lastReviewedBy String?
+  lastReviewedAt DateTime?
+  status        String   @default("Active") // Active, Mitigated, Closed, Accepted
+  residualLikelihood Int?
+  residualImpact     Int?
+  residualScore      Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── QMS: Quality Policy Acknowledgement ───
+model PolicyAcknowledgement {
+  id            String   @id @default(cuid())
+  userId        String
+  userEmail     String
+  userName      String
+  policyVersion String   @default("1.0")
+  acknowledgedAt DateTime @default(now())
+}
+
+// ─── QMS: Continual Improvement Log ───
+model ImprovementItem {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  submittedBy   String
+  source        String   // Staff Suggestion, Management Review, Audit Finding, Customer Feedback, NCR, Process Review
+  category      String?  // Process, Technology, Training, Communication, Documentation
+  priority      String   @default("Medium") // Low, Medium, High
+  assignedTo    String?
+  status        String   @default("Proposed") // Proposed, Approved, In Progress, Completed, Rejected
+  outcome       String?
+  completedDate DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 // ─── Supply Agreements (Onboarding) ───
 model SupplyAgreement {
   id              String   @id @default(cuid())
