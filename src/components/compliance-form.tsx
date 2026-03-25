@@ -63,12 +63,19 @@ export function ComplianceForm({
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Select type</option>
-              <option value="CSCS">CSCS</option>
-              <option value="DBS">DBS</option>
+              <option value="CV">CV / Resume</option>
+              <option value="CSCS">CSCS Card</option>
+              <option value="CCNSG">CCNSG Safety Passport</option>
+              <option value="NPORS">NPORS (Plant Operator)</option>
+              <option value="Passport">Passport</option>
+              <option value="Share Code">Share Code (Right to Work)</option>
               <option value="Right to Work">Right to Work</option>
+              <option value="DBS">DBS Check</option>
+              <option value="P45">P45</option>
+              <option value="P60">P60</option>
               <option value="Insurance">Insurance</option>
               <option value="IR35 Assessment">IR35 Assessment</option>
-              <option value="Qualification">Qualification</option>
+              <option value="Qualification">Qualification / Cert</option>
               <option value="Other">Other</option>
             </select>
           </div>

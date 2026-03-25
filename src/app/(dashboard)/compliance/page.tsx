@@ -19,9 +19,16 @@ import { syncComplianceStatuses } from "@/lib/compliance-sync";
 import { getComplianceGaps } from "@/lib/compliance-gaps";
 
 const COMPLIANCE_TYPES = [
+  "CV",
+  "CSCS",
+  "CCNSG",
+  "NPORS",
+  "Passport",
+  "Share Code",
   "Right to Work",
   "DBS",
-  "CSCS",
+  "P45",
+  "P60",
   "Insurance",
   "IR35 Assessment",
   "Qualification",
