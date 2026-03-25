@@ -33,8 +33,16 @@ export async function GET(
       },
     });
 
-    return Response.redirect(new URL(redirectTo, request.url));
+    // Use NextResponse.redirect with the public URL to avoid 0.0.0.0 on Railway
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || "";
+    if (baseUrl) {
+      return NextResponse.redirect(new URL(redirectTo, baseUrl));
+    }
+    // Fallback: use next/navigation redirect (works server-side)
+    redirect(redirectTo);
   } catch (error) {
+    // Re-throw Next.js redirect errors
+    if (error instanceof Error && (error.message === "NEXT_REDIRECT" || (error as any)?.digest?.startsWith("NEXT_REDIRECT"))) throw error;
     console.error("Quick verify error:", error);
     return NextResponse.json({ error: "Failed to verify" }, { status: 500 });
   }
