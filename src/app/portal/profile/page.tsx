@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { formatDate } from "@/lib/utils";
-import { Mail, Phone, MapPin, Briefcase, Building2, Calendar, Shield } from "lucide-react";
+import { Shield, Calendar, Building2, Briefcase } from "lucide-react";
+import { ProfileForm } from "./profile-form";
 
 export default async function PortalProfilePage() {
   const session = await auth();
@@ -27,6 +28,11 @@ export default async function PortalProfilePage() {
 
   const initials = `${contractor.firstName[0]}${contractor.lastName[0]}`.toUpperCase();
 
+  // Mask NI number for display
+  const maskedNI = contractor.niNumber
+    ? `****${contractor.niNumber.slice(-3)}`
+    : "Not provided";
+
   return (
     <div className="space-y-5">
       {/* Profile Header */}
@@ -45,46 +51,23 @@ export default async function PortalProfilePage() {
         </span>
       </div>
 
-      {/* Contact Details */}
-      <div className="rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-gray-900">Contact Details</h2>
-        </div>
-        <div className="divide-y divide-gray-100">
-          {contractor.email && (
-            <div className="flex items-center gap-3 px-4 py-3">
-              <Mail className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-[10px] text-gray-500">Email</p>
-                <p className="text-sm text-gray-900">{contractor.email}</p>
-              </div>
-            </div>
-          )}
-          {contractor.phone && (
-            <div className="flex items-center gap-3 px-4 py-3">
-              <Phone className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-[10px] text-gray-500">Phone</p>
-                <p className="text-sm text-gray-900">{contractor.phone}</p>
-              </div>
-            </div>
-          )}
-          {contractor.notes && (
-            <div className="flex items-center gap-3 px-4 py-3">
-              <MapPin className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-[10px] text-gray-500">Notes</p>
-                <p className="text-sm text-gray-900">{contractor.notes}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Editable Contact & Emergency Details */}
+      <ProfileForm
+        contractorId={contractorId}
+        phone={contractor.phone || ""}
+        email={contractor.email || ""}
+        address={(contractor as Record<string, unknown>).address as string || ""}
+        postcode={(contractor as Record<string, unknown>).postcode as string || ""}
+        emergencyContactName={(contractor as Record<string, unknown>).emergencyContactName as string || ""}
+        emergencyContactPhone={(contractor as Record<string, unknown>).emergencyContactPhone as string || ""}
+        emergencyContactRelation={(contractor as Record<string, unknown>).emergencyContactRelation as string || ""}
+      />
 
-      {/* Work Details */}
+      {/* Work Details (read-only) */}
       <div className="rounded-xl border border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-gray-900">Work Details</h2>
+          <p className="text-[10px] text-gray-400">Contact PRL to update these fields</p>
         </div>
         <div className="divide-y divide-gray-100">
           <div className="flex items-center gap-3 px-4 py-3">
@@ -116,7 +99,7 @@ export default async function PortalProfilePage() {
             <Shield className="h-4 w-4 text-gray-400" />
             <div>
               <p className="text-[10px] text-gray-500">NI Number</p>
-              <p className="text-sm text-gray-900">{contractor.niNumber || "Not provided"}</p>
+              <p className="text-sm text-gray-900">{maskedNI}</p>
             </div>
           </div>
         </div>
@@ -184,10 +167,6 @@ export default async function PortalProfilePage() {
           )}
         </div>
       </div>
-
-      <p className="text-center text-[10px] text-gray-400 pb-4">
-        To update your details, please contact PRL Site Solutions
-      </p>
     </div>
   );
 }

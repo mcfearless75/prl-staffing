@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -30,7 +30,10 @@ export default function LoginPage() {
     if (result?.error) {
       setError("Invalid email or password");
     } else {
-      router.push("/");
+      // Check user type and redirect accordingly
+      const session = await getSession();
+      const userType = (session?.user as { userType?: string })?.userType;
+      router.push(userType === "contractor" ? "/portal" : "/");
       router.refresh();
     }
   }

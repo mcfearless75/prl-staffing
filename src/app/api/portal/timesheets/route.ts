@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { calculateOvertime, DEFAULT_OVERTIME_CONFIG } from "@/lib/overtime-calculator";
 
 export async function POST(request: Request) {
   try {
@@ -27,9 +28,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
     }
 
-    // Calculate totals
-    const totalHours = hours.reduce((sum: number, h: number) => sum + h, 0);
-    const overtimeHours = Math.max(0, totalHours - 40);
+    // Calculate totals using proper overtime engine (same as staff timesheets)
+    const weekStart = new Date(weekStarting);
+    const dayEntries = hours.map((h: number, i: number) => {
+      const date = new Date(weekStart);
+      date.setDate(date.getDate() + i);
+      return { dayOfWeek: i, hours: h, date };
+    });
+    const overtimeResult = calculateOvertime(dayEntries, weekStart, DEFAULT_OVERTIME_CONFIG);
+    const totalHours = dayEntries.reduce((sum, d) => sum + d.hours, 0);
+    const overtimeHours = overtimeResult.totalOvertimeHours;
 
     // Check for existing timesheet this week
     const existing = await prisma.timesheet.findFirst({
@@ -59,10 +67,11 @@ export async function POST(request: Request) {
         status: "Submitted",
         submittedAt: new Date(),
         entries: {
-          create: hours.map((h: number, i: number) => ({
-            dayOfWeek: i, // 0=Mon, 1=Tue, ... 6=Sun
-            hours: h,
-            overtime: i >= 5 ? h : 0, // Weekend hours as overtime
+          create: overtimeResult.dailyBreakdown.map((d) => ({
+            dayOfWeek: d.dayOfWeek,
+            hours: d.regularHours + d.overtimeHours,
+            overtime: d.overtimeHours,
+            isBankHoliday: d.isBankHoliday,
           })),
         },
       },

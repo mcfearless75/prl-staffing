@@ -67,6 +67,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Security: Contractors can only upload to their own profile
+    const sessionUser = session.user as { contractorId?: string; userType?: string };
+    if (sessionUser.userType === "contractor" && sessionUser.contractorId !== contractorId) {
+      return NextResponse.json({ error: "Unauthorized — you can only upload to your own profile" }, { status: 403 });
+    }
+
     // Check contractor exists
     const contractor = await prisma.contractor.findUnique({
       where: { id: contractorId },
@@ -184,6 +190,12 @@ export async function GET(request: NextRequest) {
 
     if (!contractorId) {
       return NextResponse.json({ error: "Missing contractorId" }, { status: 400 });
+    }
+
+    // Security: Contractors can only view their own documents
+    const sessionUser = session.user as { contractorId?: string; userType?: string };
+    if (sessionUser.userType === "contractor" && sessionUser.contractorId !== contractorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     const documents = await prisma.document.findMany({
