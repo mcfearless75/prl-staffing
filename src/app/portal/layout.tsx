@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Clock, ShieldCheck, FileUp, LogOut, User } from "lucide-react";
+import { useEffect } from "react";
 
 const portalNav = [
   { name: "Home", href: "/portal", icon: LayoutDashboard },
@@ -17,6 +18,17 @@ const portalNav = [
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const router = useRouter();
+
+  // Auto-refresh every 30s + when tab becomes visible
+  useEffect(() => {
+    const timer = setInterval(() => router.refresh(), 30000);
+    function onVisible() {
+      if (document.visibilityState === "visible") router.refresh();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gray-50">
