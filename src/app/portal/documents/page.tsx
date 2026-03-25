@@ -7,18 +7,22 @@ import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { DownloadButton } from "./download-button";
 
+// Required = must-have for compliance. Optional = nice-to-have.
 const DOC_TYPES = [
-  { type: "CSCS", label: "CSCS Card", icon: "🏗️" },
-  { type: "CV", label: "CV / Resume", icon: "📄" },
-  { type: "P45", label: "P45", icon: "📋" },
-  { type: "P60", label: "P60", icon: "📋" },
-  { type: "Passport", label: "Passport / ID", icon: "🪪" },
-  { type: "DBS", label: "DBS Check", icon: "🔍" },
-  { type: "Insurance", label: "Insurance", icon: "🛡️" },
-  { type: "Qualification", label: "Qualification / Cert", icon: "🎓" },
-  { type: "Right to Work", label: "Right to Work", icon: "✅" },
-  { type: "IR35 Assessment", label: "IR35 Assessment", icon: "📝" },
-  { type: "Other", label: "Other", icon: "📎" },
+  { type: "CV", label: "CV / Resume", icon: "📄", required: true },
+  { type: "CSCS", label: "CSCS Card", icon: "🏗️", required: true },
+  { type: "CCNSG", label: "CCNSG Safety Passport", icon: "🦺", required: true },
+  { type: "NPORS", label: "NPORS (Plant Operator)", icon: "🚜", required: false },
+  { type: "Passport", label: "Passport", icon: "🪪", required: true },
+  { type: "Share Code", label: "Share Code (Right to Work)", icon: "✅", required: false },
+  { type: "DBS", label: "DBS Check", icon: "🔍", required: false },
+  { type: "P45", label: "P45", icon: "📋", required: false },
+  { type: "P60", label: "P60", icon: "📋", required: false },
+  { type: "Insurance", label: "Insurance", icon: "🛡️", required: false },
+  { type: "Qualification", label: "Qualification / Cert", icon: "🎓", required: false },
+  { type: "Right to Work", label: "Right to Work", icon: "✅", required: false },
+  { type: "IR35 Assessment", label: "IR35 Assessment", icon: "📝", required: false },
+  { type: "Other", label: "Other", icon: "📎", required: false },
 ];
 
 export default async function PortalDocumentsPage() {

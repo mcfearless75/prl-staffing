@@ -16,12 +16,15 @@ const ALLOWED_TYPES = [
 ];
 
 const DOC_TYPES = [
-  "CSCS",
   "CV",
+  "CSCS",
+  "CCNSG",
+  "NPORS",
+  "Passport",
+  "Share Code",
+  "DBS",
   "P45",
   "P60",
-  "Passport",
-  "DBS",
   "Insurance",
   "Qualification",
   "Right to Work",
@@ -120,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     // Auto-update ComplianceRecord when compliance-related docs are uploaded
     const COMPLIANCE_DOC_TYPES = [
-      "CSCS", "DBS", "Insurance", "Qualification", "Right to Work", "IR35 Assessment", "Passport",
+      "CSCS", "CCNSG", "NPORS", "DBS", "Insurance", "Qualification", "Right to Work", "IR35 Assessment", "Passport", "Share Code",
     ];
 
     if (COMPLIANCE_DOC_TYPES.includes(type)) {

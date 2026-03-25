@@ -5,12 +5,15 @@ import { Camera, Upload, FileText, Check, AlertCircle, Loader2 } from "lucide-re
 import { useRouter } from "next/navigation";
 
 const DOC_TYPES = [
-  "CSCS",
   "CV",
+  "CSCS",
+  "CCNSG",
+  "NPORS",
+  "Passport",
+  "Share Code",
+  "DBS",
   "P45",
   "P60",
-  "Passport",
-  "DBS",
   "Insurance",
   "Qualification",
   "Right to Work",
