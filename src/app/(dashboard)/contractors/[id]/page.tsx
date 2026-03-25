@@ -342,14 +342,12 @@ export default async function ContractorDetailPage({
                     <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
                       <div className="flex items-center justify-end gap-2">
                         {compliance.status !== "Verified" && (
-                          <form action={`/api/compliance/${compliance.id}/verify`} method="GET">
-                            <a
-                              href={`/api/compliance/${compliance.id}/verify?redirect=/contractors/${contractor.id}`}
-                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
-                            >
-                              ✓ Approve
-                            </a>
-                          </form>
+                          <a
+                            href={`/api/compliance/${compliance.id}/verify?redirect=/contractors/${contractor.id}`}
+                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
+                          >
+                            ✓ Approve
+                          </a>
                         )}
                         <Link
                           href={`/compliance/${compliance.id}`}
