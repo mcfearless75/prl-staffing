@@ -540,3 +540,33 @@ model SupplyAgreement {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
+
+// ─── QMS Document Repository ───
+model QmsDocument {
+  id          String   @id @default(cuid())
+  fileName    String
+  filePath    String   // display path e.g. "1. Context of Organisation/Interested Parties"
+  folder      String   // top-level folder
+  subfolder   String?  // sub-folder if any
+  fileType    String   // docx, xlsx, pptx, pdf
+  fileSize    Int      @default(0)
+  r2Key       String?  // Cloudflare R2 storage key
+  uploadedBy  String?
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Auditor Users (external auditors like Nutral) ───
+model AuditorUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  organisation String   @default("Nutral")
+  logoUrl      String?  @default("/nutral-logo.svg")
+  role         String   @default("auditor")
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

@@ -8,8 +8,10 @@ export default auth((req) => {
   const isLoginPage = req.nextUrl.pathname === "/login";
   const isSetPasswordPage = req.nextUrl.pathname === "/set-password";
   const isPortalPage = req.nextUrl.pathname.startsWith("/portal");
+  const isAuditorPage = req.nextUrl.pathname.startsWith("/auditor");
 
   // Allow public pages without auth
+  if (isAuditorPage) return; // Auditor portal has its own auth
   if (isSetPasswordPage) return;
   if (req.nextUrl.pathname.startsWith("/onboarding")) return;
   const userType = (req.auth?.user as { userType?: string })?.userType;

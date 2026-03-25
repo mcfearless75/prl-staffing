@@ -2,10 +2,10 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { Shield, ClipboardCheck, BarChart3, AlertTriangle, Lightbulb, FileCheck } from "lucide-react";
+import { Shield, ClipboardCheck, BarChart3, AlertTriangle, Lightbulb, FileCheck, FolderOpen } from "lucide-react";
 
 export default async function QMSPage() {
-  const [ncrCount, auditCount, reviewCount, riskCount, improvementCount, openNCRs, overdueNCRs, highRisks] = await Promise.all([
+  const [ncrCount, auditCount, reviewCount, riskCount, improvementCount, openNCRs, overdueNCRs, highRisks, docCount] = await Promise.all([
     prisma.nonConformance.count(),
     prisma.internalAudit.count(),
     prisma.managementReview.count(),
@@ -14,6 +14,7 @@ export default async function QMSPage() {
     prisma.nonConformance.count({ where: { status: { in: ["Open", "In Progress"] } } }),
     prisma.nonConformance.count({ where: { status: "Overdue" } }),
     prisma.risk.count({ where: { riskLevel: { in: ["High", "Critical"] } } }),
+    prisma.qmsDocument.count(),
   ]);
 
   const modules = [
@@ -61,6 +62,15 @@ export default async function QMSPage() {
       color: "bg-emerald-50 text-emerald-600 border-emerald-200",
       iconBg: "bg-emerald-100",
       stats: `${improvementCount} items`,
+    },
+    {
+      title: "Document Repository",
+      description: "ISO 9001 controlled documents — manuals, procedures, templates, and records",
+      href: "/qms/documents",
+      icon: FolderOpen,
+      color: "bg-cyan-50 text-cyan-600 border-cyan-200",
+      iconBg: "bg-cyan-100",
+      stats: `${docCount} documents`,
     },
     {
       title: "Quality Policy",
