@@ -297,7 +297,7 @@ function FolderTreeNode({
   );
 }
 
-// ─── Upload Modal ───
+// ─── Upload Modal with Multi-File + Drag & Drop ───
 function UploadModal({
   open,
   onClose,
@@ -307,30 +307,60 @@ function UploadModal({
 }) {
   const [isPending, startTransition] = useTransition();
   const [selectedFolder, setSelectedFolder] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const folderOptions = buildFolderOptions();
 
   if (!open) return null;
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleDrop(e: React.DragEvent) {
     e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
+    setDragOver(false);
+    const droppedFiles = Array.from(e.dataTransfer.files).filter((f) =>
+      /\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/i.test(f.name)
+    );
+    setFiles((prev) => [...prev, ...droppedFiles]);
+  }
 
-    // Parse the combined folder value
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) {
+      const selected = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...selected]);
+    }
+    e.target.value = ""; // Reset so same file can be selected again
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleUpload() {
+    if (!selectedFolder || files.length === 0) return;
+
     const selected = folderOptions.find(
       (o) => `${o.folder}||${o.subfolder || ""}` === selectedFolder
     );
-    if (selected) {
-      formData.set("folder", selected.folder);
-      formData.set("subfolder", selected.subfolder || "");
-    }
+    if (!selected) return;
+
+    setUploadProgress({ done: 0, total: files.length });
 
     startTransition(async () => {
       try {
-        await uploadQmsDocument(formData);
+        for (let i = 0; i < files.length; i++) {
+          const formData = new FormData();
+          formData.set("file", files[i]);
+          formData.set("folder", selected.folder);
+          formData.set("subfolder", selected.subfolder || "");
+          await uploadQmsDocument(formData);
+          setUploadProgress({ done: i + 1, total: files.length });
+        }
+        setFiles([]);
+        setUploadProgress(null);
         onClose();
       } catch {
         alert("Upload failed. Please try again.");
+        setUploadProgress(null);
       }
     });
   }
@@ -339,24 +369,24 @@ function UploadModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Upload Document</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Upload Documents</h2>
           <button
-            onClick={onClose}
+            onClick={() => { setFiles([]); setUploadProgress(null); onClose(); }}
             className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
+          {/* Folder selector */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Folder
+              Upload to folder
             </label>
             <select
               value={selectedFolder}
               onChange={(e) => setSelectedFolder(e.target.value)}
-              required
               className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Select a folder...</option>
@@ -371,37 +401,108 @@ function UploadModal({
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              File
+          {/* Drag & Drop Zone */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            className={`relative rounded-xl border-2 border-dashed p-8 text-center transition-all ${
+              dragOver
+                ? "border-blue-400 bg-blue-50 scale-[1.01]"
+                : "border-gray-300 bg-gray-50 hover:border-gray-400"
+            }`}
+          >
+            <Upload className={`mx-auto h-10 w-10 ${dragOver ? "text-blue-500" : "text-gray-400"}`} />
+            <p className="mt-2 text-sm font-medium text-gray-700">
+              {dragOver ? "Drop files here!" : "Drag & drop files here"}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              PDF, Word, Excel, PowerPoint — multiple files supported
+            </p>
+            <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-white border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+              <FileText className="h-4 w-4" />
+              Browse files
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
             </label>
-            <input
-              type="file"
-              name="file"
-              required
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-blue-600 hover:file:bg-blue-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              <Upload className="h-4 w-4" />
-              {isPending ? "Uploading..." : "Upload"}
-            </button>
+          {/* Selected files list */}
+          {files.length > 0 && (
+            <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+              {files.map((file, i) => (
+                <div key={`${file.name}-${i}`} className="flex items-center gap-3 px-3 py-2">
+                  {getFileIcon(file.name.split(".").pop() || "")}
+                  <span className="truncate text-sm text-gray-700 flex-1">{file.name}</span>
+                  <span className="shrink-0 text-xs text-gray-400">{formatFileSize(file.size)}</span>
+                  {!uploadProgress && (
+                    <button
+                      onClick={() => removeFile(i)}
+                      className="shrink-0 rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {uploadProgress && i < uploadProgress.done && (
+                    <span className="shrink-0 text-xs text-emerald-600 font-medium">✓</span>
+                  )}
+                  {uploadProgress && i === uploadProgress.done && (
+                    <span className="shrink-0 h-3 w-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Progress bar */}
+          {uploadProgress && (
+            <div>
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>Uploading {uploadProgress.done} of {uploadProgress.total} files...</span>
+                <span>{Math.round((uploadProgress.done / uploadProgress.total) * 100)}%</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-blue-600 transition-all duration-300"
+                  style={{ width: `${(uploadProgress.done / uploadProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-xs text-gray-500">
+              {files.length} file{files.length !== 1 ? "s" : ""} selected
+              {files.length > 0 && ` · ${formatFileSize(files.reduce((s, f) => s + f.size, 0))}`}
+            </span>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setFiles([]); setUploadProgress(null); onClose(); }}
+                disabled={!!uploadProgress}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpload}
+                disabled={isPending || !selectedFolder || files.length === 0}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                {isPending
+                  ? `Uploading (${uploadProgress?.done || 0}/${uploadProgress?.total || 0})...`
+                  : `Upload ${files.length} file${files.length !== 1 ? "s" : ""}`}
+              </button>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
