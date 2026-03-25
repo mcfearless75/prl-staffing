@@ -21,11 +21,13 @@ import {
   X,
   Activity,
   Shield,
+  UserPlus,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, badgeKey: null },
   { name: "Intelligence", href: "/intelligence", icon: Brain, badgeKey: null },
+  { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
   { name: "Contractors", href: "/contractors", icon: Users, badgeKey: null },
   { name: "Companies", href: "/companies", icon: Building2, badgeKey: null },
   { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
@@ -42,13 +44,14 @@ type Counts = {
   pendingTimesheets: number;
   complianceAlerts: number;
   draftInvoices: number;
+  pendingOnboarding: number;
 };
 
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
-  const [counts, setCounts] = useState<Counts>({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0 });
+  const [counts, setCounts] = useState<Counts>({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0 });
 
   // Fetch badge counts on mount and every 30 seconds
   useEffect(() => {

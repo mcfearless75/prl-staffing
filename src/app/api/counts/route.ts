@@ -11,7 +11,7 @@ export async function GET() {
   }
 
   try {
-    const [pendingTimesheets, complianceAlerts, draftInvoices] = await Promise.all([
+    const [pendingTimesheets, complianceAlerts, draftInvoices, pendingOnboarding] = await Promise.all([
       prisma.timesheet.count({
         where: { status: { in: ["Submitted", "Draft"] } },
       }),
@@ -21,14 +21,18 @@ export async function GET() {
       prisma.invoice.count({
         where: { status: "Draft" },
       }),
+      prisma.supplyAgreement.count({
+        where: { status: "Pending" },
+      }),
     ]);
 
     return NextResponse.json({
       pendingTimesheets,
       complianceAlerts,
       draftInvoices,
+      pendingOnboarding,
     });
   } catch {
-    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0 });
+    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0 });
   }
 }
