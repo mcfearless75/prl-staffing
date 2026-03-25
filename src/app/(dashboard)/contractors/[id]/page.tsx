@@ -309,11 +309,14 @@ export default async function ContractorDetailPage({
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Status
                   </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {contractor.compliances.map((compliance: any) => (
-                  <tr key={compliance.id}>
+                  <tr key={compliance.id} className={compliance.status === "Pending" ? "bg-amber-50" : ""}>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
                       {compliance.type || "-"}
                     </td>
@@ -325,8 +328,36 @@ export default async function ContractorDetailPage({
                         ? new Date(compliance.expiryDate).toLocaleDateString()
                         : "-"}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                      {compliance.status || "-"}
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                        compliance.status === "Verified" ? "bg-emerald-100 text-emerald-700" :
+                        compliance.status === "Pending" ? "bg-amber-100 text-amber-700" :
+                        compliance.status === "Expiring" ? "bg-orange-100 text-orange-700" :
+                        compliance.status === "Expired" ? "bg-red-100 text-red-700" :
+                        "bg-gray-100 text-gray-600"
+                      }`}>
+                        {compliance.status || "-"}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
+                      <div className="flex items-center justify-end gap-2">
+                        {compliance.status !== "Verified" && (
+                          <form action={`/api/compliance/${compliance.id}/verify`} method="GET">
+                            <a
+                              href={`/api/compliance/${compliance.id}/verify?redirect=/contractors/${contractor.id}`}
+                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
+                            >
+                              ✓ Approve
+                            </a>
+                          </form>
+                        )}
+                        <Link
+                          href={`/compliance/${compliance.id}`}
+                          className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                        >
+                          View
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
