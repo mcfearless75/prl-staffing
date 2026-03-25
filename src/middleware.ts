@@ -14,6 +14,8 @@ export default auth((req) => {
   if (isAuditorPage) return; // Auditor portal has its own auth
   if (isSetPasswordPage) return;
   if (req.nextUrl.pathname.startsWith("/onboarding")) return;
+  if (req.nextUrl.pathname.startsWith("/survey")) return;
+  if (req.nextUrl.pathname.startsWith("/supplier-questionnaire")) return;
   const userType = (req.auth?.user as { userType?: string })?.userType;
 
   if (isLoginPage) {

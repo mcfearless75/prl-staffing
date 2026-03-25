@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { Shield, ClipboardCheck, BarChart3, AlertTriangle, Lightbulb, FileCheck, FolderOpen } from "lucide-react";
+import { Shield, ClipboardCheck, BarChart3, AlertTriangle, Lightbulb, FileCheck, FolderOpen, FileBarChart } from "lucide-react";
 
 export default async function QMSPage() {
   const [
@@ -100,6 +100,15 @@ export default async function QMSPage() {
       color: "bg-gray-50 text-gray-600 border-gray-200",
       iconBg: "bg-gray-100",
       stats: "ISO 9001:2015",
+    },
+    {
+      title: "Reports",
+      description: "Auto-generated reports — training matrix, supplier index, document index, customer feedback, supplier questionnaires",
+      href: "/qms/reports",
+      icon: FileBarChart,
+      color: "bg-indigo-50 text-indigo-600 border-indigo-200",
+      iconBg: "bg-indigo-100",
+      stats: "5 report types",
     },
   ];
 
