@@ -5,7 +5,12 @@ import { PageHeader } from "@/components/page-header";
 import { Shield, ClipboardCheck, BarChart3, AlertTriangle, Lightbulb, FileCheck, FolderOpen } from "lucide-react";
 
 export default async function QMSPage() {
-  const [ncrCount, auditCount, reviewCount, riskCount, improvementCount, openNCRs, overdueNCRs, highRisks, docCount] = await Promise.all([
+  const [
+    ncrCount, auditCount, reviewCount, riskCount, improvementCount,
+    openNCRs, overdueNCRs, highRisks, docCount,
+    lastUploadedDoc,
+    ncrDocs, auditDocs, reviewDocs, riskDocs, policyDocs,
+  ] = await Promise.all([
     prisma.nonConformance.count(),
     prisma.internalAudit.count(),
     prisma.managementReview.count(),
@@ -15,7 +20,22 @@ export default async function QMSPage() {
     prisma.nonConformance.count({ where: { status: "Overdue" } }),
     prisma.risk.count({ where: { riskLevel: { in: ["High", "Critical"] } } }),
     prisma.qmsDocument.count(),
+    prisma.qmsDocument.findFirst({ orderBy: { createdAt: "desc" } }),
+    prisma.qmsDocument.count({ where: { folder: "Core Procedures", subfolder: "Non C & Corrective Actions" } }),
+    prisma.qmsDocument.count({ where: { folder: "Core Procedures", subfolder: "Internal Audits" } }),
+    prisma.qmsDocument.count({ where: { folder: "Core Procedures", subfolder: "Management Reviews" } }),
+    prisma.qmsDocument.count({ where: { folder: "Core Procedures", subfolder: "Risks & Opportunities" } }),
+    prisma.qmsDocument.count({ where: { folder: "Quality Manual & Policy" } }),
   ]);
+
+  const folderCoverage = [
+    { name: "NCR / CAPA", count: ncrDocs, href: "/qms/ncr" },
+    { name: "Internal Audits", count: auditDocs, href: "/qms/audits" },
+    { name: "Management Reviews", count: reviewDocs, href: "/qms/management-review" },
+    { name: "Risks & Opportunities", count: riskDocs, href: "/qms/risk-register" },
+    { name: "Quality Manual & Policy", count: policyDocs, href: "/qms/policy" },
+  ];
+  const coveredFolders = folderCoverage.filter((f) => f.count > 0).length;
 
   const modules = [
     {
@@ -112,31 +132,73 @@ export default async function QMSPage() {
       {/* Quick Stats Bar */}
       <div className="rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-gray-900 mb-4">QMS Health Overview</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
-          <div className="text-center">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
+          <Link href="/qms/ncr" className="text-center rounded-lg p-2 hover:bg-red-50 transition-colors">
             <div className={`text-2xl font-bold ${openNCRs > 0 ? "text-red-600" : "text-emerald-600"}`}>{openNCRs}</div>
             <div className="text-xs text-gray-500">Open NCRs</div>
-          </div>
-          <div className="text-center">
+          </Link>
+          <Link href="/qms/ncr" className="text-center rounded-lg p-2 hover:bg-red-50 transition-colors">
             <div className={`text-2xl font-bold ${overdueNCRs > 0 ? "text-red-600" : "text-emerald-600"}`}>{overdueNCRs}</div>
             <div className="text-xs text-gray-500">Overdue NCRs</div>
-          </div>
-          <div className="text-center">
+          </Link>
+          <Link href="/qms/audits" className="text-center rounded-lg p-2 hover:bg-blue-50 transition-colors">
             <div className="text-2xl font-bold text-blue-600">{auditCount}</div>
             <div className="text-xs text-gray-500">Audits</div>
-          </div>
-          <div className="text-center">
+          </Link>
+          <Link href="/qms/management-review" className="text-center rounded-lg p-2 hover:bg-purple-50 transition-colors">
             <div className="text-2xl font-bold text-purple-600">{reviewCount}</div>
             <div className="text-xs text-gray-500">Reviews</div>
-          </div>
-          <div className="text-center">
+          </Link>
+          <Link href="/qms/risk-register" className="text-center rounded-lg p-2 hover:bg-orange-50 transition-colors">
             <div className={`text-2xl font-bold ${highRisks > 0 ? "text-orange-600" : "text-emerald-600"}`}>{highRisks}</div>
             <div className="text-xs text-gray-500">High Risks</div>
-          </div>
-          <div className="text-center">
+          </Link>
+          <Link href="/qms/improvements" className="text-center rounded-lg p-2 hover:bg-emerald-50 transition-colors">
             <div className="text-2xl font-bold text-emerald-600">{improvementCount}</div>
             <div className="text-xs text-gray-500">Improvements</div>
-          </div>
+          </Link>
+          <Link href="/qms/documents" className="text-center rounded-lg p-2 hover:bg-cyan-50 transition-colors">
+            <div className="text-2xl font-bold text-cyan-600">{docCount}</div>
+            <div className="text-xs text-gray-500">Documents</div>
+            {lastUploadedDoc && (
+              <div className="text-[10px] text-gray-400 mt-0.5">
+                Last: {new Date(lastUploadedDoc.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+              </div>
+            )}
+          </Link>
+        </div>
+      </div>
+
+      {/* Document Coverage */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-900">Document Coverage</h2>
+          <span className="text-xs text-gray-500">{coveredFolders} of {folderCoverage.length} folders have documents</span>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          {folderCoverage.map((folder) => (
+            <Link
+              key={folder.name}
+              href={folder.href}
+              className={`flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${
+                folder.count > 0
+                  ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                  : "border-gray-200 bg-gray-50 hover:bg-gray-100"
+              }`}
+            >
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
+                folder.count > 0 ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-500"
+              }`}>
+                {folder.count}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-gray-900 truncate">{folder.name}</p>
+                <p className={`text-[10px] ${folder.count > 0 ? "text-emerald-600" : "text-gray-400"}`}>
+                  {folder.count > 0 ? `${folder.count} doc${folder.count !== 1 ? "s" : ""}` : "No docs yet"}
+                </p>
+              </div>
+            </Link>
+          ))}
         </div>
       </div>
     </div>

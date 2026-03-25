@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { deleteRisk, reviewRisk } from "../actions";
+import { FileText, FileSpreadsheet, Presentation, File, Download } from "lucide-react";
 
 function getRiskLevelColor(level: string) {
   switch (level) {
@@ -17,6 +18,24 @@ function getRiskLevelColor(level: string) {
   }
 }
 
+function getFileIcon(type: string) {
+  switch (type.toLowerCase()) {
+    case "pdf": return <FileText className="h-4 w-4 text-red-500" />;
+    case "docx": case "doc": return <FileText className="h-4 w-4 text-blue-500" />;
+    case "xlsx": case "xls": return <FileSpreadsheet className="h-4 w-4 text-green-500" />;
+    case "pptx": case "ppt": return <Presentation className="h-4 w-4 text-orange-500" />;
+    default: return <File className="h-4 w-4 text-gray-400" />;
+  }
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
 export default async function RiskDetailPage({
   params,
 }: {
@@ -24,7 +43,13 @@ export default async function RiskDetailPage({
 }) {
   const { id } = await params;
 
-  const risk = await prisma.risk.findUnique({ where: { id } });
+  const [risk, relatedDocs] = await Promise.all([
+    prisma.risk.findUnique({ where: { id } }),
+    prisma.qmsDocument.findMany({
+      where: { folder: "Core Procedures", subfolder: "Risks & Opportunities" },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
   if (!risk) notFound();
 
   const deleteWithId = deleteRisk.bind(null, id);
@@ -162,6 +187,63 @@ export default async function RiskDetailPage({
           </div>
         </div>
       )}
+
+      {/* Related Documents from Repository */}
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+            <span>📎</span> Related Documents from Repository
+          </h3>
+          <Link
+            href="/qms/documents"
+            className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            View All Documents →
+          </Link>
+        </div>
+        <p className="text-xs text-blue-700 mb-3">
+          Documents from the &quot;Risks &amp; Opportunities&quot; folder in the QMS Document Repository.
+        </p>
+        {relatedDocs.length > 0 ? (
+          <div className="space-y-1">
+            {relatedDocs.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex items-center gap-3 rounded-lg bg-white px-4 py-2.5 border border-blue-100 hover:border-blue-200 transition-colors"
+              >
+                {getFileIcon(doc.fileType)}
+                <span className="truncate text-sm text-gray-900 flex-1 min-w-0 font-medium">
+                  {doc.fileName}
+                </span>
+                <span className="shrink-0 text-xs text-gray-400">
+                  {formatFileSize(doc.fileSize)}
+                </span>
+                <span className="shrink-0 text-xs text-gray-400">
+                  {formatDate(doc.createdAt)}
+                </span>
+                <a
+                  href={`/api/qms-documents/download?id=${doc.id}`}
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+                  title="Download"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </a>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg bg-white border border-blue-100 px-4 py-6 text-center">
+            <p className="text-sm text-gray-500">No documents uploaded to this folder yet.</p>
+            <Link
+              href="/qms/documents"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+            >
+              Upload documents →
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
