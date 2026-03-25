@@ -183,12 +183,22 @@ export default async function ComplianceRecordPage({
                       : ` · ${(doc.fileSize / 1024).toFixed(0)}KB`}
                   </p>
                 </div>
-                <a
-                  href={`/api/documents/download?id=${doc.id}`}
-                  className="shrink-0 rounded-lg bg-white border border-blue-200 px-3 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
-                >
-                  Download
-                </a>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={`/api/documents/download?id=${doc.id}&view=true`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                  >
+                    View
+                  </a>
+                  <a
+                    href={`/api/documents/download?id=${doc.id}`}
+                    className="rounded-lg bg-white border border-blue-200 px-3 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                  >
+                    Download
+                  </a>
+                </div>
               </div>
             ))}
           </div>
