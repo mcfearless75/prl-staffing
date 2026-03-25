@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Camera, Upload, FileText, Check, AlertCircle, Loader2 } from "lucide-react";
+import { Camera, Upload, FileText, Check, AlertCircle, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const DOC_TYPES = [
@@ -25,32 +25,43 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
   const [selectedType, setSelectedType] = useState("");
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<{ file: File; preview: string | null }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setSelectedFile(file);
+    const newFiles = Array.from(e.target.files || []);
+    if (newFiles.length === 0) return;
     setMessage(null);
 
-    // Preview for images
-    if (file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setPreview(ev.target?.result as string);
-      reader.readAsDataURL(file);
-    } else {
-      setPreview(null);
-    }
+    const additions = newFiles.map((file) => {
+      return new Promise<{ file: File; preview: string | null }>((resolve) => {
+        if (file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (ev) => resolve({ file, preview: ev.target?.result as string });
+          reader.readAsDataURL(file);
+        } else {
+          resolve({ file, preview: null });
+        }
+      });
+    });
+
+    Promise.all(additions).then((items) => {
+      setFiles((prev) => [...prev, ...items]);
+    });
+
+    // Reset input so same file can be re-selected
+    e.target.value = "";
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !selectedType) {
-      setMessage({ type: "error", text: "Please select a document type and file." });
+    if (files.length === 0 || !selectedType) {
+      setMessage({ type: "error", text: "Please select a document type and at least one file." });
       return;
     }
 
@@ -58,30 +69,37 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
     setMessage(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("type", selectedType);
-      formData.append("contractorId", contractorId);
+      let lastVersion = 0;
+      // Upload each file with the same type (front, back, extra pages)
+      for (let i = 0; i < files.length; i++) {
+        const formData = new FormData();
+        const label = files.length > 1 ? `${selectedType} (${i === 0 ? "Front" : i === 1 ? "Back" : `Page ${i + 1}`})` : selectedType;
+        formData.append("file", files[i].file);
+        formData.append("type", selectedType);
+        formData.append("contractorId", contractorId);
+        if (files.length > 1) {
+          formData.append("notes", i === 0 ? "Front" : i === 1 ? "Back" : `Page ${i + 1}`);
+        }
 
-      const res = await fetch("/api/documents", {
-        method: "POST",
-        body: formData,
-      });
+        const res = await fetch("/api/documents", {
+          method: "POST",
+          body: formData,
+        });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Upload failed");
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Upload failed");
+        lastVersion = data.document.version;
       }
 
-      setMessage({ type: "success", text: `${data.document.type} uploaded successfully (v${data.document.version})` });
-      setSelectedFile(null);
-      setPreview(null);
+      const fileCount = files.length;
+      setMessage({
+        type: "success",
+        text: fileCount > 1
+          ? `${selectedType} uploaded (${fileCount} files — front & back)`
+          : `${selectedType} uploaded successfully`,
+      });
+      setFiles([]);
       setSelectedType("");
-      // Reset file inputs
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      if (cameraInputRef.current) cameraInputRef.current.value = "";
-      // Refresh page data
       router.refresh();
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Upload failed. Please try again." });
@@ -90,17 +108,15 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
     }
   };
 
-  const clearSelection = () => {
-    setSelectedFile(null);
-    setPreview(null);
+  const clearAll = () => {
+    setFiles([]);
     setMessage(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
 
   return (
     <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 space-y-4">
       <h2 className="text-sm font-semibold text-blue-900">Upload Document</h2>
+      <p className="text-xs text-blue-700">Need front and back? Add multiple images before uploading.</p>
 
       {/* Document Type Selector */}
       <div>
@@ -114,70 +130,60 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
         >
           <option value="">Select type...</option>
           {DOC_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
+            <option key={type} value={type}>{type}</option>
           ))}
         </select>
       </div>
 
-      {/* File Preview */}
-      {selectedFile && (
-        <div className="rounded-lg border border-gray-200 bg-white p-3">
-          <div className="flex items-center gap-3">
-            {preview ? (
-              <img
-                src={preview}
-                alt="Preview"
-                className="h-16 w-16 rounded-lg object-cover"
-              />
-            ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-gray-100">
-                <FileText className="h-8 w-8 text-gray-400" />
+      {/* File Previews */}
+      {files.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-gray-700">{files.length} file{files.length > 1 ? "s" : ""} selected</span>
+            <button onClick={clearAll} className="text-xs text-red-600 hover:text-red-800">Clear all</button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {files.map((f, i) => (
+              <div key={i} className="relative rounded-lg border border-gray-200 bg-white p-2">
+                {f.preview ? (
+                  <img src={f.preview} alt={`File ${i + 1}`} className="h-20 w-full rounded object-cover" />
+                ) : (
+                  <div className="flex h-20 w-full items-center justify-center rounded bg-gray-100">
+                    <FileText className="h-8 w-8 text-gray-400" />
+                  </div>
+                )}
+                <p className="mt-1 text-[10px] text-gray-500 truncate">{files.length > 1 ? (i === 0 ? "Front" : i === 1 ? "Back" : `Page ${i+1}`) : f.file.name}</p>
+                <button
+                  onClick={() => removeFile(i)}
+                  className="absolute -top-1 -right-1 rounded-full bg-red-500 p-0.5 text-white hover:bg-red-600"
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {selectedFile.name}
-              </p>
-              <p className="text-xs text-gray-500">
-                {(selectedFile.size / 1024).toFixed(0)} KB — {selectedFile.type || "unknown"}
-              </p>
-            </div>
-            <button
-              onClick={clearSelection}
-              className="text-xs text-red-600 hover:text-red-800"
-            >
-              Remove
-            </button>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Camera + File Upload Buttons */}
-      {!selectedFile && (
-        <div className="grid grid-cols-2 gap-3">
-          {/* Camera button */}
-          <button
-            onClick={() => cameraInputRef.current?.click()}
-            className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-blue-300 bg-white p-4 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors active:scale-95"
-          >
-            <Camera className="h-8 w-8" />
-            <span className="text-xs font-medium">Take Photo</span>
-          </button>
+      {/* Camera + File + Add More Buttons */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => cameraInputRef.current?.click()}
+          className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-blue-300 bg-white p-4 text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors active:scale-95"
+        >
+          <Camera className="h-8 w-8" />
+          <span className="text-xs font-medium">{files.length > 0 ? "Add Photo" : "Take Photo"}</span>
+        </button>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-white p-4 text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors active:scale-95"
+        >
+          {files.length > 0 ? <Plus className="h-8 w-8" /> : <Upload className="h-8 w-8" />}
+          <span className="text-xs font-medium">{files.length > 0 ? "Add File" : "Choose File"}</span>
+        </button>
+      </div>
 
-          {/* File upload button */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-white p-4 text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors active:scale-95"
-          >
-            <Upload className="h-8 w-8" />
-            <span className="text-xs font-medium">Choose File</span>
-          </button>
-        </div>
-      )}
-
-      {/* Hidden file inputs */}
+      {/* Hidden inputs — allow multiple */}
       <input
         ref={cameraInputRef}
         type="file"
@@ -190,12 +196,13 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
         ref={fileInputRef}
         type="file"
         accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.doc,.docx"
+        multiple
         onChange={handleFileSelect}
         className="hidden"
       />
 
       {/* Upload button */}
-      {selectedFile && (
+      {files.length > 0 && (
         <button
           onClick={handleUpload}
           disabled={uploading || !selectedType}
@@ -204,12 +211,12 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
           {uploading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Uploading...
+              Uploading {files.length} file{files.length > 1 ? "s" : ""}...
             </>
           ) : (
             <>
               <Upload className="h-4 w-4" />
-              Upload {selectedType || "Document"}
+              Upload {selectedType || "Document"} ({files.length} file{files.length > 1 ? "s" : ""})
             </>
           )}
         </button>
@@ -217,18 +224,12 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
 
       {/* Status message */}
       {message && (
-        <div
-          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-            message.type === "success"
-              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-              : "bg-red-50 text-red-700 border border-red-200"
-          }`}
-        >
-          {message.type === "success" ? (
-            <Check className="h-4 w-4 shrink-0" />
-          ) : (
-            <AlertCircle className="h-4 w-4 shrink-0" />
-          )}
+        <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+          message.type === "success"
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+            : "bg-red-50 text-red-700 border border-red-200"
+        }`}>
+          {message.type === "success" ? <Check className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
           {message.text}
         </div>
       )}

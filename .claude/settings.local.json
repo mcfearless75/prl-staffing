@@ -79,7 +79,8 @@
       "Bash(node create-privacy-policy.js)",
       "Bash(node create-sales-sheet.js)",
       "Bash(node create-pitch-deck.js)",
-      "Bash(node create-roi-calculator.js)"
+      "Bash(node create-roi-calculator.js)",
+      "Bash(ls -la public/prl_logo.*)"
     ]
   }
 }

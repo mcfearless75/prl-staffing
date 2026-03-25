@@ -117,10 +117,22 @@ export default async function PortalDocumentsPage() {
 
                 <div className="flex items-center gap-2 shrink-0">
                   {doc ? (
-                    <DownloadButton documentId={doc.id} fileName={doc.fileName} />
+                    <>
+                      <a
+                        href={`/api/documents/download?id=${doc.id}&view=true`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                      >
+                        View
+                      </a>
+                      <DownloadButton documentId={doc.id} fileName={doc.fileName} />
+                    </>
                   ) : (
-                    <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-medium text-gray-500">
-                      Missing
+                    <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
+                      docType.required ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-500"
+                    }`}>
+                      {docType.required ? "Required" : "Missing"}
                     </span>
                   )}
                 </div>

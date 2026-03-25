@@ -36,12 +36,16 @@ export async function GET(request: NextRequest) {
     // Fetch from R2
     const buffer = await getFromR2(document.storageKey);
 
-    // Return file with proper headers for download
+    // If view=true, serve inline (for viewing in browser) instead of download
+    const viewMode = searchParams.get("view") === "true";
+    const disposition = viewMode ? "inline" : `attachment; filename="${document.fileName}"`;
+
     return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
         "Content-Type": document.mimeType || "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${document.fileName}"`,
+        "Content-Disposition": disposition,
         "Content-Length": buffer.length.toString(),
+        ...(viewMode ? { "Cache-Control": "private, max-age=300" } : {}),
       },
     });
   } catch (error) {
