@@ -24,11 +24,22 @@ export default async function ComplianceRecordPage({
     notFound();
   }
 
-  // Get existing documents
+  // Get existing documents — include related types (e.g. Passport maps to Right to Work)
+  const relatedTypes: Record<string, string[]> = {
+    "Right to Work": ["Right to Work", "Passport", "Share Code"],
+    "CSCS": ["CSCS"],
+    "CCNSG": ["CCNSG"],
+    "NPORS": ["NPORS"],
+    "DBS": ["DBS"],
+    "Insurance": ["Insurance"],
+    "IR35 Assessment": ["IR35 Assessment"],
+  };
+  const searchTypes = relatedTypes[record.type] || [record.type];
+
   const documents = await prisma.document.findMany({
     where: {
       contractorId: record.contractorId,
-      type: record.type,
+      type: { in: searchTypes },
     },
     orderBy: { version: "desc" },
   });
