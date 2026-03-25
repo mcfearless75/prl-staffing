@@ -31,6 +31,9 @@ export default async function DashboardPage() {
     recentAlerts,
     totalComplianceRecords,
     verifiedComplianceRecords,
+    recentActivity,
+    recentSubmittedTimesheets,
+    recentDocUploads,
   ] = await Promise.all([
     prisma.contractor.count(),
     prisma.assignment.count({ where: { status: "Active" } }),
@@ -54,6 +57,32 @@ export default async function DashboardPage() {
     }),
     prisma.complianceRecord.count(),
     prisma.complianceRecord.count({ where: { status: "Verified" } }),
+    // Recent contractor portal activity (changes to monitor)
+    prisma.activityLog.findMany({
+      where: {
+        OR: [
+          { action: { contains: "UPDATE" } },
+          { action: { contains: "SUBMIT" } },
+          { action: { contains: "UPLOAD" } },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    // Recent submitted timesheets (pending review)
+    prisma.timesheet.findMany({
+      where: { status: "Submitted" },
+      orderBy: { submittedAt: "desc" },
+      take: 5,
+      include: { contractor: true },
+    }),
+    // Recent document uploads
+    prisma.document.findMany({
+      where: { uploadedBy: "contractor" },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { contractor: true },
+    }),
   ]);
 
   const complianceScore =
@@ -210,6 +239,73 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+      {/* Contractor Activity Feed */}
+      {(recentSubmittedTimesheets.length > 0 || recentDocUploads.length > 0 || recentActivity.length > 0) && (
+        <div className="rounded-xl border-2 border-amber-300 bg-amber-50/50">
+          <div className="flex items-center gap-2 border-b border-amber-200 px-6 py-4">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold animate-pulse">!</span>
+            <h2 className="text-lg font-semibold text-amber-900">Contractor Activity</h2>
+            <span className="ml-auto text-xs text-amber-700">Actions requiring your attention</span>
+          </div>
+          <div className="divide-y divide-amber-100">
+            {/* Submitted timesheets needing review */}
+            {recentSubmittedTimesheets.map((ts) => (
+              <Link
+                key={`ts-${ts.id}`}
+                href={`/timesheets/${ts.id}`}
+                className="flex items-center gap-4 px-6 py-3 hover:bg-amber-50 transition-colors"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-700">
+                  {getInitials(ts.contractor.firstName, ts.contractor.lastName)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-gray-900">
+                    <strong>{ts.contractor.firstName} {ts.contractor.lastName}</strong> submitted a timesheet
+                  </p>
+                  <p className="text-xs text-gray-500">{ts.totalHours}h total · {ts.overtimeHours}h OT · Week of {formatDate(ts.weekStarting)}</p>
+                </div>
+                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">Review</span>
+              </Link>
+            ))}
+            {/* Recent document uploads */}
+            {recentDocUploads.map((doc) => (
+              <Link
+                key={`doc-${doc.id}`}
+                href="/compliance"
+                className="flex items-center gap-4 px-6 py-3 hover:bg-amber-50 transition-colors"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-medium text-emerald-700">
+                  {getInitials(doc.contractor.firstName, doc.contractor.lastName)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-gray-900">
+                    <strong>{doc.contractor.firstName} {doc.contractor.lastName}</strong> uploaded {doc.type}
+                  </p>
+                  <p className="text-xs text-gray-500">{doc.fileName} · {formatDate(doc.createdAt)}</p>
+                </div>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">Verify</span>
+              </Link>
+            ))}
+            {/* Profile updates from activity log */}
+            {recentActivity.filter(a => a.action === "UPDATE" && a.entityType === "Contractor").slice(0, 3).map((log) => (
+              <Link
+                key={`log-${log.id}`}
+                href={log.entityId ? `/contractors/${log.entityId}` : "/activity"}
+                className="flex items-center gap-4 px-6 py-3 hover:bg-amber-50 transition-colors"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-medium text-purple-700">
+                  UP
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-gray-900">{log.details || "Profile updated"}</p>
+                  <p className="text-xs text-gray-500">{log.userEmail} · {formatDate(log.createdAt)}</p>
+                </div>
+                <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700">View</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
