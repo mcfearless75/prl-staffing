@@ -42,6 +42,12 @@ export default async function ComplianceRecordPage({
         action={
           <div className="flex items-center gap-3">
             <Link
+              href={`/contractors/${record.contractorId}`}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              ← Back to Profile
+            </Link>
+            <Link
               href={`/compliance/${record.id}/edit`}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
             >
