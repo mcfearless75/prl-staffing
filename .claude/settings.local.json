@@ -83,7 +83,10 @@
       "Bash(ls -la public/prl_logo.*)",
       "Bash(ls \"C:\\\\Users\\\\LAPTOP80\\\\OneDrive - prlsitesolutions.co.uk\\\\Desktop\\\\prl_req\\\\src\\\\app\\\\\\(dashboard\\)\\\\onboarding\")",
       "Bash(mkdir -p prisma/migrations/20260325_add_qms_documents_and_auditor)",
-      "Bash(prisma/migrations/20260325_add_qms_documents_and_auditor/migration.sql:*)"
+      "Bash(prisma/migrations/20260325_add_qms_documents_and_auditor/migration.sql:*)",
+      "Bash(ls -la public/apple-touch-icon.png public/favicon.png public/icons/*.png)",
+      "Bash(cp public/icons/icon-512.png public/icons/icon-512-maskable.png)",
+      "Bash(cp public/icons/apple-touch-icon.png public/apple-touch-icon.png)"
     ]
   }
 }
