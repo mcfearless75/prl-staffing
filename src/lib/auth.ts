@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
@@ -7,6 +8,14 @@ import { authConfig } from "./auth.config";
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   providers: [
+    // Microsoft SSO for @prlsitesolutions.co.uk staff
+    ...(process.env.AZURE_AD_CLIENT_ID ? [
+      MicrosoftEntraID({
+        clientId: process.env.AZURE_AD_CLIENT_ID,
+        clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
+        issuer: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`,
+      }),
+    ] : []),
     Credentials({
       name: "credentials",
       credentials: {

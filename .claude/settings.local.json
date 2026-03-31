@@ -86,7 +86,10 @@
       "Bash(prisma/migrations/20260325_add_qms_documents_and_auditor/migration.sql:*)",
       "Bash(ls -la public/apple-touch-icon.png public/favicon.png public/icons/*.png)",
       "Bash(cp public/icons/icon-512.png public/icons/icon-512-maskable.png)",
-      "Bash(cp public/icons/apple-touch-icon.png public/apple-touch-icon.png)"
+      "Bash(cp public/icons/apple-touch-icon.png public/apple-touch-icon.png)",
+      "Bash(cat \"src/app/\\(dashboard\\)/qms/documents/page.tsx\")",
+      "Bash(cat \"src/app/\\(dashboard\\)/qms/reports/training-matrix/page.tsx\")",
+      "Bash(grep -v \"^//\")"
     ]
   }
 }

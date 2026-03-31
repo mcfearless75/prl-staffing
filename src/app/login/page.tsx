@@ -120,6 +120,27 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {/* Microsoft SSO Divider */}
+          <div className="mt-4 flex items-center gap-3">
+            <div className="flex-1 border-t border-gray-200" />
+            <span className="text-xs text-gray-400">PRL Staff</span>
+            <div className="flex-1 border-t border-gray-200" />
+          </div>
+
+          {/* Microsoft SSO Button */}
+          <button
+            onClick={() => signIn("microsoft-entra-id", { callbackUrl: "/" })}
+            className="mt-3 flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 sm:py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:bg-gray-100 transition-colors"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 21 21" fill="none">
+              <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
+              <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
+              <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
+              <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
+            </svg>
+            Sign in with Microsoft 365
+          </button>
+
           {/* Forgot Password */}
           <div className="mt-4 text-center">
             {!forgotMode ? (
