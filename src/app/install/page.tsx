@@ -108,28 +108,9 @@ export default function InstallPage() {
               </button>
             )}
 
-            {/* APK Download */}
             <div className="rounded-xl bg-white/10 backdrop-blur p-6">
               <h2 className="text-lg font-bold text-white mb-1">
-                Option 1: Download APK
-              </h2>
-              <p className="text-sm text-blue-200 mb-4">
-                Download and install the Android app directly.
-              </p>
-              <a
-                href="https://github.com/mcfearless75/prl-staffing/releases/latest/download/PRISM.apk"
-                className="block w-full rounded-xl bg-[#3DDC84] py-3.5 text-center text-base font-bold text-black shadow-lg hover:bg-[#32c974] transition-all"
-              >
-                ⬇️ Download PRISM.apk
-              </a>
-              <p className="mt-3 text-xs text-blue-300">
-                You may need to allow &quot;Install from unknown sources&quot; in Settings → Security
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-white/10 backdrop-blur p-6">
-              <h2 className="text-lg font-bold text-white mb-1">
-                Option 2: Add to Home Screen
+                Add to Home Screen
               </h2>
               <p className="text-sm text-blue-200 mb-4">
                 No download needed — add straight from Chrome.
