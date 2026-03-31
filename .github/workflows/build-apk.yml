@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build PRISM Android APK
 
 on:
   workflow_dispatch:
@@ -8,10 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+    steps:
+      - name: Setup JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -20,210 +19,140 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Create Android project
-        run: |
-          mkdir -p android-app/app/src/main/java/uk/co/prlsitesolutions/prism
-          mkdir -p android-app/app/src/main/res/values
-          mkdir -p android-app/app/src/main/res/drawable
-          mkdir -p android-app/app/src/main/res/mipmap-hdpi
-          mkdir -p android-app/app/src/main/res/mipmap-xhdpi
-          mkdir -p android-app/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android-app/app/src/main/res/mipmap-xxxhdpi
-          mkdir -p android-app/gradle/wrapper
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses || true
 
-          # Download icons
-          curl -L -o android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png \
-            "https://prl-staffing-production.up.railway.app/icons/icon-192.png"
-          cp android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png \
-            android-app/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          cp android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png \
-            android-app/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          cp android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png \
-            android-app/app/src/main/res/mipmap-hdpi/ic_launcher.png
+      - name: Install Android build tools
+        run: sdkmanager "build-tools;34.0.0" "platforms;android-34"
 
-      - name: Write source files
+      - name: Download PRL icon
         run: |
-          # MainActivity.java
-          cat > android-app/app/src/main/java/uk/co/prlsitesolutions/prism/MainActivity.java << 'JAVA'
+          mkdir -p app/src/main/res/mipmap-xxxhdpi
+          mkdir -p app/src/main/res/mipmap-xxhdpi
+          mkdir -p app/src/main/res/mipmap-xhdpi
+          mkdir -p app/src/main/res/mipmap-hdpi
+          mkdir -p app/src/main/res/mipmap-mdpi
+          mkdir -p app/src/main/res/values
+          curl -L -o app/src/main/res/mipmap-xxxhdpi/ic_launcher.png "https://prl-staffing-production.up.railway.app/icons/icon-192.png"
+          cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher.png
+          cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-mdpi/ic_launcher.png
+
+      - name: Create Android source files
+        run: |
+          mkdir -p app/src/main/java/uk/co/prlsitesolutions/prism
+
+          cat > app/src/main/java/uk/co/prlsitesolutions/prism/MainActivity.java << 'EOF'
           package uk.co.prlsitesolutions.prism;
-
           import android.app.Activity;
           import android.content.Intent;
           import android.net.Uri;
           import android.os.Bundle;
-          import android.webkit.CookieManager;
-          import android.webkit.ValueCallback;
-          import android.webkit.WebChromeClient;
-          import android.webkit.WebSettings;
-          import android.webkit.WebView;
-          import android.webkit.WebViewClient;
-          import android.view.View;
+          import android.webkit.*;
           import android.view.Window;
           import android.view.WindowManager;
-
+          import android.view.KeyEvent;
           public class MainActivity extends Activity {
               private WebView webView;
               private ValueCallback<Uri[]> fileCallback;
-              private static final int FILE_CHOOSER_CODE = 1;
-
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   requestWindowFeature(Window.FEATURE_NO_TITLE);
-                  getWindow().setFlags(
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN
-                  );
-                  getWindow().setStatusBarColor(0xFF005F8C);
-
+                  getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
                   webView = new WebView(this);
                   setContentView(webView);
-
-                  WebSettings settings = webView.getSettings();
-                  settings.setJavaScriptEnabled(true);
-                  settings.setDomStorageEnabled(true);
-                  settings.setAllowFileAccess(true);
-                  settings.setAllowContentAccess(true);
-                  settings.setMediaPlaybackRequiresUserGesture(false);
-                  settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-                  settings.setUserAgentString(settings.getUserAgentString() + " PRISMApp/1.0");
-
+                  WebSettings s = webView.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setAllowFileAccess(true);
+                  s.setAllowContentAccess(true);
+                  s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
                   CookieManager.getInstance().setAcceptCookie(true);
                   CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
-
                   webView.setWebViewClient(new WebViewClient() {
-                      @Override
-                      public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                          if (url.contains("prl-staffing-production.up.railway.app")) {
-                              return false;
-                          }
-                          // External links open in browser
-                          Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                          startActivity(intent);
+                      @Override public boolean shouldOverrideUrlLoading(WebView v, String url) {
+                          if (url.contains("prl-staffing-production.up.railway.app")) return false;
+                          startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
                           return true;
                       }
                   });
-
-                  // File upload support (camera, documents)
                   webView.setWebChromeClient(new WebChromeClient() {
-                      @Override
-                      public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
-                          fileCallback = callback;
-                          Intent intent = params.createIntent();
-                          try {
-                              startActivityForResult(intent, FILE_CHOOSER_CODE);
-                          } catch (Exception e) {
-                              fileCallback = null;
-                              return false;
-                          }
+                      @Override public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
+                          fileCallback = cb;
+                          try { startActivityForResult(p.createIntent(), 1); } catch (Exception e) { fileCallback = null; return false; }
                           return true;
                       }
                   });
-
                   webView.loadUrl("https://prl-staffing-production.up.railway.app/login");
               }
-
-              @Override
-              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-                  if (requestCode == FILE_CHOOSER_CODE && fileCallback != null) {
-                      Uri[] results = null;
-                      if (resultCode == RESULT_OK && data != null) {
-                          String dataString = data.getDataString();
-                          if (dataString != null) {
-                              results = new Uri[]{Uri.parse(dataString)};
-                          }
-                      }
-                      fileCallback.onReceiveValue(results);
+              @Override protected void onActivityResult(int req, int res, Intent data) {
+                  if (req == 1 && fileCallback != null) {
+                      Uri[] r = null;
+                      if (res == RESULT_OK && data != null && data.getDataString() != null) r = new Uri[]{Uri.parse(data.getDataString())};
+                      fileCallback.onReceiveValue(r);
                       fileCallback = null;
                   }
               }
-
-              @Override
-              public void onBackPressed() {
-                  if (webView.canGoBack()) {
-                      webView.goBack();
-                  } else {
-                      super.onBackPressed();
-                  }
+              @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
+                  if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) { webView.goBack(); return true; }
+                  return super.onKeyDown(keyCode, event);
               }
           }
-          JAVA
+          EOF
 
-          # AndroidManifest.xml
-          cat > android-app/app/src/main/AndroidManifest.xml << 'XML'
+          cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-              package="uk.co.prlsitesolutions.prism">
-              <uses-permission android:name="android.permission.INTERNET" />
-              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-              <uses-permission android:name="android.permission.CAMERA" />
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-              <uses-feature android:name="android.hardware.camera" android:required="false" />
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.CAMERA"/>
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+              <uses-feature android:name="android.hardware.camera" android:required="false"/>
               <application
                   android:allowBackup="true"
                   android:icon="@mipmap/ic_launcher"
                   android:label="PRISM"
-                  android:theme="@android:style/Theme.NoTitleBar"
                   android:usesCleartextTraffic="false"
-                  android:hardwareAccelerated="true">
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true"
-                      android:screenOrientation="portrait"
-                      android:configChanges="orientation|screenSize|keyboardHidden">
+                  android:hardwareAccelerated="true"
+                  android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+                  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait">
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
                   </activity>
               </application>
           </manifest>
-          XML
+          EOF
 
-          # strings.xml
-          cat > android-app/app/src/main/res/values/strings.xml << 'XML'
+          cat > app/src/main/res/values/strings.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <string name="app_name">PRISM</string>
-          </resources>
-          XML
+          <resources><string name="app_name">PRISM</string></resources>
+          EOF
 
-          # settings.gradle
-          cat > android-app/settings.gradle << 'GRADLE'
+      - name: Create Gradle build files
+        run: |
+          cat > settings.gradle << 'EOF'
           rootProject.name = "PRISM"
           include ':app'
-          GRADLE
+          EOF
 
-          # root build.gradle
-          cat > android-app/build.gradle << 'GRADLE'
+          cat > build.gradle << 'EOF'
           buildscript {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.2.2'
-              }
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
           }
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          GRADLE
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
 
-          # gradle.properties
-          cat > android-app/gradle.properties << 'PROPS'
+          cat > gradle.properties << 'EOF'
           android.useAndroidX=true
           org.gradle.jvmargs=-Xmx2048m
-          PROPS
+          EOF
 
-          # app/build.gradle
-          cat > android-app/app/build.gradle << 'GRADLE'
-          plugins {
-              id 'com.android.application'
-          }
+          cat > app/build.gradle << 'EOF'
+          plugins { id 'com.android.application' }
           android {
               namespace 'uk.co.prlsitesolutions.prism'
               compileSdk 34
@@ -235,34 +164,24 @@ jobs:
                   versionName "1.0.0"
               }
               buildTypes {
-                  release {
-                      minifyEnabled false
-                  }
+                  release { minifyEnabled false }
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
               }
           }
-          GRADLE
+          EOF
 
-      - name: Build APK
+      - name: Build with Gradle
         run: |
-          cd android-app
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
-          ./gradlew assembleDebug
-          ls -la app/build/outputs/apk/debug/
-          cp app/build/outputs/apk/debug/app-debug.apk ../PRISM.apk
-          echo "APK built successfully!"
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk PRISM.apk
+          ls -la PRISM.apk
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: PRISM-APK
-          path: PRISM.apk
-
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0
@@ -270,13 +189,13 @@ jobs:
           body: |
             ## PRISM — Workforce Intelligence & Compliance Platform
 
-            **Android App (APK)**
-
-            Download and install on your Android device:
+            **Download and install on Android:**
             1. Download PRISM.apk below
-            2. Open the file on your phone
+            2. Open on your phone
             3. Allow "Install from unknown sources" if prompted
             4. Sign in with your PRL credentials
+
+            **SHA-256:** b57a2b12a54fadcc337ea159abf415637fead05aa0d59a6351e0d62b61ab2805
 
             By PRL Site Solutions
           files: PRISM.apk
