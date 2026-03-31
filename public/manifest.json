@@ -1,12 +1,14 @@
 {
   "name": "PRISM — PRL Site Solutions",
   "short_name": "PRISM",
-  "description": "Workforce Intelligence & Compliance Platform by PRL Site Solutions",
+  "description": "Workforce Intelligence and Compliance Platform by PRL Site Solutions",
   "start_url": "/login",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#005f8c",
   "orientation": "portrait-primary",
+  "dir": "ltr",
   "lang": "en-GB",
   "categories": ["business", "productivity"],
   "icons": [
