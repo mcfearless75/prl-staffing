@@ -115,9 +115,15 @@ export default function InstallPage() {
             >
               ⬇️ Download PRISM App
             </a>
-            <p className="text-center text-xs text-blue-300 -mt-2 mb-2">
+            <p className="text-center text-xs text-blue-300 -mt-2 mb-1">
               Allow &quot;Install from unknown sources&quot; if prompted
             </p>
+            <details className="text-center mb-2">
+              <summary className="text-[10px] text-blue-400/60 cursor-pointer hover:text-blue-300">Verify APK signature</summary>
+              <p className="mt-1 text-[9px] text-blue-400/40 font-mono break-all px-4">
+                SHA-256: b57a2b12a54fadcc337ea159abf415637fead05aa0d59a6351e0d62b61ab2805
+              </p>
+            </details>
 
             <div className="flex items-center gap-3 my-2">
               <div className="flex-1 border-t border-white/20" />
