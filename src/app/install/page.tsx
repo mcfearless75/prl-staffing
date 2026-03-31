@@ -108,6 +108,23 @@ export default function InstallPage() {
               </button>
             )}
 
+            {/* APK Download */}
+            <a
+              href="https://github.com/mcfearless75/prl-staffing/releases/latest/download/PRISM.apk"
+              className="block w-full rounded-xl bg-[#3DDC84] py-4 text-center text-base font-bold text-black shadow-lg hover:bg-[#32c974] transition-all active:scale-[0.98]"
+            >
+              ⬇️ Download PRISM App
+            </a>
+            <p className="text-center text-xs text-blue-300 -mt-2 mb-2">
+              Allow &quot;Install from unknown sources&quot; if prompted
+            </p>
+
+            <div className="flex items-center gap-3 my-2">
+              <div className="flex-1 border-t border-white/20" />
+              <span className="text-xs text-white/40">or</span>
+              <div className="flex-1 border-t border-white/20" />
+            </div>
+
             <div className="rounded-xl bg-white/10 backdrop-blur p-6">
               <h2 className="text-lg font-bold text-white mb-1">
                 Add to Home Screen
