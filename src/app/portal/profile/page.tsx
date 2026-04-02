@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { formatDate } from "@/lib/utils";
+import { formatDate, maskNI, maskUTR } from "@/lib/utils";
 import { Shield, Calendar, Building2, Briefcase } from "lucide-react";
 import { ProfileForm } from "./profile-form";
 
@@ -82,7 +82,7 @@ export default async function PortalProfilePage() {
               <Building2 className="h-4 w-4 text-gray-400" />
               <div>
                 <p className="text-[10px] text-gray-500">UTR Number</p>
-                <p className="text-sm text-gray-900">{contractor.utrNumber}</p>
+                <p className="text-sm text-gray-900 font-mono">{maskUTR(contractor.utrNumber)}</p>
               </div>
             </div>
           )}

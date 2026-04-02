@@ -1,9 +1,20 @@
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    // Rate limit: 10 attempts per 15 minutes per IP
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const { allowed, retryAfterMs } = checkRateLimit(`reset-pw:${ip}`, 10, 15 * 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later.", retryAfterMs },
+        { status: 429 }
+      );
+    }
+
     const { token, password } = await request.json();
 
     if (!token || !password) {

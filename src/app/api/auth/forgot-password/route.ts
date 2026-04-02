@@ -2,9 +2,20 @@ import { prisma } from "@/lib/db";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    // Rate limit: 5 attempts per 15 minutes per IP
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const { allowed, retryAfterMs } = checkRateLimit(`forgot-pw:${ip}`, 5, 15 * 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later.", retryAfterMs },
+        { status: 429 }
+      );
+    }
+
     const { email } = await request.json();
 
     if (!email) {

@@ -5,6 +5,30 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Mask sensitive data - shows only last N characters
+ * "AB123456C" → "•••••••6C"
+ */
+export function maskSensitive(value: string | null | undefined, showLast: number = 2): string {
+  if (!value) return "-";
+  if (value.length <= showLast) return "•".repeat(value.length);
+  return "•".repeat(value.length - showLast) + value.slice(-showLast);
+}
+
+/**
+ * Mask NI number - "AB123456C" → "••••••56C"
+ */
+export function maskNI(value: string | null | undefined): string {
+  return maskSensitive(value, 3);
+}
+
+/**
+ * Mask UTR number - "1234567890" → "•••••••890"
+ */
+export function maskUTR(value: string | null | undefined): string {
+  return maskSensitive(value, 3);
+}
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",

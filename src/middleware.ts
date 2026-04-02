@@ -16,6 +16,8 @@ export default auth((req) => {
   if (req.nextUrl.pathname.startsWith("/onboarding")) return;
   if (req.nextUrl.pathname.startsWith("/survey")) return;
   if (req.nextUrl.pathname.startsWith("/supplier-questionnaire")) return;
+  if (req.nextUrl.pathname === "/privacy") return;
+  if (req.nextUrl.pathname === "/install") return;
   const userType = (req.auth?.user as { userType?: string })?.userType;
 
   if (isLoginPage) {

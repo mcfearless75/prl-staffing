@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
-import { formatDate } from "@/lib/utils";
+import { formatDate, maskNI, maskUTR } from "@/lib/utils";
 import { Badge } from "@/components/badge";
 import Link from "next/link";
 import { approveAndCreateContractor, updateSubmissionStatus, sendAppInvite } from "../actions";
@@ -178,8 +178,8 @@ export default async function SubmissionDetailPage({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div><p className="text-xs text-gray-500 uppercase">Name</p><p className="mt-1 text-sm font-medium">{submission.firstName} {submission.lastName}</p></div>
             <div><p className="text-xs text-gray-500 uppercase">Date of Birth</p><p className="mt-1 text-sm font-medium">{submission.dateOfBirth ? formatDate(submission.dateOfBirth) : "—"}</p></div>
-            <div><p className="text-xs text-gray-500 uppercase">NI Number</p><p className="mt-1 text-sm font-medium">{submission.niNumber || "—"}</p></div>
-            <div><p className="text-xs text-gray-500 uppercase">UTR Number</p><p className="mt-1 text-sm font-medium">{submission.utrNumber || "—"}</p></div>
+            <div><p className="text-xs text-gray-500 uppercase">NI Number</p><p className="mt-1 text-sm font-medium font-mono">{maskNI(submission.niNumber)}</p></div>
+            <div><p className="text-xs text-gray-500 uppercase">UTR Number</p><p className="mt-1 text-sm font-medium font-mono">{maskUTR(submission.utrNumber)}</p></div>
             <div><p className="text-xs text-gray-500 uppercase">Address</p><p className="mt-1 text-sm font-medium">{submission.address || "—"}</p></div>
             <div><p className="text-xs text-gray-500 uppercase">Postcode</p><p className="mt-1 text-sm font-medium">{submission.postcode || "—"}</p></div>
           </div>

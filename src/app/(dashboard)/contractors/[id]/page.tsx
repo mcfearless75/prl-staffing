@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { deleteContractor } from "../actions";
+import { maskNI, maskUTR } from "@/lib/utils";
 
 export default async function ContractorDetailPage({
   params,
@@ -121,14 +122,14 @@ export default async function ContractorDetailPage({
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">NI Number</p>
-            <p className="text-sm text-gray-900">
-              {contractor.niNumber || "-"}
+            <p className="text-sm text-gray-900 font-mono">
+              {maskNI(contractor.niNumber)}
             </p>
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">UTR Number</p>
-            <p className="text-sm text-gray-900">
-              {contractor.utrNumber || "-"}
+            <p className="text-sm text-gray-900 font-mono">
+              {maskUTR(contractor.utrNumber)}
             </p>
           </div>
           <div>
@@ -221,7 +222,18 @@ export default async function ContractorDetailPage({
           </div>
           <div className="md:col-span-2">
             <p className="text-sm font-medium text-gray-500">Medical Notes</p>
-            <p className="text-sm text-gray-900">{contractor.medicalNotes || "-"}</p>
+            {contractor.medicalNotes ? (
+              <details className="mt-1">
+                <summary className="text-xs text-red-600 cursor-pointer hover:text-red-800 font-medium">
+                  🔒 Confidential — click to reveal (Article 9 special category data)
+                </summary>
+                <p className="mt-2 text-sm text-gray-900 rounded-lg bg-red-50 border border-red-200 p-3">
+                  {contractor.medicalNotes}
+                </p>
+              </details>
+            ) : (
+              <p className="text-sm text-gray-900">-</p>
+            )}
           </div>
         </div>
       </div>
