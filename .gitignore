@@ -46,3 +46,14 @@ next-env.d.ts
 prisma/dev.db
 prisma/dev.db-journal
 dev.db
+
+# Generator scripts (one-time use, regenerate with Claude)
+create-*.js
+generate-*.js
+
+# Data files
+contractor-data.json
+*.db
+
+# Claude local settings
+.claude/settings.local.json
