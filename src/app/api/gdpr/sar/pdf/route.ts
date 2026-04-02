@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(Buffer.from(pdfBytes), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="SAR-${contractorName}-${dateStr}.pdf"`,
