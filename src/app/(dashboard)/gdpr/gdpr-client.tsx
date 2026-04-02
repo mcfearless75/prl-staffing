@@ -43,30 +43,35 @@ export function GdprClientPage({
   const [erasureRequests, setErasureRequests] = useState(initialRequests);
   const [executingId, setExecutingId] = useState<string | null>(null);
 
-  async function handleSarExport() {
+  async function downloadFile(url: string) {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "Failed to generate export");
+      return;
+    }
+    const disposition = res.headers.get("Content-Disposition");
+    const filenameMatch = disposition?.match(/filename="(.+)"/);
+    const filename = filenameMatch?.[1] || "export";
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  }
+
+  async function handleSarExport(format: "json" | "pdf" = "json") {
     if (!sarContractorId) return;
     setSarLoading(true);
     try {
-      const res = await fetch(`/api/gdpr/sar?contractorId=${sarContractorId}`);
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.error || "Failed to generate SAR export");
-        return;
-      }
-
-      const disposition = res.headers.get("Content-Disposition");
-      const filenameMatch = disposition?.match(/filename="(.+)"/);
-      const filename = filenameMatch?.[1] || "sar-export.json";
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const url = format === "pdf"
+        ? `/api/gdpr/sar/pdf?contractorId=${sarContractorId}`
+        : `/api/gdpr/sar?contractorId=${sarContractorId}`;
+      await downloadFile(url);
     } catch {
       alert("Failed to generate SAR export");
     } finally {
@@ -182,11 +187,18 @@ export function GdprClientPage({
             ))}
           </select>
           <button
-            onClick={handleSarExport}
+            onClick={() => handleSarExport("pdf")}
             disabled={!sarContractorId || sarLoading}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
-            {sarLoading ? "Generating..." : "Generate SAR Export"}
+            {sarLoading ? "Generating..." : "Download PDF"}
+          </button>
+          <button
+            onClick={() => handleSarExport("json")}
+            disabled={!sarContractorId || sarLoading}
+            className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            JSON
           </button>
         </div>
       </div>
