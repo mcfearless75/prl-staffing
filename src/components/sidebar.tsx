@@ -22,6 +22,7 @@ import {
   Activity,
   Shield,
   UserPlus,
+  Lock,
 } from "lucide-react";
 
 const navigation = [
@@ -37,6 +38,7 @@ const navigation = [
   { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
   { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
   { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
+  { name: "GDPR", href: "/gdpr", icon: Lock, badgeKey: null },
   { name: "QMS", href: "/qms", icon: Shield, badgeKey: null },
 ];
 

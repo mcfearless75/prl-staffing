@@ -60,6 +60,20 @@ export async function GET(request: Request) {
             passwordHash,
           },
         });
+
+        // GDPR: Record consent for portal registration
+        await prisma.consentRecord.create({
+          data: {
+            contractorId: c.id,
+            email: c.email,
+            consentType: "portal_registration",
+            consentGiven: true,
+            consentText:
+              "Portal account created for contractor self-service access. Data processed as described in the Privacy Policy.",
+            givenAt: new Date(),
+          },
+        });
+
         created++;
 
         // Send welcome email with password setup link

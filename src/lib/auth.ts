@@ -34,8 +34,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
 
         if (user) {
+          // Check if account is locked
+          if (user.lockedUntil && user.lockedUntil > new Date()) {
+            return null;
+          }
+
           const isValid = await bcrypt.compare(password, user.passwordHash);
-          if (!isValid) return null;
+          if (!isValid) {
+            const newFailedAttempts = user.failedAttempts + 1;
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                failedAttempts: newFailedAttempts,
+                ...(newFailedAttempts >= 5
+                  ? { lockedUntil: new Date(Date.now() + 30 * 60 * 1000) }
+                  : {}),
+              },
+            });
+            return null;
+          }
+
+          // Successful login — reset lockout fields
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { failedAttempts: 0, lockedUntil: null },
+          });
 
           return {
             id: user.id,
@@ -43,12 +66,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             name: user.name,
             role: user.role,
             userType: "staff",
+            tokenVersion: user.tokenVersion,
           } as {
             id: string;
             email: string;
             name: string;
             role: string;
             userType: string;
+            tokenVersion: number;
           };
         }
 
@@ -59,13 +84,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
 
         if (contractorLogin) {
-          const isValid = await bcrypt.compare(password, contractorLogin.passwordHash);
-          if (!isValid) return null;
+          // Check if account is locked
+          if (contractorLogin.lockedUntil && contractorLogin.lockedUntil > new Date()) {
+            return null;
+          }
 
-          // Update last login
+          const isValid = await bcrypt.compare(password, contractorLogin.passwordHash);
+          if (!isValid) {
+            const newFailedAttempts = contractorLogin.failedAttempts + 1;
+            await prisma.contractorLogin.update({
+              where: { id: contractorLogin.id },
+              data: {
+                failedAttempts: newFailedAttempts,
+                ...(newFailedAttempts >= 5
+                  ? { lockedUntil: new Date(Date.now() + 30 * 60 * 1000) }
+                  : {}),
+              },
+            });
+            return null;
+          }
+
+          // Successful login — reset lockout fields and update last login
           await prisma.contractorLogin.update({
             where: { id: contractorLogin.id },
-            data: { lastLoginAt: new Date() },
+            data: {
+              failedAttempts: 0,
+              lockedUntil: null,
+              lastLoginAt: new Date(),
+            },
           });
 
           return {
@@ -75,6 +121,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             role: "contractor",
             userType: "contractor",
             contractorId: contractorLogin.contractorId,
+            tokenVersion: contractorLogin.tokenVersion,
           } as {
             id: string;
             email: string;
@@ -82,6 +129,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             role: string;
             userType: string;
             contractorId: string;
+            tokenVersion: number;
           };
         }
 

@@ -52,7 +52,12 @@ export async function POST(request: Request) {
     if (contractorLogin) {
       await prisma.contractorLogin.update({
         where: { id: contractorLogin.id },
-        data: { passwordHash },
+        data: {
+          passwordHash,
+          tokenVersion: { increment: 1 },
+          failedAttempts: 0,
+          lockedUntil: null,
+        },
       });
     } else {
       const user = await prisma.user.findUnique({
@@ -61,7 +66,12 @@ export async function POST(request: Request) {
       if (user) {
         await prisma.user.update({
           where: { id: user.id },
-          data: { passwordHash },
+          data: {
+            passwordHash,
+            tokenVersion: { increment: 1 },
+            failedAttempts: 0,
+            lockedUntil: null,
+          },
         });
       } else {
         return NextResponse.json({ error: "Account not found" }, { status: 400 });

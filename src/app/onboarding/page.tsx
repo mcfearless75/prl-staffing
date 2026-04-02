@@ -44,6 +44,7 @@ export default function OnboardingPage() {
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRelation, setEmergencyRelation] = useState("");
+  const [consentGiven, setConsentGiven] = useState(false);
 
   function updateRate(idx: number, field: string, value: string) {
     const updated = [...rates];
@@ -363,9 +364,20 @@ export default function OnboardingPage() {
             </div>
 
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-xs text-amber-800">
-                By submitting this form, you confirm the details are accurate and agree to PRL Site Solutions&apos; Terms of Business.
-              </p>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={consentGiven}
+                  onChange={(e) => setConsentGiven(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-xs text-amber-800">
+                  I consent to PRL Site Solutions processing my data as described in the{" "}
+                  <a href="/privacy" className="underline text-blue-700 hover:text-blue-900" target="_blank" rel="noopener noreferrer">
+                    Privacy Policy
+                  </a>. I confirm the information provided is accurate.
+                </span>
+              </label>
             </div>
 
             <div className="flex gap-3">
@@ -375,7 +387,7 @@ export default function OnboardingPage() {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={submitting || !companyName || !contactName || !contactEmail}
+                disabled={submitting || !companyName || !contactName || !contactEmail || !consentGiven}
                 className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
               >
                 {submitting ? "Submitting..." : "Submit Agreement ✓"}

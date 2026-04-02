@@ -9,13 +9,16 @@ datasource db {
 
 // ─── Users (internal staff) ───
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  passwordHash String
-  role         String   @default("admin") // admin, manager, viewer
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String
+  passwordHash    String
+  role            String   @default("admin") // admin, manager, viewer
+  failedAttempts  Int      @default(0)
+  lockedUntil     DateTime?
+  tokenVersion    Int      @default(0) // increment to invalidate all sessions
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 // ─── Client Companies ───
@@ -279,14 +282,48 @@ model ActivityLog {
 
 // ─── Contractor Login (self-service portal) ───
 model ContractorLogin {
-  id           String     @id @default(cuid())
-  contractorId String     @unique
-  contractor   Contractor @relation(fields: [contractorId], references: [id])
-  email        String     @unique
+  id              String     @id @default(cuid())
+  contractorId    String     @unique
+  contractor      Contractor @relation(fields: [contractorId], references: [id])
+  email           String     @unique
+  failedAttempts  Int        @default(0)
+  lockedUntil     DateTime?
+  tokenVersion    Int        @default(0)
   passwordHash String
   lastLoginAt  DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+}
+
+// ─── GDPR Consent Tracking ───
+model ConsentRecord {
+  id            String   @id @default(cuid())
+  contractorId  String?
+  email         String
+  consentType   String   // "onboarding", "portal_registration", "data_processing", "marketing"
+  consentGiven  Boolean  @default(true)
+  ipAddress     String?
+  userAgent     String?
+  consentText   String?  // what they agreed to
+  givenAt       DateTime @default(now())
+  withdrawnAt   DateTime?
+
+  @@index([contractorId])
+  @@index([email])
+}
+
+// ─── GDPR Erasure Requests ───
+model ErasureRequest {
+  id            String   @id @default(cuid())
+  contractorId  String?
+  email         String
+  requestedBy   String   // contractor email or staff email
+  reason        String?
+  status        String   @default("Pending") // Pending, Approved, Completed, Rejected
+  processedBy   String?
+  processedAt   DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
 }
 
 // ─── Password Reset Tokens ───

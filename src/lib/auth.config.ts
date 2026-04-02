@@ -34,6 +34,7 @@ export const authConfig = {
         token.role = (user as { role?: string }).role || token.role || "viewer";
         token.userType = (user as { userType?: string }).userType || token.userType || "staff";
         token.contractorId = (user as { contractorId?: string }).contractorId;
+        token.tokenVersion = (user as { tokenVersion?: number }).tokenVersion ?? 0;
       }
       return token;
     },
@@ -44,11 +45,13 @@ export const authConfig = {
           role?: string;
           userType?: string;
           contractorId?: string;
+          tokenVersion?: number;
         };
         u.id = token.id as string;
         u.role = token.role as string;
         u.userType = token.userType as string;
         u.contractorId = token.contractorId as string | undefined;
+        u.tokenVersion = token.tokenVersion as number;
       }
       return session;
     },

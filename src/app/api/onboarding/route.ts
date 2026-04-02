@@ -60,6 +60,26 @@ export async function POST(request: Request) {
       },
     });
 
+    // GDPR: Record consent
+    const ipAddress =
+      request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
+    const userAgent = request.headers.get("user-agent") || "unknown";
+
+    await prisma.consentRecord.create({
+      data: {
+        email: contactEmail,
+        consentType: "onboarding",
+        consentGiven: true,
+        ipAddress,
+        userAgent,
+        consentText:
+          "I confirm the information provided is accurate and consent to PRL Site Solutions processing my data as described in the Privacy Policy.",
+        givenAt: new Date(),
+      },
+    });
+
     // Send branded HTML email to Adella & Helen
     const apiKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
