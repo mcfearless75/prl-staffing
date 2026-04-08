@@ -22,6 +22,15 @@ const DOC_TYPES = [
   { type: "Qualification", label: "Qualification / Cert", icon: "🎓", required: false },
   { type: "Right to Work", label: "Right to Work", icon: "✅", required: false },
   { type: "IR35 Assessment", label: "IR35 Assessment", icon: "📝", required: false },
+  { type: "Driving Licence", label: "Driving Licence", icon: "🚗", required: false },
+  { type: "First Aid", label: "First Aid Certificate", icon: "🏥", required: false },
+  { type: "IPAF", label: "IPAF (Powered Access)", icon: "🏗️", required: false },
+  { type: "PASMA", label: "PASMA (Scaffolding)", icon: "🪜", required: false },
+  { type: "Asbestos Awareness", label: "Asbestos Awareness", icon: "⚠️", required: false },
+  { type: "Manual Handling", label: "Manual Handling", icon: "📦", required: false },
+  { type: "Fire Safety", label: "Fire Safety", icon: "🔥", required: false },
+  { type: "Working at Height", label: "Working at Height", icon: "🧗", required: false },
+  { type: "Confined Spaces", label: "Confined Spaces", icon: "🚧", required: false },
   { type: "Other", label: "Other", icon: "📎", required: false },
 ];
 

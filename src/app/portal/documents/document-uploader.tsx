@@ -10,6 +10,7 @@ const DOC_TYPES = [
   "CCNSG",
   "NPORS",
   "Passport",
+  "Driving Licence",
   "Share Code",
   "DBS",
   "P45",
@@ -18,17 +19,30 @@ const DOC_TYPES = [
   "Qualification",
   "Right to Work",
   "IR35 Assessment",
+  "First Aid",
+  "IPAF",
+  "PASMA",
+  "Asbestos Awareness",
+  "Manual Handling",
+  "Fire Safety",
+  "Working at Height",
+  "Confined Spaces",
   "Other",
 ];
 
+const REQUIRES_DESCRIPTION = ["Qualification", "First Aid", "Other"];
+
 export function DocumentUploader({ contractorId }: { contractorId: string }) {
   const [selectedType, setSelectedType] = useState("");
+  const [customDescription, setCustomDescription] = useState("");
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [files, setFiles] = useState<{ file: File; preview: string | null }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  const needsDescription = REQUIRES_DESCRIPTION.includes(selectedType);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files || []);
@@ -64,6 +78,10 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
       setMessage({ type: "error", text: "Please select a document type and at least one file." });
       return;
     }
+    if (needsDescription && !customDescription.trim()) {
+      setMessage({ type: "error", text: "Please enter a description for this document." });
+      return;
+    }
 
     setUploading(true);
     setMessage(null);
@@ -77,8 +95,11 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
         formData.append("file", files[i].file);
         formData.append("type", selectedType);
         formData.append("contractorId", contractorId);
-        if (files.length > 1) {
-          formData.append("notes", i === 0 ? "Front" : i === 1 ? "Back" : `Page ${i + 1}`);
+        const pageNote = files.length > 1 ? (i === 0 ? "Front" : i === 1 ? "Back" : `Page ${i + 1}`) : "";
+        const descNote = customDescription.trim() ? customDescription.trim() : "";
+        const combinedNotes = [descNote, pageNote].filter(Boolean).join(" — ");
+        if (combinedNotes) {
+          formData.append("notes", combinedNotes);
         }
 
         const res = await fetch("/api/documents", {
@@ -100,6 +121,7 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
       });
       setFiles([]);
       setSelectedType("");
+      setCustomDescription("");
       router.refresh();
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Upload failed. Please try again." });
@@ -134,6 +156,31 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
           ))}
         </select>
       </div>
+
+      {/* Description field for bespoke certs */}
+      {needsDescription && (
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1.5">
+            {selectedType === "Other" ? "Document Description *" : "Certificate / Qualification Name *"}
+          </label>
+          <input
+            type="text"
+            value={customDescription}
+            onChange={(e) => setCustomDescription(e.target.value)}
+            placeholder={
+              selectedType === "Other"
+                ? "e.g. Site Induction Certificate, Lifting Operations..."
+                : selectedType === "First Aid"
+                ? "e.g. Emergency First Aid at Work (3 day)"
+                : "e.g. NVQ Level 3 Electrical Installation"
+            }
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          />
+          <p className="mt-1 text-[10px] text-gray-400">
+            Describe the certification so PRL staff can identify it
+          </p>
+        </div>
+      )}
 
       {/* File Previews */}
       {files.length > 0 && (
