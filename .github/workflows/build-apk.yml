@@ -33,7 +33,7 @@ jobs:
           mkdir -p app/src/main/res/mipmap-hdpi
           mkdir -p app/src/main/res/mipmap-mdpi
           mkdir -p app/src/main/res/values
-          curl -L -o app/src/main/res/mipmap-xxxhdpi/ic_launcher.png "https://prl-staffing-production.up.railway.app/icons/icon-192.png"
+          curl -L -o app/src/main/res/mipmap-xxxhdpi/ic_launcher.png "https://www.prismworkforce.online/icons/icon-192.png"
           cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xhdpi/ic_launcher.png
           cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher.png
@@ -73,7 +73,7 @@ jobs:
                   CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
                   webView.setWebViewClient(new WebViewClient() {
                       @Override public boolean shouldOverrideUrlLoading(WebView v, String url) {
-                          if (url.contains("prl-staffing-production.up.railway.app")) return false;
+                          if (url.contains("www.prismworkforce.online")) return false;
                           startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
                           return true;
                       }
@@ -85,7 +85,7 @@ jobs:
                           return true;
                       }
                   });
-                  webView.loadUrl("https://prl-staffing-production.up.railway.app/login");
+                  webView.loadUrl("https://www.prismworkforce.online/login");
               }
               @Override protected void onActivityResult(int req, int res, Intent data) {
                   if (req == 1 && fileCallback != null) {
