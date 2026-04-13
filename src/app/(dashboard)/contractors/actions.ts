@@ -94,6 +94,23 @@ export async function updateContractor(id: string, formData: FormData) {
 
 export async function deleteContractor(id: string) {
   try {
+    // Delete related records first (foreign key constraints)
+    await prisma.timesheetEntry.deleteMany({
+      where: { timesheet: { contractorId: id } },
+    });
+    await prisma.timesheetAuditLog.deleteMany({
+      where: { timesheet: { contractorId: id } },
+    });
+    await prisma.timesheetApproval.deleteMany({
+      where: { timesheet: { contractorId: id } },
+    });
+    await prisma.timesheet.deleteMany({ where: { contractorId: id } });
+    await prisma.complianceRecord.deleteMany({ where: { contractorId: id } });
+    await prisma.document.deleteMany({ where: { contractorId: id } });
+    await prisma.invoiceLine.deleteMany({ where: { contractorId: id } });
+    await prisma.assignment.deleteMany({ where: { contractorId: id } });
+    await prisma.contractorLogin.deleteMany({ where: { contractorId: id } });
+
     await prisma.contractor.delete({
       where: { id },
     });
