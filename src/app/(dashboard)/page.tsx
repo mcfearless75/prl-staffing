@@ -106,7 +106,7 @@ export default async function DashboardPage() {
       />
 
       {/* KPI Cards - all clickable */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Contractors"
           value={totalContractors}
@@ -142,6 +142,18 @@ export default async function DashboardPage() {
           value={activeSuppliers}
           icon={ShieldCheck}
           href="/suppliers"
+        />
+        <StatCard
+          title="New Applicants"
+          value={pendingApplicants}
+          icon={UserCheck}
+          href="/applicants"
+        />
+        <StatCard
+          title="Pay Queries"
+          value={openPaymentQueries}
+          icon={MessageSquare}
+          href="/payment-queries"
         />
       </div>
 
