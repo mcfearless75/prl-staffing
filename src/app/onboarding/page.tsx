@@ -399,7 +399,7 @@ export default function OnboardingPage() {
         {/* Footer */}
         <div className="mt-8 text-center text-xs text-gray-400 pb-8">
           <p>PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk</p>
-          <p className="mt-1">18 Beryl Rd, Birkenhead, Prenton CH43 9RT | Company Reg: 14358717</p>
+          <p className="mt-1">259 Wallasey Village, Wallasey, Wirral, Merseyside CH45 3LR | Company Reg: 14358717</p>
         </div>
       </div>
     </div>

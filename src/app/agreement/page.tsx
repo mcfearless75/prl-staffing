@@ -140,7 +140,7 @@ export default function AgreementPage() {
             <div className="mb-4 rounded-lg bg-gray-50 border border-gray-200 p-4">
               <p className="text-xs text-gray-700">
                 (1) PRL Site Solutions, incorporated and registered in England and Wales with Company number
-                14358717. Who&apos;s Registered office address is at: 15 Beryl Road, Prenton - Wirral. CH43 9RS
+                14358717. Who&apos;s Registered office address is at: 259 Wallasey Village, Wallasey, Wirral, Merseyside CH45 3LR
                 (Employment Business); and
               </p>
             </div>

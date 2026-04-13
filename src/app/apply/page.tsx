@@ -501,57 +501,7 @@ export default function ApplyPage() {
           </div>
         </div>
 
-        {/* ===================== SECTION 2: Bank Details ===================== */}
-        <div className={sectionCls}>
-          <h2 className={headingCls}>Section 2: Bank Details</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelCls}>Bank Name</label>
-              <input
-                type="text"
-                value={form.bankName}
-                onChange={(e) => set("bankName", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Name on Account</label>
-              <input
-                type="text"
-                value={form.nameOnAccount}
-                onChange={(e) => set("nameOnAccount", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <YesNo
-              label="Is the Account in Your Name?"
-              value={form.accountInYourName}
-              onChange={(v) => set("accountInYourName", v)}
-              required
-            />
-            <div>
-              <label className={labelCls}>Account Number</label>
-              <input
-                type="text"
-                value={form.accountNumber}
-                onChange={(e) => set("accountNumber", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Sort Code</label>
-              <input
-                type="text"
-                value={form.sortCode}
-                onChange={(e) => set("sortCode", e.target.value)}
-                placeholder="00-00-00"
-                className={inputCls}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ===================== SECTION 3: Work Requirements ===================== */}
+        {/* ===================== SECTION 2: Work Requirements ===================== */}
         <div className={sectionCls}>
           <h2 className={headingCls}>Section 3: Work Requirements</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -931,7 +881,7 @@ export default function ApplyPage() {
         {/* Footer */}
         <div className="text-center text-xs text-gray-400 pb-8">
           <p>PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk</p>
-          <p className="mt-1">18 Beryl Rd, Birkenhead, Prenton CH43 9RT | Company Reg: 14358717</p>
+          <p className="mt-1">259 Wallasey Village, Wallasey, Wirral, Merseyside CH45 3LR | Company Reg: 14358717</p>
         </div>
       </form>
     </div>
