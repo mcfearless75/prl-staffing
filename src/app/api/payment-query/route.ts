@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 
       await resend.emails.send({
         from: fromEmail,
-        to: ["helen@prlsitesolutions.co.uk", "accounts@prlsitesolutions.co.uk"],
+        to: ["jenni@prlsitesolutions.co.uk"],
         subject: `Payment Query: ${operativeName} — Week ending ${weekEnding}`,
         html,
       });
