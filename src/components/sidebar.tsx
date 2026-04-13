@@ -23,11 +23,14 @@ import {
   Shield,
   UserPlus,
   Lock,
+  MessageSquare,
+  UserCheck,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, badgeKey: null },
   { name: "Intelligence", href: "/intelligence", icon: Brain, badgeKey: null },
+  { name: "Applicants", href: "/applicants", icon: UserCheck, badgeKey: "pendingApplicants" as const },
   { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
   { name: "Contractors", href: "/contractors", icon: Users, badgeKey: null },
   { name: "Companies", href: "/companies", icon: Building2, badgeKey: null },
@@ -37,6 +40,7 @@ const navigation = [
   { name: "Compliance", href: "/compliance", icon: ShieldCheck, badgeKey: "complianceAlerts" as const },
   { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
   { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
+  { name: "Pay Queries", href: "/payment-queries", icon: MessageSquare, badgeKey: "openQueries" as const },
   { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
   { name: "GDPR", href: "/gdpr", icon: Lock, badgeKey: null },
   { name: "QMS", href: "/qms", icon: Shield, badgeKey: null },
@@ -47,13 +51,15 @@ type Counts = {
   complianceAlerts: number;
   draftInvoices: number;
   pendingOnboarding: number;
+  pendingApplicants: number;
+  openQueries: number;
 };
 
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
-  const [counts, setCounts] = useState<Counts>({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0 });
+  const [counts, setCounts] = useState<Counts>({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0 });
 
   // Fetch badge counts on mount and every 30 seconds
   useEffect(() => {

@@ -13,6 +13,8 @@ import {
   TrendingUp,
   AlertTriangle,
   ChevronRight,
+  UserCheck,
+  MessageSquare,
 } from "lucide-react";
 import { ComplianceScoreRing } from "./compliance/compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
@@ -34,6 +36,8 @@ export default async function DashboardPage() {
     recentActivity,
     recentSubmittedTimesheets,
     recentDocUploads,
+    pendingApplicants,
+    openPaymentQueries,
   ] = await Promise.all([
     prisma.contractor.count(),
     prisma.assignment.count({ where: { status: "Active" } }),
@@ -83,6 +87,10 @@ export default async function DashboardPage() {
       take: 5,
       include: { contractor: true },
     }),
+    // New applicants
+    prisma.contractor.count({ where: { status: "Pending" } }),
+    // Open payment queries
+    prisma.paymentQuery.count({ where: { status: { in: ["Open", "Assigned"] } } }),
   ]);
 
   const complianceScore =
@@ -136,6 +144,38 @@ export default async function DashboardPage() {
           href="/suppliers"
         />
       </div>
+
+      {/* Alert Cards — pulse when active */}
+      {(pendingApplicants > 0 || openPaymentQueries > 0) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {pendingApplicants > 0 && (
+            <a href="/applicants" className="block animate-pulse rounded-xl border-2 border-amber-400 bg-amber-50 p-5 ring-2 ring-amber-300 ring-offset-2 transition-all hover:shadow-lg">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+                  <UserCheck className="h-6 w-6 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-amber-700">{pendingApplicants}</p>
+                  <p className="text-sm font-medium text-amber-600">New Applicants — Review needed</p>
+                </div>
+              </div>
+            </a>
+          )}
+          {openPaymentQueries > 0 && (
+            <a href="/payment-queries" className="block animate-pulse rounded-xl border-2 border-red-400 bg-red-50 p-5 ring-2 ring-red-300 ring-offset-2 transition-all hover:shadow-lg">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                  <MessageSquare className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-red-700">{openPaymentQueries}</p>
+                  <p className="text-sm font-medium text-red-600">Open Payment Queries</p>
+                </div>
+              </div>
+            </a>
+          )}
+        </div>
+      )}
 
       {/* Recent Contractors & Compliance Alerts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
