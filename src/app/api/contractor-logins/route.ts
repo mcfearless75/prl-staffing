@@ -18,8 +18,8 @@ export async function GET(request: Request) {
   const limit = parseInt(searchParams.get("limit") || "50", 10);
   const sendEmails = searchParams.get("send") === "true";
 
-  const expectedKey = process.env.ADMIN_SECRET || "prl-seed-2026"; // fallback for local dev only
-  if (key !== expectedKey) {
+  const expectedKey = process.env.ADMIN_SECRET;
+  if (!expectedKey || key !== expectedKey) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -124,6 +124,7 @@ export async function GET(request: Request) {
       results: results.slice(0, 20),
     });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error("Contractor logins error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

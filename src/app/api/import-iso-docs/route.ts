@@ -28,7 +28,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
 
-  if (key !== (process.env.ADMIN_SECRET || "prl-setup-2026")) {
+  const expectedKey = process.env.ADMIN_SECRET;
+  if (!expectedKey || key !== expectedKey) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -67,7 +68,10 @@ export async function GET(request: Request) {
     }
 
     const r2 = getR2Client();
-    const bucket = process.env.R2_BUCKET_NAME || "prl-documents";
+    const bucket = process.env.R2_BUCKET_NAME;
+    if (!bucket) {
+      return NextResponse.json({ error: "R2_BUCKET_NAME environment variable is required" }, { status: 500 });
+    }
 
     for (const file of allFiles) {
       const fileName = path.basename(file.relativePath);
@@ -108,7 +112,8 @@ export async function GET(request: Request) {
           );
           uploaded++;
         } catch (err) {
-          results.push(`${fileName} — R2 upload failed: ${err}`);
+          console.error(`R2 upload failed for ${fileName}:`, err);
+          results.push(`${fileName} — R2 upload failed`);
           r2Key = null;
         }
       }
@@ -142,7 +147,8 @@ export async function GET(request: Request) {
       results,
     });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error("ISO import error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 

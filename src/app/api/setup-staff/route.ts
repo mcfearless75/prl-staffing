@@ -26,7 +26,8 @@ export async function GET(request: Request) {
 
   const results: string[] = [];
   // Temporary password - they'll use forgot password to set their own
-  const tempPasswordHash = await bcrypt.hash("prl-temp-2026", 10);
+  const tempPassword = process.env.SETUP_TEMP_PASSWORD || require("crypto").randomBytes(16).toString("hex");
+  const tempPasswordHash = await bcrypt.hash(tempPassword, 10);
 
   for (const staff of STAFF_USERS) {
     const existing = await prisma.user.findUnique({
