@@ -3,8 +3,11 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export async function createCompany(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const name = formData.get("name") as string;
     const address = formData.get("address") as string;
@@ -37,6 +40,8 @@ export async function createCompany(formData: FormData) {
 }
 
 export async function updateCompany(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const name = formData.get("name") as string;
     const address = formData.get("address") as string;
@@ -70,6 +75,8 @@ export async function updateCompany(id: string, formData: FormData) {
 }
 
 export async function deleteCompany(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.company.delete({
       where: { id },

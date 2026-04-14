@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { logTimesheetAudit, logTimesheetAuditBatch } from "@/lib/timesheet-audit";
 import {
   calculateOvertime,
@@ -13,6 +14,8 @@ import {
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export async function createTimesheet(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const contractorId = formData.get("contractorId") as string;
     const assignmentId = (formData.get("assignmentId") as string) || null;
@@ -60,6 +63,8 @@ export async function updateTimesheetEntries(
   timesheetId: string,
   formData: FormData
 ) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const timesheet = await prisma.timesheet.findUnique({
       where: { id: timesheetId },
@@ -170,6 +175,8 @@ export async function updateTimesheetEntries(
 }
 
 export async function submitTimesheet(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const timesheet = await prisma.timesheet.findUnique({
       where: { id },
@@ -264,6 +271,8 @@ export async function submitTimesheet(id: string) {
 }
 
 export async function approveTimesheetStep(id: string, stepId?: string, notes?: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const timesheet = await prisma.timesheet.findUnique({
       where: { id },
@@ -356,6 +365,8 @@ export async function approveTimesheet(id: string) {
 }
 
 export async function rejectTimesheet(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.timesheet.update({
       where: { id },
@@ -387,6 +398,8 @@ export async function rejectTimesheet(id: string) {
 }
 
 export async function reopenTimesheet(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const timesheet = await prisma.timesheet.findUnique({ where: { id } });
     if (!timesheet) throw new Error("Timesheet not found");

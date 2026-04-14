@@ -3,8 +3,11 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export async function createApprovalChain(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   const name = formData.get("name") as string;
   const companyId = (formData.get("companyId") as string) || null;
 
@@ -39,6 +42,8 @@ export async function createApprovalChain(formData: FormData) {
 }
 
 export async function deleteApprovalChain(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   await prisma.approvalChain.delete({ where: { id } });
   revalidatePath("/timesheets/approval-chains");
 }

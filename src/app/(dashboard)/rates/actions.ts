@@ -3,8 +3,11 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export async function createRateCard(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const role = formData.get("role") as string;
     const location = formData.get("location") as string;
@@ -38,6 +41,8 @@ export async function createRateCard(formData: FormData) {
 }
 
 export async function updateRateCard(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const role = formData.get("role") as string;
     const location = formData.get("location") as string;
@@ -72,6 +77,8 @@ export async function updateRateCard(id: string, formData: FormData) {
 }
 
 export async function deleteRateCard(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.rateCard.delete({
       where: { id },

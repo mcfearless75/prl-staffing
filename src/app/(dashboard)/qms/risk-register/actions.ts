@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 function calculateRiskLevel(score: number): string {
   if (score >= 16) return "Critical";
@@ -12,6 +13,8 @@ function calculateRiskLevel(score: number): string {
 }
 
 export async function createRisk(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     // Auto-generate risk number: RISK-NNN
     const count = await prisma.risk.count();
@@ -55,6 +58,8 @@ export async function createRisk(formData: FormData) {
 }
 
 export async function updateRisk(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const likelihood = parseInt(formData.get("likelihood") as string) || 3;
     const impact = parseInt(formData.get("impact") as string) || 3;
@@ -94,6 +99,8 @@ export async function updateRisk(id: string, formData: FormData) {
 }
 
 export async function deleteRisk(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.risk.delete({ where: { id } });
     revalidatePath("/qms/risk-register");
@@ -107,6 +114,8 @@ export async function deleteRisk(id: string) {
 }
 
 export async function reviewRisk(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.risk.update({
       where: { id },

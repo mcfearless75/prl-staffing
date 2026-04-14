@@ -3,8 +3,11 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export async function createAssignment(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const contractorId = formData.get("contractorId") as string;
     const companyId = formData.get("companyId") as string;
@@ -42,6 +45,8 @@ export async function createAssignment(formData: FormData) {
 }
 
 export async function updateAssignment(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const contractorId = formData.get("contractorId") as string;
     const companyId = formData.get("companyId") as string;
@@ -80,6 +85,8 @@ export async function updateAssignment(id: string, formData: FormData) {
 }
 
 export async function updateAssignmentStatus(id: string, status: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const validStatuses = ["Placed", "Active", "Ending", "Completed"];
     if (!validStatuses.includes(status)) {
@@ -100,6 +107,8 @@ export async function updateAssignmentStatus(id: string, status: string) {
 }
 
 export async function deleteAssignment(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.assignment.delete({
       where: { id },

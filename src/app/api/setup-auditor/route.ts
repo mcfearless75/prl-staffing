@@ -6,14 +6,14 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
 
-  const expectedKey = process.env.ADMIN_SECRET || "prl-setup-2026";
-  if (key !== expectedKey) {
+  const expectedKey = process.env.ADMIN_SECRET;
+  if (!expectedKey || key !== expectedKey) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const email = "auditor@nutral.co.uk";
-    const password = "audit2026!";
+    const password = process.env.AUDITOR_DEFAULT_PASSWORD || require("crypto").randomBytes(16).toString("hex");
     const passwordHash = await bcrypt.hash(password, 10);
 
     const existing = await prisma.auditorUser.findUnique({

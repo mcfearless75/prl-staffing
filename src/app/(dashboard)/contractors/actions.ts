@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
 function extractContractorData(formData: FormData) {
@@ -36,6 +37,8 @@ function extractContractorData(formData: FormData) {
 }
 
 export async function createContractor(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const data = extractContractorData(formData);
 
@@ -71,6 +74,8 @@ export async function createContractor(formData: FormData) {
 }
 
 export async function updateContractor(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const data = extractContractorData(formData);
 
@@ -93,6 +98,8 @@ export async function updateContractor(id: string, formData: FormData) {
 }
 
 export async function deleteContractor(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     // Delete related records first (foreign key constraints)
     await prisma.timesheetEntry.deleteMany({

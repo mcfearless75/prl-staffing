@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 /**
  * Get next invoice number (INV-0001, INV-0002, etc.)
@@ -22,6 +23,8 @@ async function getNextInvoiceNumber(): Promise<string> {
  * Auto-generate invoices from approved timesheets for a given period
  */
 export async function generateInvoices(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const periodStart = new Date(formData.get("periodStart") as string);
     const periodEnd = new Date(formData.get("periodEnd") as string);
@@ -187,6 +190,8 @@ export async function generateInvoices(formData: FormData) {
  * Update invoice status
  */
 export async function updateInvoiceStatus(id: string, status: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const data: Record<string, unknown> = { status };
 
@@ -218,6 +223,8 @@ export async function updateInvoiceStatus(id: string, status: string) {
  * Delete a draft invoice
  */
 export async function deleteInvoice(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.invoice.delete({ where: { id } });
     revalidatePath("/billing");

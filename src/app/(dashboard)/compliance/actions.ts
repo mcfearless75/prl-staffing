@@ -3,8 +3,11 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export async function createComplianceRecord(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const contractorId = formData.get("contractorId") as string;
     const type = formData.get("type") as string;
@@ -39,6 +42,8 @@ export async function createComplianceRecord(formData: FormData) {
 }
 
 export async function updateComplianceRecord(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const contractorId = formData.get("contractorId") as string;
     const type = formData.get("type") as string;
@@ -74,6 +79,8 @@ export async function updateComplianceRecord(id: string, formData: FormData) {
 }
 
 export async function deleteComplianceRecord(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.complianceRecord.delete({
       where: { id },

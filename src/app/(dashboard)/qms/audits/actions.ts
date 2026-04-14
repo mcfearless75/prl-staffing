@@ -3,8 +3,11 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export async function createAudit(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     // Auto-generate audit number: IA-YYYY-NNN
     const year = new Date().getFullYear();
@@ -37,6 +40,8 @@ export async function createAudit(formData: FormData) {
 }
 
 export async function updateAudit(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const completedDateRaw = formData.get("completedDate") as string;
     const nextAuditDateRaw = formData.get("nextAuditDate") as string;
@@ -69,6 +74,8 @@ export async function updateAudit(id: string, formData: FormData) {
 }
 
 export async function deleteAudit(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.internalAudit.delete({ where: { id } });
     revalidatePath("/qms/audits");
@@ -82,6 +89,8 @@ export async function deleteAudit(id: string) {
 }
 
 export async function addFinding(auditId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const lastFinding = await prisma.auditFinding.findFirst({
       where: { auditId },
@@ -113,6 +122,8 @@ export async function addFinding(auditId: string, formData: FormData) {
 }
 
 export async function closeFinding(findingId: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const finding = await prisma.auditFinding.update({
       where: { id: findingId },

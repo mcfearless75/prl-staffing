@@ -14,8 +14,8 @@ export async function GET(request: Request) {
   const sendEmail = searchParams.get("send") === "true";
   const emailOnly = searchParams.get("emailOnly");
 
-  const expectedKey = process.env.ADMIN_SECRET || "prl-setup-2026";
-  if (key !== expectedKey) {
+  const expectedKey = process.env.ADMIN_SECRET;
+  if (!expectedKey || key !== expectedKey) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

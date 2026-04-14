@@ -3,8 +3,11 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export async function createRequirement(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   const role = formData.get("role") as string;
   const companyId = (formData.get("companyId") as string) || null;
   const type = formData.get("type") as string;
@@ -25,6 +28,8 @@ export async function createRequirement(formData: FormData) {
 }
 
 export async function deleteRequirement(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   await prisma.complianceRequirement.delete({
     where: { id },
   });

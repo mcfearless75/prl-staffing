@@ -6,9 +6,12 @@ import { Badge } from "@/components/badge";
 import { formatDate, getInitials } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 async function approveApplicant(id: string) {
   "use server";
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   await prisma.contractor.update({ where: { id }, data: { status: "Active" } });
   revalidatePath("/applicants");
   revalidatePath("/");
@@ -16,6 +19,8 @@ async function approveApplicant(id: string) {
 
 async function rejectApplicant(id: string) {
   "use server";
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   await prisma.contractor.update({ where: { id }, data: { status: "Inactive" } });
   revalidatePath("/applicants");
   revalidatePath("/");

@@ -3,8 +3,11 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export async function createSupplier(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const name = formData.get("name") as string;
     const tier = formData.get("tier") as string;
@@ -35,6 +38,8 @@ export async function createSupplier(formData: FormData) {
 }
 
 export async function updateSupplier(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const name = formData.get("name") as string;
     const tier = formData.get("tier") as string;
@@ -66,6 +71,8 @@ export async function updateSupplier(id: string, formData: FormData) {
 }
 
 export async function deleteSupplier(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.supplier.delete({
       where: { id },

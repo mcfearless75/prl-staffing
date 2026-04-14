@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export async function saveIR35Determination(
   contractorId: string,
@@ -10,6 +11,8 @@ export async function saveIR35Determination(
   answers: Record<string, string>,
   score: number
 ) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   // Update contractor IR35 status
   await prisma.contractor.update({
     where: { id: contractorId },

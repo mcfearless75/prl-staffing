@@ -3,8 +3,12 @@
 import { prisma } from "@/lib/db";
 import { uploadToR2 } from "@/lib/r2";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export async function uploadQmsDocument(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const file = formData.get("file") as File;
     const folder = formData.get("folder") as string;
@@ -65,6 +69,8 @@ export async function uploadQmsDocument(formData: FormData) {
 }
 
 export async function deleteQmsDocument(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const doc = await prisma.qmsDocument.findUnique({ where: { id } });
     if (!doc) throw new Error("Document not found");

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 function getQuarter(date: Date): string {
   const month = date.getMonth();
@@ -13,6 +14,8 @@ function getQuarter(date: Date): string {
 }
 
 export async function createReview(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const reviewDate = new Date(formData.get("reviewDate") as string);
     const year = reviewDate.getFullYear();
@@ -47,6 +50,8 @@ export async function createReview(formData: FormData) {
 }
 
 export async function updateReview(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.managementReview.update({
       where: { id },
@@ -69,6 +74,8 @@ export async function updateReview(id: string, formData: FormData) {
 }
 
 export async function completeReview(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.managementReview.update({
       where: { id },
@@ -89,6 +96,8 @@ export async function completeReview(id: string) {
 }
 
 export async function deleteReview(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.managementReview.delete({
       where: { id },

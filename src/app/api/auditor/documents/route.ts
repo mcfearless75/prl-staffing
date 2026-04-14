@@ -2,9 +2,10 @@ import { prisma } from "@/lib/db";
 import { jwtVerify } from "jose";
 import { NextRequest } from "next/server";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.AUDITOR_JWT_SECRET || "prl-auditor-secret-2026"
-);
+if (!process.env.AUDITOR_JWT_SECRET) {
+  throw new Error("AUDITOR_JWT_SECRET environment variable is required");
+}
+const JWT_SECRET = new TextEncoder().encode(process.env.AUDITOR_JWT_SECRET);
 
 async function verifyAuditorToken(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");

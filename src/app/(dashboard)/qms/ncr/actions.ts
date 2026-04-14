@@ -3,8 +3,11 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export async function createNCR(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const count = await prisma.nonConformance.count();
     const ncrNumber = `NCR-${String(count + 1).padStart(3, "0")}`;
@@ -40,6 +43,8 @@ export async function createNCR(formData: FormData) {
 }
 
 export async function updateNCR(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     const targetDateRaw = formData.get("targetDate") as string;
 
@@ -72,6 +77,8 @@ export async function updateNCR(id: string, formData: FormData) {
 }
 
 export async function deleteNCR(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.nonConformance.delete({
       where: { id },
@@ -88,6 +95,8 @@ export async function deleteNCR(id: string) {
 }
 
 export async function closeNCR(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.nonConformance.update({
       where: { id },
@@ -108,6 +117,8 @@ export async function closeNCR(id: string) {
 }
 
 export async function verifyNCR(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.nonConformance.update({
       where: { id },

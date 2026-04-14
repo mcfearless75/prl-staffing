@@ -2,8 +2,12 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export async function acknowledgePolicy(userId: string, userEmail: string, userName: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   // Check if already acknowledged current version
   const existing = await prisma.policyAcknowledgement.findFirst({
     where: { userId, policyVersion: "1.0" },

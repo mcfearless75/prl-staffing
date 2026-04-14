@@ -3,8 +3,11 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export async function createImprovement(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.improvementItem.create({
       data: {
@@ -30,6 +33,8 @@ export async function createImprovement(formData: FormData) {
 }
 
 export async function updateImprovement(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.improvementItem.update({
       where: { id },
@@ -57,6 +62,8 @@ export async function updateImprovement(id: string, formData: FormData) {
 }
 
 export async function deleteImprovement(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   try {
     await prisma.improvementItem.delete({
       where: { id },
