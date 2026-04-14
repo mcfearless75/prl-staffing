@@ -51,6 +51,7 @@ export async function GET(request: Request) {
       results,
     });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: "An internal error occurred" }, { status: 500 });
   }
 }

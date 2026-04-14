@@ -9,6 +9,16 @@ export const authConfig = {
   session: {
     strategy: "jwt" as const,
   },
+  cookies: {
+    sessionToken: {
+      options: {
+        httpOnly: true,
+        sameSite: "strict" as const,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
   callbacks: {
     async signIn({ user, account }) {
       // Handle Microsoft SSO — verify user exists in DB
@@ -34,6 +44,20 @@ export const authConfig = {
         token.userType = (user as { userType?: string }).userType || token.userType || "staff";
         token.contractorId = (user as { contractorId?: string }).contractorId;
         token.tokenVersion = (user as { tokenVersion?: number }).tokenVersion ?? 0;
+      }
+      // On subsequent requests (not initial sign-in), validate tokenVersion hasn't been invalidated
+      if (!user && token.id && token.tokenVersion !== undefined) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { tokenVersion: true, lockedUntil: true },
+          });
+          if (!dbUser || dbUser.tokenVersion !== token.tokenVersion) {
+            return null; // Invalidate the session
+          }
+        } catch {
+          // If DB check fails, allow token to continue (availability over security for transient errors)
+        }
       }
       return token;
     },

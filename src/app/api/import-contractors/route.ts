@@ -151,7 +151,8 @@ export async function GET(request: Request) {
 
         created++;
       } catch (err) {
-        errors.push(`${c.name}: ${String(err).slice(0, 100)}`);
+        console.error(`Import error for ${c.name}:`, err);
+        errors.push(`${c.name}: import failed`);
       }
     }
 
@@ -164,6 +165,7 @@ export async function GET(request: Request) {
       errors: errors.length > 0 ? errors.slice(0, 20) : undefined,
     });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: "An internal error occurred" }, { status: 500 });
   }
 }

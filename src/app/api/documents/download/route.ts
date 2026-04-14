@@ -38,11 +38,17 @@ export async function GET(request: NextRequest) {
 
     // If view=true, serve inline (for viewing in browser) instead of download
     const viewMode = searchParams.get("view") === "true";
-    const disposition = viewMode ? "inline" : `attachment; filename="${document.fileName}"`;
+    const safeName = (document.fileName || "download").replace(/[^\w.\-]/g, "_");
+    const disposition = viewMode ? "inline" : `attachment; filename="${safeName}"`;
+
+    const ALLOWED_INLINE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp"];
+    const safeMime = viewMode && ALLOWED_INLINE_TYPES.includes(document.mimeType)
+      ? document.mimeType
+      : "application/octet-stream";
 
     return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
-        "Content-Type": document.mimeType || "application/octet-stream",
+        "Content-Type": safeMime,
         "Content-Disposition": disposition,
         "Content-Length": buffer.length.toString(),
         ...(viewMode ? { "Cache-Control": "private, max-age=300" } : {}),
