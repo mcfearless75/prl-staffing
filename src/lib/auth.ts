@@ -5,6 +5,9 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
 
+// IP-level rate limiting for login endpoint
+const ipAttempts = new Map<string, { count: number; resetAt: number }>();
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   providers: [
@@ -22,8 +25,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        // IP-level rate limiting
+        const forwarded = request?.headers?.get("x-forwarded-for");
+        const ip = forwarded ? forwarded.split(",")[0].trim() : "unknown";
+        const now = Date.now();
+        const ipData = ipAttempts.get(ip);
+        if (ipData && now < ipData.resetAt && ipData.count >= 20) {
+          throw new Error("Too many login attempts from this IP. Try again later.");
+        }
+        // Update IP attempt counter
+        if (!ipData || now >= ipData.resetAt) {
+          ipAttempts.set(ip, { count: 1, resetAt: now + 15 * 60 * 1000 });
+        } else {
+          ipData.count += 1;
+        }
 
         const email = credentials.email as string;
         const password = credentials.password as string;

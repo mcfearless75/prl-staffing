@@ -9,6 +9,10 @@ const TEST_CONTRACTORS = [
 ];
 
 export async function GET(request: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
   const sendEmail = searchParams.get("send") === "true";
@@ -136,7 +140,7 @@ function getInstructionEmail(baseUrl: string): string {
         <li>Click <strong>"Forgot your password?"</strong></li>
         <li>Enter your email address and click <strong>Send</strong></li>
         <li>Check your email for a <strong>"Reset Password"</strong> link</li>
-        <li>Click the link and choose a password (minimum 6 characters)</li>
+        <li>Click the link and choose a password (minimum 10 characters)</li>
       </ol>
     </div>
 

@@ -42,6 +42,10 @@ function normalizeCompany(raw: string | null): string {
 }
 
 export async function GET(request: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
 

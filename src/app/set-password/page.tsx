@@ -19,8 +19,8 @@ function SetPasswordForm() {
     e.preventDefault();
     setError("");
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 10) {
+      setError("Password must be at least 10 characters");
       return;
     }
 
@@ -109,11 +109,11 @@ function SetPasswordForm() {
             id="password"
             type="password"
             required
-            minLength={6}
+            minLength={10}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base sm:text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="At least 6 characters"
+            placeholder="At least 10 characters"
             autoComplete="new-password"
           />
         </div>
@@ -126,7 +126,7 @@ function SetPasswordForm() {
             id="confirm"
             type="password"
             required
-            minLength={6}
+            minLength={10}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base sm:text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"

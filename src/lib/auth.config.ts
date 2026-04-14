@@ -1,4 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
+import { prisma } from "@/lib/db";
 
 export const authConfig = {
   trustHost: true,
@@ -10,13 +11,11 @@ export const authConfig = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      // Handle Microsoft SSO — find or create staff user
-      if (account?.provider === "microsoft-entra-id" && user?.email) {
-        // Only allow @prlsitesolutions.co.uk emails
-        if (!user.email.endsWith("@prlsitesolutions.co.uk")) {
-          return false; // Block non-PRL emails
-        }
-        return true;
+      // Handle Microsoft SSO — verify user exists in DB
+      if (account?.provider === "microsoft-entra-id") {
+        if (!user?.email?.endsWith("@prlsitesolutions.co.uk")) return false;
+        const dbUser = await prisma.user.findUnique({ where: { email: user.email } });
+        return !!dbUser;
       }
       return true;
     },

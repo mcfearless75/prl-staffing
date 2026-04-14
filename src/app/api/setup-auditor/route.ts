@@ -3,6 +3,10 @@ import bcrypt from "bcryptjs";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
 

@@ -21,8 +21,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Token and password required" }, { status: 400 });
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+    if (password.length < 10) {
+      return NextResponse.json({ error: "Password must be at least 10 characters" }, { status: 400 });
     }
 
     // Find valid token
