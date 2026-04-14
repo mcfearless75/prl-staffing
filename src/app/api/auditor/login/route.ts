@@ -39,10 +39,11 @@ function resetFailedAttempts(email: string): void {
   failedAttempts.delete(email);
 }
 
-if (!process.env.AUDITOR_JWT_SECRET) {
-  throw new Error("AUDITOR_JWT_SECRET environment variable is required");
+function getJwtSecret() {
+  const secret = process.env.AUDITOR_JWT_SECRET;
+  if (!secret) throw new Error("AUDITOR_JWT_SECRET environment variable is required");
+  return new TextEncoder().encode(secret);
 }
-const JWT_SECRET = new TextEncoder().encode(process.env.AUDITOR_JWT_SECRET);
 
 export async function POST(request: NextRequest) {
   try {
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime("24h")
-      .sign(JWT_SECRET);
+      .sign(getJwtSecret());
 
     return Response.json({
       token,

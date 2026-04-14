@@ -2,10 +2,11 @@ import { prisma } from "@/lib/db";
 import { jwtVerify } from "jose";
 import { NextRequest } from "next/server";
 
-if (!process.env.AUDITOR_JWT_SECRET) {
-  throw new Error("AUDITOR_JWT_SECRET environment variable is required");
+function getJwtSecret() {
+  const secret = process.env.AUDITOR_JWT_SECRET;
+  if (!secret) throw new Error("AUDITOR_JWT_SECRET environment variable is required");
+  return new TextEncoder().encode(secret);
 }
-const JWT_SECRET = new TextEncoder().encode(process.env.AUDITOR_JWT_SECRET);
 
 async function verifyAuditorToken(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
@@ -15,7 +16,7 @@ async function verifyAuditorToken(request: NextRequest) {
 
   try {
     const token = authHeader.slice(7);
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     return payload;
   } catch {
     return null;
