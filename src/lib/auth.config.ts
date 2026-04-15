@@ -41,13 +41,28 @@ export const authConfig = {
       return true;
     },
     async jwt({ token, user, account, profile }) {
-      // Microsoft SSO: look up staff user by email
+      // Microsoft SSO: look up our DB user by email to get the correct DB id
       if (account?.provider === "microsoft-entra-id" && profile?.email) {
         token.email = profile.email as string;
-        token.name = profile.name as string || token.name;
+        token.name = (profile.name as string) || token.name;
         token.role = "admin";
         token.userType = "staff";
         token.ssoProvider = "microsoft";
+        // Look up our DB user by email so token.id is our CUID, not Microsoft's id
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: profile.email as string },
+            select: { id: true, tokenVersion: true, role: true },
+          });
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.tokenVersion = dbUser.tokenVersion;
+            token.role = dbUser.role;
+          }
+        } catch {
+          // allow login even if DB lookup fails
+        }
+        return token;
       }
       if (user) {
         token.id = user.id;
@@ -61,13 +76,13 @@ export const authConfig = {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { tokenVersion: true, lockedUntil: true },
+            select: { tokenVersion: true },
           });
           if (!dbUser || dbUser.tokenVersion !== token.tokenVersion) {
             return null; // Invalidate the session
           }
         } catch {
-          // If DB check fails, allow token to continue (availability over security for transient errors)
+          // If DB check fails, allow token to continue
         }
       }
       return token;
