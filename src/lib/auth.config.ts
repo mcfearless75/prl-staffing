@@ -21,11 +21,23 @@ export const authConfig = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      // Handle Microsoft SSO — verify user exists in DB
+      // Handle Microsoft SSO — only allow @prlsitesolutions.co.uk accounts
       if (account?.provider === "microsoft-entra-id") {
         if (!user?.email?.endsWith("@prlsitesolutions.co.uk")) return false;
-        const dbUser = await prisma.user.findUnique({ where: { email: user.email } });
-        return !!dbUser;
+        // Auto-create staff user in DB on first SSO login if they don't exist
+        const existing = await prisma.user.findUnique({ where: { email: user.email } });
+        if (!existing) {
+          await prisma.user.create({
+            data: {
+              email: user.email,
+              name: user.name || user.email.split("@")[0],
+              role: "admin",
+              userType: "staff",
+              passwordHash: "", // SSO users have no password
+            },
+          });
+        }
+        return true;
       }
       return true;
     },
