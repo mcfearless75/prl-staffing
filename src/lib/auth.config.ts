@@ -32,7 +32,6 @@ export const authConfig = {
               email: user.email,
               name: user.name || user.email.split("@")[0],
               role: "admin",
-              userType: "staff",
               passwordHash: "", // SSO users have no password
             },
           });
