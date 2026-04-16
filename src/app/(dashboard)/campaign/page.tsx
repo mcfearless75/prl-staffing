@@ -89,6 +89,14 @@ function StatusBadge({ contractor }: { contractor: ContractorRow }) {
   );
 }
 
+function maskEmail(email: string | null): string {
+  if (!email) return "—";
+  const [local, domain] = email.split("@");
+  if (!domain) return "—";
+  const visible = local.slice(0, 2);
+  return `${visible}***@${domain}`;
+}
+
 function fmt(dateStr: string | null) {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("en-GB", {
@@ -351,7 +359,7 @@ export default function CampaignPage() {
                       {c.firstName} {c.lastName}
                     </td>
                     <td className="px-4 py-3 text-gray-600 max-w-[200px] truncate">
-                      {c.email ?? "—"}
+                      {maskEmail(c.email)}
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
                       {fmt(c.inviteSentAt)}
