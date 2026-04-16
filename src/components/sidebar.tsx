@@ -25,11 +25,13 @@ import {
   Lock,
   MessageSquare,
   UserCheck,
+  Send,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, badgeKey: null },
   { name: "Intelligence", href: "/intelligence", icon: Brain, badgeKey: null },
+  { name: "Campaign", href: "/campaign", icon: Send, badgeKey: null },
   { name: "Applicants", href: "/applicants", icon: UserCheck, badgeKey: "pendingApplicants" as const },
   { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
   { name: "Contractors", href: "/contractors", icon: Users, badgeKey: null },
