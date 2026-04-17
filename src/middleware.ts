@@ -22,6 +22,7 @@ export default auth((req) => {
 
   if (req.nextUrl.pathname.startsWith("/payment-query")) return;
   if (req.nextUrl.pathname === "/privacy") return;
+  if (req.nextUrl.pathname === "/contract") return;
   if (req.nextUrl.pathname === "/install") return;
   const userType = (req.auth?.user as { userType?: string })?.userType;
 
