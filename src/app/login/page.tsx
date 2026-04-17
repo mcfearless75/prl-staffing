@@ -47,8 +47,9 @@ function LoginForm() {
       // Successful login — get session and redirect
       const session = await getSession();
       const userType = (session?.user as { userType?: string })?.userType;
-      router.push(userType === "contractor" ? "/portal" : "/");
-      router.refresh();
+      const dest = userType === "contractor" ? "/portal" : "/";
+      // Use window.location for a hard redirect — avoids router caching issues
+      window.location.href = dest;
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
