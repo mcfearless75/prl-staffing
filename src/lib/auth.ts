@@ -132,6 +132,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             },
           });
 
+          // Log the login event (non-critical — don't let it break auth)
+          prisma.activityLog.create({
+            data: {
+              action: "Contractor Login",
+              entityType: "Contractor",
+              entityId: contractorLogin.contractorId,
+              details: `${contractorLogin.contractor.firstName} ${contractorLogin.contractor.lastName} logged in to the portal`,
+              userEmail: contractorLogin.email,
+              userName: `${contractorLogin.contractor.firstName} ${contractorLogin.contractor.lastName}`,
+            },
+          }).catch(() => {/* non-critical */});
+
           return {
             id: contractorLogin.id,
             email: contractorLogin.email,

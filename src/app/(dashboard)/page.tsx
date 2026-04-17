@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { ComplianceScoreRing } from "./compliance/compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
+import { CampaignActivityFeed } from "@/components/campaign-activity-feed";
 
 export default async function DashboardPage() {
   await syncComplianceStatuses();
@@ -156,6 +157,9 @@ export default async function DashboardPage() {
           href="/payment-queries"
         />
       </div>
+
+      {/* Campaign Activity — live feed, auto-refreshes every 30s */}
+      <CampaignActivityFeed />
 
       {/* Alert Cards — pulse when active */}
       {(pendingApplicants > 0 || openPaymentQueries > 0) && (

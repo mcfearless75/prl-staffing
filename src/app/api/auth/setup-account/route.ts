@@ -54,6 +54,16 @@ export async function POST(request: Request) {
           lockedUntil: null,
         },
       });
+      await prisma.activityLog.create({
+        data: {
+          action: "Contractor Password Reset",
+          entityType: "Contractor",
+          entityId: contractor.id,
+          details: `${contractor.firstName} ${contractor.lastName} reset their portal password`,
+          userEmail: normalised,
+          userName: `${contractor.firstName} ${contractor.lastName}`,
+        },
+      }).catch(() => {/* non-critical */});
     } else {
       // First time setup — create login record
       await prisma.contractorLogin.create({
@@ -65,6 +75,16 @@ export async function POST(request: Request) {
           failedAttempts: 0,
         },
       });
+      await prisma.activityLog.create({
+        data: {
+          action: "Contractor Account Activated",
+          entityType: "Contractor",
+          entityId: contractor.id,
+          details: `${contractor.firstName} ${contractor.lastName} activated their portal account`,
+          userEmail: normalised,
+          userName: `${contractor.firstName} ${contractor.lastName}`,
+        },
+      }).catch(() => {/* non-critical */});
     }
 
     return NextResponse.json({ success: true, firstName: contractor.firstName });
