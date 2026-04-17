@@ -13,6 +13,7 @@ export default auth((req) => {
   // Allow public pages without auth
   if (isAuditorPage) return; // Auditor portal has its own auth
   if (isSetPasswordPage) return;
+  if (req.nextUrl.pathname.startsWith("/setup-account")) return;
   if (req.nextUrl.pathname.startsWith("/onboarding")) return;
   if (req.nextUrl.pathname.startsWith("/survey")) return;
   if (req.nextUrl.pathname.startsWith("/supplier-questionnaire")) return;

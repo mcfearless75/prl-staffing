@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
-const APP_URL = "https://prismworkforce.online";
+const APP_URL = "https://www.prismworkforce.online";
 const FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
 
 function sleep(ms: number) {
@@ -12,7 +12,7 @@ function sleep(ms: number) {
 
 function buildEmailHtml(
   firstName: string,
-  setPasswordUrl: string,
+  setupUrl: string,
   trackingToken: string
 ): string {
   const trackingPixel = `${APP_URL}/api/campaign/track/${trackingToken}`;
@@ -70,7 +70,7 @@ function buildEmailHtml(
             <div style="width:28px;height:28px;background:#1F4E79;color:#fff;border-radius:50%;text-align:center;line-height:28px;font-size:13px;font-weight:700;">2</div>
           </td>
           <td style="vertical-align:top;padding-bottom:16px;padding-left:12px;">
-            <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">Log in at <a href="https://prismworkforce.online" style="color:#1F4E79;font-weight:600;">prismworkforce.online</a> using your email address</p>
+            <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">Log in at <a href="https://www.prismworkforce.online" style="color:#1F4E79;font-weight:600;">www.prismworkforce.online</a> using your email address</p>
           </td>
         </tr>
         <tr>
@@ -85,15 +85,15 @@ function buildEmailHtml(
 
       <!-- CTA Button -->
       <div style="text-align:center;margin:28px 0;">
-        <a href="${setPasswordUrl}"
+        <a href="${setupUrl}"
            style="display:inline-block;background:#2563eb;color:#ffffff;padding:16px 40px;border-radius:8px;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:0.5px;">
           Set Up My Account
         </a>
       </div>
 
       <p style="color:#6b7280;font-size:12px;text-align:center;margin:0 0 24px;">
-        This link expires in 24 hours. If you have trouble clicking the button, copy and paste this URL into your browser:<br/>
-        <a href="${setPasswordUrl}" style="color:#2563eb;word-break:break-all;">${setPasswordUrl}</a>
+        If you have trouble clicking the button, visit this page in your browser:<br/>
+        <a href="${setupUrl}" style="color:#2563eb;word-break:break-all;">${setupUrl}</a>
       </p>
 
       <!-- Help -->
@@ -181,8 +181,8 @@ export async function POST() {
           },
         });
 
-        const setPasswordUrl = `${APP_URL}/set-password?token=${resetToken}`;
-        const html = buildEmailHtml(contractor.firstName, setPasswordUrl, inviteToken);
+        const setupUrl = `${APP_URL}/setup-account`;
+        const html = buildEmailHtml(contractor.firstName, setupUrl, inviteToken);
 
         const { error } = await resend.emails.send({
           from: FROM,
