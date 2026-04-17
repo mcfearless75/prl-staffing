@@ -46,12 +46,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const email = credentials.email as string;
         const password = credentials.password as string;
 
-        // Try staff user first
+        // Try staff user first (only if they have a password set — SSO-only users have empty hash)
         const user = await prisma.user.findUnique({
           where: { email },
         });
 
-        if (user) {
+        if (user && user.passwordHash) {
           // Check if account is locked
           if (user.lockedUntil && user.lockedUntil > new Date()) {
             return null;
