@@ -221,8 +221,8 @@ export async function POST() {
 
         sent++;
 
-        // 200ms delay between sends to avoid rate limits
-        await sleep(200);
+        // 600ms delay between sends — stays under Resend's 2/sec limit
+        await sleep(600);
       } catch (err) {
         failed++;
         errors.push(
