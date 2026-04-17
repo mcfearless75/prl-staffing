@@ -112,10 +112,12 @@ export default function CampaignPage() {
   const [stats, setStats] = useState<CampaignStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [resending, setResending] = useState(false);
   const [sendResult, setSendResult] = useState<{
     sent: number;
     failed: number;
     errors: string[];
+    isResend?: boolean;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -160,6 +162,34 @@ export default function CampaignPage() {
     }
   }
 
+  async function handleResend() {
+    const total = stats?.total ?? 0;
+    if (!confirm(`This will send a corrective email to ALL ${total} contractors (including those already invited). This is the apology email with the correct www link.\n\nAre you sure?`)) {
+      return;
+    }
+    setResending(true);
+    setSendResult(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/campaign/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resend: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Resend failed");
+      } else {
+        setSendResult({ ...data, isResend: true });
+        await fetchStats();
+      }
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setResending(false);
+    }
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8">
       {/* Page header */}
@@ -195,7 +225,7 @@ export default function CampaignPage() {
       {sendResult && (
         <div className={`rounded-xl border p-4 ${sendResult.failed > 0 ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"}`}>
           <p className={`font-medium ${sendResult.failed > 0 ? "text-amber-800" : "text-green-800"}`}>
-            Campaign complete: {sendResult.sent} sent, {sendResult.failed} failed
+            {sendResult.isResend ? "Corrective campaign" : "Campaign"} complete: {sendResult.sent} sent, {sendResult.failed} failed
           </p>
           {sendResult.errors.length > 0 && (
             <ul className="mt-2 space-y-1">
@@ -323,6 +353,120 @@ export default function CampaignPage() {
           {stats?.pending === 0 && !sending && (
             <p className="text-center text-xs text-gray-400 mt-2">All contractors have already been invited.</p>
           )}
+        </div>
+      </div>
+
+      {/* Corrective resend section */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Corrective email preview */}
+        <div className="rounded-xl border border-amber-200 bg-white p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <h2 className="text-base font-semibold text-gray-900">Corrective Email Preview</h2>
+          </div>
+          <div className="space-y-3 text-sm text-gray-600">
+            <div className="flex gap-2">
+              <span className="font-medium text-gray-700 w-16 shrink-0">From:</span>
+              <span>PRL Site Solutions &lt;infotech@prlsitesolutions.co.uk&gt;</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-medium text-gray-700 w-16 shrink-0">To:</span>
+              <span>All <strong>{stats?.total ?? "—"}</strong> contractors (inc. already invited)</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-medium text-gray-700 w-16 shrink-0">Subject:</span>
+              <span>Important Update: Your PRL Site Solutions Contractor Portal Access</span>
+            </div>
+            <hr className="my-3" />
+            <div className="rounded-lg bg-[#1F4E79] p-4 text-center">
+              <p className="text-white font-bold text-lg tracking-widest">PRISM</p>
+              <p className="text-blue-300 text-xs mt-1">PRL Site Solutions — Contractor Portal</p>
+            </div>
+            <div className="rounded-lg bg-gray-50 border border-gray-100 p-4 space-y-2">
+              <p className="text-gray-800 font-medium">Hi [First Name],</p>
+              <div className="rounded bg-amber-50 border border-amber-200 p-3">
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  <strong>A quick apology:</strong> Our previous email contained an incorrect link. We're sorry — the correct address is always <strong>www.prismworkforce.online</strong>.
+                </p>
+              </div>
+              <div className="rounded bg-blue-50 border border-blue-100 p-3">
+                <p className="text-xs font-semibold text-blue-800 mb-1">Already set up your account?</p>
+                <p className="text-xs text-gray-700 leading-relaxed">
+                  Head to www.prismworkforce.online and sign in. Forgotten your password? Use "Forgot your password?" on the login page.
+                </p>
+              </div>
+              <p className="text-xs text-gray-600">Haven't set up yet? Click the button below:</p>
+              <div className="text-center py-2">
+                <span className="inline-block bg-blue-600 text-white text-xs font-semibold px-6 py-2 rounded-lg">
+                  Set Up My Account
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                Need help? Email us at infotech@prlsitesolutions.co.uk
+              </p>
+            </div>
+            <p className="text-center text-xs text-gray-400">
+              PRL Site Solutions | Recruitment Specialists | www.prismworkforce.online
+            </p>
+          </div>
+        </div>
+
+        {/* Resend action */}
+        <div className="rounded-xl border border-amber-200 bg-white p-6 flex flex-col justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 mb-2">Send Corrective Email</h2>
+            <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+              Sends an apology + corrective email to <strong>all contractors</strong>, including those already invited. Includes the correct <code>www.prismworkforce.online</code> link, instructions for users who already set up their account, and the updated help email address.
+            </p>
+
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 mb-6">
+              <div className="flex gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-red-800">This sends to everyone</p>
+                  <p className="text-xs text-red-700 mt-1 leading-relaxed">
+                    This will email all <strong>{stats?.total ?? "—"}</strong> contractors regardless of whether they were previously invited. Use only once to correct the broken link issue.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between text-gray-600">
+                <span>Total contractors:</span>
+                <span className="font-semibold text-gray-900">{stats?.total ?? "—"}</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Already activated:</span>
+                <span className="font-semibold text-green-700">{stats?.activated ?? "—"} (will also receive)</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Not yet activated:</span>
+                <span className="font-semibold text-gray-900">{stats ? stats.total - stats.activated : "—"}</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleResend}
+            disabled={resending || sending || !stats}
+            className="mt-6 flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-6 py-3 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {resending ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Sending corrective emails...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                Send Corrective Email to All ({stats?.total ?? 0})
+              </>
+            )}
+          </button>
+          <p className="text-center text-xs text-gray-400 mt-2">
+            Estimated time: ~{Math.ceil(((stats?.total ?? 0) * 0.6) / 60)} minutes at 600ms per email
+          </p>
         </div>
       </div>
 
