@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     });
 
     if (contractorLogin) {
+      // Existing contractor login — update password
       await prisma.contractorLogin.update({
         where: { id: contractorLogin.id },
         data: {
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
         where: { email: resetToken.email },
       });
       if (user) {
+        // Staff user — update password
         await prisma.user.update({
           where: { id: user.id },
           data: {
@@ -74,7 +76,24 @@ export async function POST(request: Request) {
           },
         });
       } else {
-        return NextResponse.json({ error: "Account not found" }, { status: 400 });
+        // No login record yet — contractor imported from spreadsheet.
+        // Find contractor by email and CREATE their login record.
+        const contractor = await prisma.contractor.findFirst({
+          where: { email: resetToken.email },
+        });
+        if (contractor) {
+          await prisma.contractorLogin.create({
+            data: {
+              contractorId: contractor.id,
+              email: resetToken.email,
+              passwordHash,
+              tokenVersion: 0,
+              failedAttempts: 0,
+            },
+          });
+        } else {
+          return NextResponse.json({ error: "Account not found. Please contact PRL Site Solutions." }, { status: 400 });
+        }
       }
     }
 
