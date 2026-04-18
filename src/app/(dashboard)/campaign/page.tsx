@@ -79,7 +79,7 @@ export default function CampaignPage() {
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number; errors: string[]; mode?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "incomplete" | "complete" | "notSignedUp">("all");
+  const [filter, setFilter] = useState<"all" | "opened" | "incomplete" | "complete" | "notSignedUp">("all");
 
   const fetchStats = useCallback(async () => {
     try {
@@ -125,11 +125,18 @@ export default function CampaignPage() {
   const incompleteCount = activatedContractors.filter((c) => !c.profileComplete || !c.docsUploaded).length;
   const notYetReminded = activatedContractors.filter((c) => !c.profileCompletionSentAt).length;
 
+  const openedCount = (stats?.contractors ?? []).filter((c) => c.inviteOpenedAt).length;
+
   const filteredContractors = (stats?.contractors ?? []).filter((c) => {
+    if (filter === "opened") return !!c.inviteOpenedAt;
     if (filter === "incomplete") return c.isActivated && (!c.profileComplete || !c.docsUploaded);
     if (filter === "complete") return c.isActivated && c.profileComplete && c.docsUploaded;
     if (filter === "notSignedUp") return !c.isActivated;
     return true;
+  }).sort((a, b) => {
+    // When viewing opened: sort by open date descending
+    if (filter === "opened") return new Date(b.inviteOpenedAt!).getTime() - new Date(a.inviteOpenedAt!).getTime();
+    return 0;
   });
 
   return (
@@ -266,11 +273,15 @@ export default function CampaignPage() {
             <p className="text-xs text-gray-500 mt-0.5">{stats?.total ?? 0} contractors total</p>
           </div>
           {/* Filter tabs */}
-          <div className="flex gap-1">
-            {(["all", "incomplete", "complete", "notSignedUp"] as const).map((f) => (
+          <div className="flex flex-wrap gap-1">
+            {(["all", "opened", "incomplete", "complete", "notSignedUp"] as const).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${filter === f ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-                {f === "all" ? "All" : f === "incomplete" ? "Incomplete" : f === "complete" ? "Complete" : "Not signed up"}
+                {f === "all" ? `All (${stats?.total ?? 0})`
+                  : f === "opened" ? `Opened email (${openedCount})`
+                  : f === "incomplete" ? "Incomplete"
+                  : f === "complete" ? "Complete"
+                  : "Not signed up"}
               </button>
             ))}
           </div>
@@ -285,9 +296,9 @@ export default function CampaignPage() {
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email Opened</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Missing Fields</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Docs</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Reminder Sent</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
@@ -295,7 +306,13 @@ export default function CampaignPage() {
                 {filteredContractors.map((c) => (
                   <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-gray-900">{c.firstName} {c.lastName}</td>
-                    <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">{maskEmail(c.email)}</td>
+                    <td className="px-4 py-3 text-gray-600 max-w-[160px] truncate">{maskEmail(c.email)}</td>
+                    <td className="px-4 py-3 text-xs whitespace-nowrap">
+                      {c.inviteOpenedAt
+                        ? <span className="inline-flex items-center gap-1 text-amber-700 font-medium"><MailOpen className="h-3 w-3" />{fmt(c.inviteOpenedAt)}</span>
+                        : <span className="text-gray-400">—</span>
+                      }
+                    </td>
                     <td className="px-4 py-3 text-xs text-gray-500 max-w-[200px]">
                       {!c.isActivated ? <span className="text-gray-400">—</span> : c.missingFields.length === 0
                         ? <span className="text-green-600 font-medium">All filled in ✓</span>
@@ -309,12 +326,11 @@ export default function CampaignPage() {
                           : <span className="text-red-500">None uploaded</span>
                       }
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{fmt(c.profileCompletionSentAt)}</td>
                     <td className="px-4 py-3"><ProfileBadge c={c} /></td>
                   </tr>
                 ))}
                 {filteredContractors.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-sm">No contractors match this filter.</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">No contractors match this filter.</td></tr>
                 )}
               </tbody>
             </table>
