@@ -160,10 +160,10 @@ export default function CampaignPage() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <StatCard label="Total" value={stats.total} icon={Users} color="bg-gray-500" />
           <StatCard label="Signed Up" value={stats.activated} icon={UserCheck} color="bg-blue-500" />
+          <StatCard label="Emails Opened" value={stats.opened} icon={MailOpen} color="bg-amber-500" />
           <StatCard label="Profile Complete" value={stats.profileCompleteCount} icon={CheckCircle} color="bg-green-500" />
           <StatCard label="Docs Uploaded" value={stats.hasDocuments} icon={FileCheck} color="bg-emerald-500" />
           <StatCard label="Incomplete" value={incompleteCount} icon={XCircle} color="bg-red-500" />
-          <StatCard label="Not Signed Up" value={stats.total - stats.activated} icon={Clock} color="bg-slate-400" />
         </div>
       )}
 
