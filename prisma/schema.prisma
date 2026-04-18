@@ -81,9 +81,10 @@ model Contractor {
   nextOfKin                String?
   medicalNotes             String?   // allergies, conditions (confidential)
   notes        String?
-  inviteSentAt   DateTime?
-  inviteOpenedAt DateTime?
-  inviteToken    String?   @unique
+  inviteSentAt              DateTime?
+  inviteOpenedAt            DateTime?
+  inviteToken               String?   @unique
+  profileCompletionSentAt   DateTime?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
   assignments  Assignment[]

@@ -231,6 +231,117 @@ function buildResendEmailHtml(
 </html>`;
 }
 
+function buildProfileCompletionHtml(
+  firstName: string,
+  portalUrl: string,
+  missing: string[],
+  hasDocs: boolean,
+  trackingToken: string
+): string {
+  const trackingPixel = `${APP_URL}/api/campaign/track/${trackingToken}`;
+  const todoItems = [
+    ...missing.map((f) => `<li>&#9744; ${f}</li>`),
+    ...(!hasDocs ? ["<li>&#9744; Upload your compliance documents (CSCS card, Right to Work, DBS, etc.)</li>"] : []),
+  ].join("\n          ");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Action Required — Complete Your PRISM Profile</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+
+    <!-- Header -->
+    <div style="background:#1F4E79;border-radius:12px 12px 0 0;padding:32px 24px;text-align:center;">
+      <h1 style="color:#ffffff;margin:0;font-size:28px;letter-spacing:2px;font-weight:700;">PRISM</h1>
+      <p style="color:#93c5fd;margin:6px 0 0;font-size:13px;">PRL Site Solutions — Contractor Portal</p>
+    </div>
+
+    <!-- Body -->
+    <div style="background:#ffffff;border:1px solid #e5e7eb;border-top:none;padding:32px 24px;">
+
+      <p style="color:#1f2937;font-size:16px;font-weight:600;margin:0 0 8px;">Hi ${firstName},</p>
+
+      <p style="color:#4b5563;font-size:14px;line-height:1.7;margin:0 0 20px;">
+        Thank you for setting up your PRISM account. To make sure your records are complete and you're ready for work, we need you to log in and finish your profile.
+      </p>
+
+      <!-- Action required box -->
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:20px;margin:0 0 24px;">
+        <p style="color:#92400e;font-size:14px;font-weight:700;margin:0 0 12px;">&#9888; Action Required — Please complete the following:</p>
+        <ul style="color:#374151;font-size:14px;line-height:2.2;padding-left:20px;margin:0;">
+          ${todoItems}
+        </ul>
+      </div>
+
+      <!-- Why it matters -->
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin:0 0 24px;">
+        <p style="color:#1e40af;font-size:13px;margin:0;line-height:1.7;">
+          <strong>Why does this matter?</strong> Your profile must be complete before you can be placed on site. Compliance documents (CSCS card, Right to Work, DBS etc.) are required by our clients before any assignment begins.
+        </p>
+      </div>
+
+      <!-- How to complete -->
+      <p style="color:#1f2937;font-size:15px;font-weight:600;margin:0 0 12px;">How to complete your profile:</p>
+      <table style="width:100%;border-collapse:collapse;margin:0 0 24px;">
+        <tr>
+          <td style="width:36px;vertical-align:top;padding-bottom:16px;">
+            <div style="width:28px;height:28px;background:#1F4E79;color:#fff;border-radius:50%;text-align:center;line-height:28px;font-size:13px;font-weight:700;">1</div>
+          </td>
+          <td style="vertical-align:top;padding-bottom:16px;padding-left:12px;">
+            <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">Log in at <a href="${APP_URL}" style="color:#1F4E79;font-weight:600;">www.prismworkforce.online</a></p>
+          </td>
+        </tr>
+        <tr>
+          <td style="width:36px;vertical-align:top;padding-bottom:16px;">
+            <div style="width:28px;height:28px;background:#1F4E79;color:#fff;border-radius:50%;text-align:center;line-height:28px;font-size:13px;font-weight:700;">2</div>
+          </td>
+          <td style="vertical-align:top;padding-bottom:16px;padding-left:12px;">
+            <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">Go to <strong>My Profile</strong> and fill in all personal details</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="width:36px;vertical-align:top;">
+            <div style="width:28px;height:28px;background:#1F4E79;color:#fff;border-radius:50%;text-align:center;line-height:28px;font-size:13px;font-weight:700;">3</div>
+          </td>
+          <td style="vertical-align:top;padding-left:12px;">
+            <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">Go to <strong>My Documents</strong> and upload your compliance certificates</p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- CTA Button -->
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${portalUrl}"
+           style="display:inline-block;background:#2563eb;color:#ffffff;padding:16px 40px;border-radius:8px;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:0.5px;">
+          Complete My Profile Now
+        </a>
+      </div>
+
+      <!-- Help -->
+      <div style="border-top:1px solid #e5e7eb;padding-top:20px;">
+        <p style="color:#6b7280;font-size:13px;margin:0;">
+          Need help? Email us at <a href="mailto:${HELP_EMAIL}" style="color:#1F4E79;">${HELP_EMAIL}</a> — we're happy to assist.
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:16px 24px;text-align:center;">
+      <p style="color:#9ca3af;font-size:11px;margin:0;">
+        PRL Site Solutions | Recruitment Specialists | <a href="${APP_URL}" style="color:#9ca3af;">www.prismworkforce.online</a>
+      </p>
+    </div>
+
+    <img src="${trackingPixel}" width="1" height="1" style="display:none;" alt="" />
+  </div>
+</body>
+</html>`;
+}
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -243,35 +354,47 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "RESEND_API_KEY not configured" }, { status: 500 });
     }
 
-    // Parse body — resend=true sends corrective email to ALL contractors
+    // mode: "profileCompletion" | "resend" | undefined (normal launch)
     let isResend = false;
+    let isProfileCompletion = false;
     try {
       const body = await request.json();
       isResend = body?.resend === true;
+      isProfileCompletion = body?.mode === "profileCompletion";
     } catch {
       // no body or non-JSON — default to normal send
     }
 
-    const resend = new Resend(apiKey);
+    const resendClient = new Resend(apiKey);
 
-    // Normal send: only those not yet invited. Resend: everyone with a real email.
+    // Build query based on mode
+    const baseWhere = {
+      NOT: { email: { contains: "prl-placeholder" } },
+    };
+
     const contractors = await prisma.contractor.findMany({
-      where: {
-        ...(isResend ? {} : { inviteSentAt: null }),
-        NOT: {
-          email: {
-            contains: "prl-placeholder",
-          },
-        },
-      },
+      where: isProfileCompletion
+        // Profile completion: only activated contractors who haven't been sent this yet
+        ? { ...baseWhere, contractorLogin: { isNot: null }, profileCompletionSentAt: null }
+        : isResend
+        // Resend: everyone
+        ? baseWhere
+        // Normal launch: only those not yet invited
+        : { ...baseWhere, inviteSentAt: null },
       select: {
         id: true,
         firstName: true,
         lastName: true,
         email: true,
-        contractorLogin: {
-          select: { email: true },
-        },
+        phone: true,
+        address: true,
+        postcode: true,
+        dateOfBirth: true,
+        emergencyContactName: true,
+        emergencyContactPhone: true,
+        niNumber: true,
+        contractorLogin: { select: { email: true } },
+        compliances: { select: { filePath: true } },
       },
     });
 
@@ -288,30 +411,55 @@ export async function POST(request: Request) {
           continue;
         }
 
-        // Generate unique campaign tracking token
-        const inviteToken = crypto.randomUUID();
+        const trackingToken = crypto.randomUUID();
+        let html: string;
+        let subject: string;
+        let action: string;
+        let details: string;
 
-        // Generate a password reset token so they can set their password
-        const resetToken = crypto.randomUUID();
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        if (isProfileCompletion) {
+          // Work out what's missing for this contractor
+          const missingFields: string[] = [];
+          if (!contractor.phone) missingFields.push("Phone number");
+          if (!contractor.address) missingFields.push("Home address");
+          if (!contractor.postcode) missingFields.push("Postcode");
+          if (!contractor.dateOfBirth) missingFields.push("Date of birth");
+          if (!contractor.emergencyContactName) missingFields.push("Emergency contact name");
+          if (!contractor.emergencyContactPhone) missingFields.push("Emergency contact phone");
+          if (!contractor.niNumber) missingFields.push("NI number");
+          const hasDocs = contractor.compliances.some((d) => d.filePath);
 
-        await prisma.passwordResetToken.create({
-          data: {
-            email,
-            token: resetToken,
-            expiresAt,
-          },
-        });
+          html = buildProfileCompletionHtml(
+            contractor.firstName,
+            `${APP_URL}/portal`,
+            missingFields,
+            hasDocs,
+            trackingToken
+          );
+          subject = "Action Required: Please complete your PRISM profile";
+          action = "Sent Profile Completion Email";
+          details = `Profile completion reminder sent to ${email}`;
+        } else {
+          // Launch / corrective emails — also create a reset token
+          const resetToken = crypto.randomUUID();
+          await prisma.passwordResetToken.create({
+            data: { email, token: resetToken, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+          });
 
-        const setupUrl = `${APP_URL}/setup-account`;
-        const html = isResend
-          ? buildResendEmailHtml(contractor.firstName, setupUrl, inviteToken)
-          : buildEmailHtml(contractor.firstName, setupUrl, inviteToken);
-        const subject = isResend
-          ? "Important Update: Your PRL Site Solutions Contractor Portal Access"
-          : "Welcome to the PRL Site Solutions Contractor Portal";
+          const setupUrl = `${APP_URL}/setup-account`;
+          html = isResend
+            ? buildResendEmailHtml(contractor.firstName, setupUrl, trackingToken)
+            : buildEmailHtml(contractor.firstName, setupUrl, trackingToken);
+          subject = isResend
+            ? "Important Update: Your PRL Site Solutions Contractor Portal Access"
+            : "Welcome to the PRL Site Solutions Contractor Portal";
+          action = isResend ? "Sent Corrective Campaign Email" : "Sent Campaign Email";
+          details = isResend
+            ? `Corrective campaign email sent to ${email}`
+            : `Campaign launch email sent to ${email}`;
+        }
 
-        const { error } = await resend.emails.send({
+        const { error } = await resendClient.emails.send({
           from: FROM,
           to: [email],
           subject,
@@ -324,39 +472,31 @@ export async function POST(request: Request) {
           continue;
         }
 
-        // Save token and sent timestamp
+        // Update contractor record
         await prisma.contractor.update({
           where: { id: contractor.id },
-          data: {
-            inviteToken,
-            inviteSentAt: new Date(),
-          },
+          data: isProfileCompletion
+            ? { profileCompletionSentAt: new Date(), inviteToken: trackingToken }
+            : { inviteToken: trackingToken, inviteSentAt: new Date() },
         });
 
-        // Log the action
         await prisma.activityLog.create({
           data: {
             userId: (session.user as { id?: string }).id,
             userName: session.user.name,
             userEmail: session.user.email,
-            action: isResend ? "Sent Corrective Campaign Email" : "Sent Campaign Email",
+            action,
             entityType: "Contractor",
             entityId: contractor.id,
-            details: isResend
-              ? `Corrective campaign email sent to ${email}`
-              : `Campaign launch email sent to ${email}`,
+            details,
           },
         });
 
         sent++;
-
-        // 600ms delay between sends — stays under Resend's 2/sec limit
         await sleep(600);
       } catch (err) {
         failed++;
-        errors.push(
-          `${contractor.firstName} ${contractor.lastName}: ${String(err)}`
-        );
+        errors.push(`${contractor.firstName} ${contractor.lastName}: ${String(err)}`);
       }
     }
 
