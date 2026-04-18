@@ -265,13 +265,21 @@ function buildProfileCompletionHtml(
 
       <p style="color:#1f2937;font-size:16px;font-weight:600;margin:0 0 8px;">Hi ${firstName},</p>
 
-      <p style="color:#4b5563;font-size:14px;line-height:1.7;margin:0 0 20px;">
-        Thank you for setting up your PRISM account. To make sure your records are complete and you're ready for work, we need you to log in and finish your profile.
+      <p style="color:#4b5563;font-size:14px;line-height:1.7;margin:0 0 16px;">
+        First of all — <strong>thank you</strong> for signing up to PRISM. We really appreciate everyone who has already set up their account and we're delighted with the response so far.
       </p>
+
+      <!-- Deadline banner -->
+      <div style="background:#fee2e2;border:2px solid #fca5a5;border-radius:8px;padding:16px;margin:0 0 20px;text-align:center;">
+        <p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 4px;">&#128338; Deadline: Wednesday 23rd April</p>
+        <p style="color:#b91c1c;font-size:13px;margin:0;line-height:1.6;">
+          We need <strong>everyone</strong> to have their vital details updated by <strong>Wednesday next week</strong>. Please log in and complete your profile as soon as possible — this is essential before you can be placed on site.
+        </p>
+      </div>
 
       <!-- Action required box -->
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:20px;margin:0 0 24px;">
-        <p style="color:#92400e;font-size:14px;font-weight:700;margin:0 0 12px;">&#9888; Action Required — Please complete the following:</p>
+        <p style="color:#92400e;font-size:14px;font-weight:700;margin:0 0 12px;">&#9888; Please complete the following as soon as possible:</p>
         <ul style="color:#374151;font-size:14px;line-height:2.2;padding-left:20px;margin:0;">
           ${todoItems}
         </ul>
@@ -280,7 +288,7 @@ function buildProfileCompletionHtml(
       <!-- Why it matters -->
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin:0 0 24px;">
         <p style="color:#1e40af;font-size:13px;margin:0;line-height:1.7;">
-          <strong>Why does this matter?</strong> Your profile must be complete before you can be placed on site. Compliance documents (CSCS card, Right to Work, DBS etc.) are required by our clients before any assignment begins.
+          <strong>Why does this matter?</strong> Your profile must be 100% complete before you can be placed on site. Compliance documents (CSCS card, Right to Work, DBS etc.) are required by our clients before any assignment can begin. We want to make sure you're work-ready without any delays.
         </p>
       </div>
 
@@ -436,7 +444,7 @@ export async function POST(request: Request) {
             hasDocs,
             trackingToken
           );
-          subject = "Action Required: Please complete your PRISM profile";
+          subject = "Action Required by Wed 23rd April: Complete your PRISM profile";
           action = "Sent Profile Completion Email";
           details = `Profile completion reminder sent to ${email}`;
         } else {

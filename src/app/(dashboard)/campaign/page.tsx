@@ -196,7 +196,7 @@ export default function CampaignPage() {
           </h2>
           <div className="space-y-3 text-sm text-gray-600">
             <div className="flex gap-2"><span className="font-medium w-16 shrink-0">From:</span><span>PRL Site Solutions &lt;infotech@prlsitesolutions.co.uk&gt;</span></div>
-            <div className="flex gap-2"><span className="font-medium w-16 shrink-0">Subject:</span><span>Action Required: Please complete your PRISM profile</span></div>
+            <div className="flex gap-2"><span className="font-medium w-16 shrink-0">Subject:</span><span>Action Required by Wed 23rd April: Complete your PRISM profile</span></div>
             <hr />
             <div className="rounded-lg bg-[#1F4E79] p-4 text-center">
               <p className="text-white font-bold text-lg tracking-widest">PRISM</p>
@@ -204,9 +204,12 @@ export default function CampaignPage() {
             </div>
             <div className="rounded-lg bg-gray-50 border p-4 space-y-2">
               <p className="font-medium text-gray-800">Hi [First Name],</p>
-              <p className="text-xs text-gray-600 leading-relaxed">Thank you for setting up your PRISM account. To make sure your records are complete and you're ready for work, we need you to log in and finish your profile.</p>
+              <p className="text-xs text-gray-600 leading-relaxed"><strong>Thank you</strong> for signing up to PRISM — we really appreciate everyone who has set up their account.</p>
+              <div className="rounded bg-red-50 border border-red-300 p-2 text-center">
+                <p className="text-xs font-bold text-red-800">🕐 Deadline: Wednesday 23rd April — please complete ASAP</p>
+              </div>
               <div className="rounded bg-amber-50 border border-amber-200 p-3">
-                <p className="text-xs font-bold text-amber-800 mb-1">⚠ Action Required — Please complete the following:</p>
+                <p className="text-xs font-bold text-amber-800 mb-1">⚠ Please complete the following as soon as possible:</p>
                 <ul className="text-xs text-gray-700 space-y-0.5 list-none">
                   <li>☐ Phone number</li>
                   <li>☐ Home address &amp; postcode</li>
