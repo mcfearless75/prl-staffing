@@ -55,5 +55,10 @@ generate-*.js
 contractor-data.json
 *.db
 
+# Generated documents at root (local use only — tracked versions live in docs/)
+/*.docx
+/*.pptx
+/*.xlsx
+
 # Claude local settings
 .claude/settings.local.json
