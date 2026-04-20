@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState, useTransition, useCallback } from "react";
+import { useEffect, useState, useTransition, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Search,
@@ -510,7 +510,7 @@ function UploadModal({
 }
 
 // ─── Main Page ───
-export default function QmsDocumentsPage() {
+function QmsDocumentsInner() {
   const searchParams = useSearchParams();
   const subfolderParam = searchParams.get("subfolder"); // e.g. "Core Procedures/Internal Audits"
 
@@ -643,5 +643,13 @@ export default function QmsDocumentsPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function QmsDocumentsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-gray-400">Loading documents...</div>}>
+      <QmsDocumentsInner />
+    </Suspense>
   );
 }
