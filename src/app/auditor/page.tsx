@@ -123,7 +123,7 @@ function DocumentRow({ doc }: { doc: QmsDocument }) {
         </p>
       </div>
       <a
-        href={`/api/qms-documents/download?id=${doc.id}`}
+        href={`/api/auditor/download?id=${doc.id}&token=${token ?? ""}`}
         className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium hover:bg-gray-100 transition-colors"
         style={{ color: "#8EA698" }}
         title="Download"
