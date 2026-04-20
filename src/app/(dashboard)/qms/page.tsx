@@ -29,11 +29,11 @@ export default async function QMSPage() {
   ]);
 
   const folderCoverage = [
-    { name: "NCR / CAPA", count: ncrDocs, href: "/qms/documents" },
-    { name: "Internal Audits", count: auditDocs, href: "/qms/documents" },
-    { name: "Management Reviews", count: reviewDocs, href: "/qms/documents" },
-    { name: "Risks & Opportunities", count: riskDocs, href: "/qms/documents" },
-    { name: "Quality Manual & Policy", count: policyDocs, href: "/qms/documents" },
+    { name: "NCR / CAPA", count: ncrDocs, href: "/qms/documents?subfolder=Core+Procedures%2FNon+C+%26+Corrective+Actions" },
+    { name: "Internal Audits", count: auditDocs, href: "/qms/documents?subfolder=Core+Procedures%2FInternal+Audits" },
+    { name: "Management Reviews", count: reviewDocs, href: "/qms/documents?subfolder=Core+Procedures%2FManagement+Reviews" },
+    { name: "Risks & Opportunities", count: riskDocs, href: "/qms/documents?subfolder=Core+Procedures%2FRisks+%26+Opportunities" },
+    { name: "Quality Manual & Policy", count: policyDocs, href: "/qms/documents?subfolder=Quality+Manual+%26+Policy" },
   ];
   const coveredFolders = folderCoverage.filter((f) => f.count > 0).length;
 

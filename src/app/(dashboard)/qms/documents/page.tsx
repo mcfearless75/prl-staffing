@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useTransition, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   FolderOpen,
@@ -510,10 +511,24 @@ function UploadModal({
 
 // ─── Main Page ───
 export default function QmsDocumentsPage() {
+  const searchParams = useSearchParams();
+  const subfolderParam = searchParams.get("subfolder"); // e.g. "Core Procedures/Internal Audits"
+
   const [documents, setDocuments] = useState<QmsDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    if (!subfolderParam) return new Set<string>();
+    // Expand every ancestor level: "Core Procedures" AND "Core Procedures/Internal Audits"
+    const keys = new Set<string>();
+    const parts = subfolderParam.split("/");
+    let cumulative = "";
+    for (const part of parts) {
+      cumulative = cumulative ? `${cumulative}/${part}` : part;
+      keys.add(cumulative);
+    }
+    return keys;
+  });
   const [showUpload, setShowUpload] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
