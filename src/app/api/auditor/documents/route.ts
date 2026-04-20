@@ -3,8 +3,8 @@ import { jwtVerify } from "jose";
 import { NextRequest } from "next/server";
 
 function getJwtSecret() {
-  const secret = process.env.AUDITOR_JWT_SECRET;
-  if (!secret) throw new Error("AUDITOR_JWT_SECRET environment variable is required");
+  const secret = process.env.AUDITOR_JWT_SECRET || process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+  if (!secret) throw new Error("No JWT secret configured (AUDITOR_JWT_SECRET or AUTH_SECRET required)");
   return new TextEncoder().encode(secret);
 }
 
