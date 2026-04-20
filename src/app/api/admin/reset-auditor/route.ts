@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   try {
     const { key, email, password } = await request.json();
 
-    const expectedKey = process.env.ADMIN_SECRET;
+    const expectedKey = process.env.ADMIN_SECRET || process.env.AUTH_SECRET;
     if (!expectedKey || key !== expectedKey) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
