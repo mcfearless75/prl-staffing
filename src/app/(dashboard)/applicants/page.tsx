@@ -28,7 +28,7 @@ async function rejectApplicant(id: string) {
 
 export default async function ApplicantsPage() {
   const applicants = await prisma.contractor.findMany({
-    where: { status: "Pending" },
+    where: { status: "Applied" },
     orderBy: { createdAt: "desc" },
   });
 

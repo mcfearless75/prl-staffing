@@ -89,7 +89,7 @@ export default async function DashboardPage() {
       include: { contractor: true },
     }),
     // New applicants
-    prisma.contractor.count({ where: { status: "Pending" } }),
+    prisma.contractor.count({ where: { status: "Applied" } }),
     // Open payment queries
     prisma.paymentQuery.count({ where: { status: { in: ["Open", "Assigned"] } } }),
   ]);
