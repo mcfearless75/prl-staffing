@@ -365,17 +365,17 @@ export async function POST(request: Request) {
     // mode: "profileCompletion" | "resend" | undefined (normal launch)
     let isResend = false;
     let isProfileCompletion = false;
+    let isResendAll = false;
     try {
       const body = await request.json();
       isResend = body?.resend === true;
       isProfileCompletion = body?.mode === "profileCompletion";
+      isResendAll = body?.mode === "resendAll";
+      // resendAll uses the same profile completion email template
+      if (isResendAll) isProfileCompletion = true;
     } catch {
       // no body or non-JSON — default to normal send
     }
-
-    const isResendAll = (body as Record<string, unknown>)?.mode === "resendAll";
-    // resendAll uses the same profile completion email template
-    if (isResendAll) isProfileCompletion = true;
 
     const resendClient = new Resend(apiKey);
 
