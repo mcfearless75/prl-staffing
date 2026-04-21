@@ -373,6 +373,10 @@ export async function POST(request: Request) {
       // no body or non-JSON — default to normal send
     }
 
+    const isResendAll = (body as Record<string, unknown>)?.mode === "resendAll";
+    // resendAll uses the same profile completion email template
+    if (isResendAll) isProfileCompletion = true;
+
     const resendClient = new Resend(apiKey);
 
     // Build query based on mode
@@ -381,7 +385,10 @@ export async function POST(request: Request) {
     };
 
     const contractors = await prisma.contractor.findMany({
-      where: isProfileCompletion
+      where: isResendAll
+        // Resend to ALL activated contractors regardless of previous sends
+        ? { ...baseWhere, contractorLogin: { isNot: null } }
+        : isProfileCompletion
         // Profile completion: only activated contractors who haven't been sent this yet
         ? { ...baseWhere, contractorLogin: { isNot: null }, profileCompletionSentAt: null }
         : isResend

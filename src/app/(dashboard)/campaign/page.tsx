@@ -107,6 +107,7 @@ export default function CampaignPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           mode === "profileCompletion" ? { mode: "profileCompletion" }
+          : mode === "resendAll"       ? { mode: "resendAll" }
           : mode === "resend"          ? { resend: true }
           : {}
         ),
@@ -265,6 +266,18 @@ export default function CampaignPage() {
           {notYetReminded === 0 && !sending && (
             <p className="text-center text-xs text-gray-400 mt-2">All activated contractors have been sent a profile completion request.</p>
           )}
+
+          {/* Resend to ALL — ignores previous sends */}
+          <div className="mt-3 border-t border-amber-100 pt-3">
+            <button
+              onClick={() => handleSend("resendAll", `⚠️ RESEND to ALL ${stats?.activated ?? 0} activated contractors — including the 288 already sent a reminder.\n\nThis will send another profile completion email to everyone who has signed up.\n\nProceed?`)}
+              disabled={sending}
+              className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-red-300 bg-red-50 px-6 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {sending ? <><RefreshCw className="h-4 w-4 animate-spin" />Sending...</> : <><Send className="h-4 w-4" />Resend to ALL Activated ({stats?.activated ?? 0})</>}
+            </button>
+            <p className="text-center text-[10px] text-gray-400 mt-1">Sends to everyone — including those already chased. Use for deadline reminders.</p>
+          </div>
         </div>
       </div>
 
