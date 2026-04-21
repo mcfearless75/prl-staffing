@@ -23,6 +23,15 @@ export async function GET(
         where: { id: contractor.id },
         data: { inviteOpenedAt: new Date() },
       });
+      // Log the open event so it appears in the contractor activity feed
+      await prisma.activityLog.create({
+        data: {
+          action: "Campaign Email Opened",
+          entityType: "Contractor",
+          entityId: contractor.id,
+          details: JSON.stringify({ event: "email_opened", timestamp: new Date().toISOString() }),
+        },
+      });
     }
   } catch {
     // Silently fail — always return the pixel
