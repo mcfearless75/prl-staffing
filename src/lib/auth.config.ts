@@ -83,12 +83,23 @@ export const authConfig = {
       // Subsequent requests: validate tokenVersion (credentials users only, not SSO)
       if (!user && !account && token.id && token.tokenVersion !== undefined && token.ssoProvider !== "microsoft") {
         try {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: token.id as string },
-            select: { tokenVersion: true },
-          });
-          if (!dbUser || dbUser.tokenVersion !== token.tokenVersion) {
-            return null; // Invalidate the session
+          if (token.userType === "contractor") {
+            // Contractors are stored in ContractorLogin, not User
+            const contractorLogin = await prisma.contractorLogin.findUnique({
+              where: { id: token.id as string },
+              select: { tokenVersion: true },
+            });
+            if (!contractorLogin || contractorLogin.tokenVersion !== token.tokenVersion) {
+              return null;
+            }
+          } else {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token.id as string },
+              select: { tokenVersion: true },
+            });
+            if (!dbUser || dbUser.tokenVersion !== token.tokenVersion) {
+              return null; // Invalidate the session
+            }
           }
         } catch {
           // If DB check fails, allow token to continue
