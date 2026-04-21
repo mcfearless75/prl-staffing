@@ -54,6 +54,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (user && user.passwordHash) {
           // Check if account is locked
           if (user.lockedUntil && user.lockedUntil > new Date()) {
+            prisma.activityLog.create({
+              data: {
+                action: "Staff Login Blocked — Account Locked",
+                entityType: "User",
+                entityId: user.id,
+                userEmail: email,
+                userName: user.name,
+                ipAddress: ip,
+                details: JSON.stringify({ reason: "account_locked" }),
+              },
+            }).catch(() => {});
             return null;
           }
 
@@ -69,6 +80,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                   : {}),
               },
             });
+            prisma.activityLog.create({
+              data: {
+                action: "Staff Login Failed — Wrong Password",
+                entityType: "User",
+                entityId: user.id,
+                userEmail: email,
+                userName: user.name,
+                ipAddress: ip,
+                details: JSON.stringify({ failedAttempts: newFailedAttempts, locked: newFailedAttempts >= 5 }),
+              },
+            }).catch(() => {});
             return null;
           }
 
@@ -77,6 +99,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             where: { id: user.id },
             data: { failedAttempts: 0, lockedUntil: null },
           });
+
+          prisma.activityLog.create({
+            data: {
+              action: "Staff Login",
+              entityType: "User",
+              entityId: user.id,
+              userEmail: email,
+              userName: user.name,
+              ipAddress: ip,
+              details: JSON.stringify({ method: "credentials" }),
+            },
+          }).catch(() => {});
 
           return {
             id: user.id,
@@ -104,6 +138,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (contractorLogin) {
           // Check if account is locked
           if (contractorLogin.lockedUntil && contractorLogin.lockedUntil > new Date()) {
+            prisma.activityLog.create({
+              data: {
+                action: "Contractor Login Blocked — Account Locked",
+                entityType: "Contractor",
+                entityId: contractorLogin.contractorId,
+                userEmail: email,
+                userName: `${contractorLogin.contractor.firstName} ${contractorLogin.contractor.lastName}`,
+                ipAddress: ip,
+                details: JSON.stringify({ reason: "account_locked" }),
+              },
+            }).catch(() => {});
             return null;
           }
 
@@ -119,6 +164,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                   : {}),
               },
             });
+            prisma.activityLog.create({
+              data: {
+                action: "Contractor Login Failed — Wrong Password",
+                entityType: "Contractor",
+                entityId: contractorLogin.contractorId,
+                userEmail: email,
+                userName: `${contractorLogin.contractor.firstName} ${contractorLogin.contractor.lastName}`,
+                ipAddress: ip,
+                details: JSON.stringify({ failedAttempts: newFailedAttempts, locked: newFailedAttempts >= 5 }),
+              },
+            }).catch(() => {});
             return null;
           }
 
@@ -138,9 +194,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               action: "Contractor Login",
               entityType: "Contractor",
               entityId: contractorLogin.contractorId,
-              details: `${contractorLogin.contractor.firstName} ${contractorLogin.contractor.lastName} logged in to the portal`,
+              details: JSON.stringify({ method: "credentials", ip }),
               userEmail: contractorLogin.email,
               userName: `${contractorLogin.contractor.firstName} ${contractorLogin.contractor.lastName}`,
+              ipAddress: ip,
             },
           }).catch(() => {/* non-critical */});
 
@@ -162,6 +219,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             tokenVersion: number;
           };
         }
+
+        // No matching user or contractor found
+        prisma.activityLog.create({
+          data: {
+            action: "Login Failed — Unknown Email",
+            entityType: "User",
+            userEmail: email,
+            ipAddress: ip,
+            details: JSON.stringify({ reason: "email_not_found" }),
+          },
+        }).catch(() => {});
 
         return null;
       },

@@ -30,17 +30,23 @@ function getIcon(action: string) {
 export default async function ActivityLogPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ user?: string; entity?: string; page?: string }>;
+  searchParams?: Promise<{ user?: string; entity?: string; page?: string; filter?: string }>;
 }) {
   const params = searchParams ? await searchParams : {};
   const userFilter = params?.user || "";
   const entityFilter = params?.entity || "";
+  const quickFilter = params?.filter || "";
   const page = parseInt(params?.page || "1", 10);
   const pageSize = 50;
 
   const where: Record<string, unknown> = {};
   if (userFilter) where.userEmail = userFilter;
   if (entityFilter) where.entityType = entityFilter;
+  if (quickFilter === "logins") {
+    where.action = { contains: "Login" };
+  } else if (quickFilter === "failed") {
+    where.action = { contains: "Failed" };
+  }
 
   const [logs, total, uniqueUsers, uniqueEntities] = await Promise.all([
     prisma.activityLog.findMany({
@@ -62,6 +68,27 @@ export default async function ActivityLogPage({
         title="Activity Log"
         description={`${total} tracked actions — full audit trail of all user activity`}
       />
+
+      {/* Quick filter tabs */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { label: "All", value: "" },
+          { label: "🔐 All Logins", value: "logins" },
+          { label: "❌ Failed Logins", value: "failed" },
+        ].map((tab) => (
+          <a
+            key={tab.value}
+            href={`/activity?filter=${tab.value}`}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              quickFilter === tab.value
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {tab.label}
+          </a>
+        ))}
+      </div>
 
       {/* Filters */}
       <form className="flex flex-wrap items-center gap-2">
@@ -106,29 +133,42 @@ export default async function ActivityLogPage({
         </div>
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
-          {logs.map((log) => (
-            <div key={log.id} className="flex items-start gap-3 px-4 lg:px-6 py-3">
-              <span className="text-lg mt-0.5 shrink-0">{getIcon(log.action)}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-900">
-                  <span className="font-semibold">{log.userName || "System"}</span>
-                  {" "}<span className="text-gray-600">{log.action}</span>
-                </p>
-                <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
-                    {log.entityType}
-                  </span>
-                  {log.details && (
-                    <span className="text-xs text-gray-500 truncate">{log.details}</span>
-                  )}
+          {logs.map((log) => {
+            const isFailed = log.action.includes("Failed") || log.action.includes("Blocked");
+            const isLogin = log.action.includes("Login");
+            const rowBg = isFailed ? "bg-red-50" : "";
+            let ipAddress: string | null = null;
+            if (log.ipAddress) ipAddress = log.ipAddress;
+            return (
+              <div key={log.id} className={`flex items-start gap-3 px-4 lg:px-6 py-3 ${rowBg}`}>
+                <span className="text-lg mt-0.5 shrink-0">
+                  {isFailed ? "🚨" : isLogin ? "🔐" : getIcon(log.action)}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-900">
+                    <span className="font-semibold">{log.userName || log.userEmail || "Unknown"}</span>
+                    {" "}<span className={isFailed ? "text-red-700 font-medium" : "text-gray-600"}>{log.action}</span>
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                      {log.entityType}
+                    </span>
+                    {ipAddress && (
+                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-mono text-blue-600">
+                        IP: {ipAddress}
+                      </span>
+                    )}
+                    {log.userEmail && (
+                      <span className="text-[10px] text-gray-400">{log.userEmail}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-[10px] text-gray-400">{formatTime(log.createdAt)}</p>
                 </div>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-[10px] text-gray-400">{formatTime(log.createdAt)}</p>
-                <p className="text-[10px] text-gray-400">{log.userEmail || ""}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
