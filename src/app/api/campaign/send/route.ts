@@ -271,9 +271,9 @@ function buildProfileCompletionHtml(
 
       <!-- Deadline banner -->
       <div style="background:#fee2e2;border:2px solid #fca5a5;border-radius:8px;padding:16px;margin:0 0 20px;text-align:center;">
-        <p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 4px;">&#128338; Deadline: Wednesday 23rd April</p>
+        <p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 4px;">&#128338; Deadline: Friday 24th April</p>
         <p style="color:#b91c1c;font-size:13px;margin:0;line-height:1.6;">
-          We need <strong>everyone</strong> to have their vital details updated by <strong>Wednesday next week</strong>. Please log in and complete your profile as soon as possible — this is essential before you can be placed on site.
+          We need <strong>everyone</strong> to have their vital details updated by <strong>Friday 24th April</strong>. Please log in and complete your profile as soon as possible — this is essential before you can be placed on site.
         </p>
       </div>
 
@@ -444,7 +444,7 @@ export async function POST(request: Request) {
             hasDocs,
             trackingToken
           );
-          subject = "Action Required by Wed 23rd April: Complete your PRISM profile";
+          subject = "Action Required by Fri 24th April: Complete your PRISM profile";
           action = "Sent Profile Completion Email";
           details = `Profile completion reminder sent to ${email}`;
         } else {
