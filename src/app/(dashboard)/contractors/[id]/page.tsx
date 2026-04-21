@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { deleteContractor } from "../actions";
 import { maskNI, maskUTR } from "@/lib/utils";
+import { ContractorPortalStatus } from "@/components/contractor-portal-status";
 
 export default async function ContractorDetailPage({
   params,
@@ -380,6 +381,14 @@ export default async function ContractorDetailPage({
             </table>
           </div>
         )}
+      </div>
+
+      {/* Portal Account */}
+      <div className="rounded-xl border border-blue-200 bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold text-blue-900 flex items-center gap-2">
+          🔐 Portal Account
+        </h2>
+        <ContractorPortalStatus contractorId={contractor.id} />
       </div>
 
       {/* Activity Feed */}
