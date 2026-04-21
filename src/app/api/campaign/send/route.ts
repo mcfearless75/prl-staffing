@@ -515,6 +515,27 @@ export async function POST(request: Request) {
       }
     }
 
+    // Campaign-level summary log
+    const campaignMode = isResendAll ? "Resend All" : isProfileCompletion ? "Profile Completion" : isResend ? "Resend Launch" : "Launch";
+    await prisma.activityLog.create({
+      data: {
+        userId: (session.user as { id?: string }).id,
+        userName: session.user.name,
+        userEmail: session.user.email,
+        action: `Campaign Sent — ${campaignMode}`,
+        entityType: "Campaign",
+        details: JSON.stringify({
+          mode: campaignMode,
+          sent,
+          failed,
+          total: contractors.length,
+          errors: errors.length > 0 ? errors : undefined,
+          sentAt: new Date().toISOString(),
+          triggeredBy: session.user.email,
+        }),
+      },
+    });
+
     return NextResponse.json({ sent, failed, errors });
   } catch (err) {
     console.error("Campaign send error:", err);

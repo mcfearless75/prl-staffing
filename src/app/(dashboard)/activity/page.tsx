@@ -161,6 +161,16 @@ export default async function ActivityLogPage({
                     {log.userEmail && (
                       <span className="text-[10px] text-gray-400">{log.userEmail}</span>
                     )}
+                  {log.entityType === "Campaign" && log.details && (() => {
+                    try {
+                      const d = JSON.parse(log.details);
+                      return (
+                        <span className="rounded bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] text-emerald-700 font-medium">
+                          ✉ {d.sent} sent · {d.failed} failed · {d.total} targeted
+                        </span>
+                      );
+                    } catch { return null; }
+                  })()}
                   </div>
                 </div>
                 <div className="text-right shrink-0">
