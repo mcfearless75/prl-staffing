@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate, getInitials, getStatusColor } from "@/lib/utils";
 import { Plus, Search } from "lucide-react";
+import { ContractorStatusSelect } from "@/components/contractor-status-select";
 
 export default async function ContractorsPage({
   searchParams,
@@ -50,6 +51,30 @@ export default async function ContractorsPage({
         }
       />
 
+      {/* Quick-filter tabs */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { label: "All", value: "", color: "bg-gray-100 text-gray-700 hover:bg-gray-200" },
+          { label: "Applied", value: "Applied", color: "bg-purple-100 text-purple-700 hover:bg-purple-200" },
+          { label: "New", value: "New", color: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200" },
+          { label: "Active", value: "Active", color: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" },
+          { label: "On Site", value: "On Site", color: "bg-blue-100 text-blue-700 hover:bg-blue-200" },
+          { label: "Benched", value: "Benched", color: "bg-amber-100 text-amber-700 hover:bg-amber-200" },
+          { label: "Pending Docs", value: "Pending Docs", color: "bg-orange-100 text-orange-700 hover:bg-orange-200" },
+          { label: "Suspended", value: "Suspended", color: "bg-red-100 text-red-700 hover:bg-red-200" },
+          { label: "Inactive", value: "Inactive", color: "bg-gray-100 text-gray-600 hover:bg-gray-200" },
+          { label: "Left", value: "Left", color: "bg-rose-100 text-rose-700 hover:bg-rose-200" },
+        ].map((tab) => (
+          <Link
+            key={tab.value}
+            href={tab.value ? `/contractors?status=${encodeURIComponent(tab.value)}${search ? `&search=${encodeURIComponent(search)}` : ""}` : "/contractors"}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${tab.color} ${status === tab.value ? "ring-2 ring-offset-1 ring-current" : ""}`}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </div>
+
       {/* Filter Bar */}
       <form method="GET" className="flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
@@ -68,9 +93,15 @@ export default async function ContractorsPage({
           className="rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">All Statuses</option>
+          <option value="Applied">Applied</option>
+          <option value="New">New</option>
           <option value="Active">Active</option>
+          <option value="On Site">On Site</option>
+          <option value="Benched">Benched</option>
+          <option value="Pending Docs">Pending Docs</option>
+          <option value="Suspended">Suspended</option>
           <option value="Inactive">Inactive</option>
-          <option value="On Hold">On Hold</option>
+          <option value="Left">Left</option>
         </select>
         <button
           type="submit"
@@ -137,9 +168,7 @@ export default async function ContractorsPage({
                       : "—"}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
-                    <Badge variant={contractor.status}>
-                      {contractor.status}
-                    </Badge>
+                    <ContractorStatusSelect id={contractor.id} status={contractor.status} />
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     {contractor.supplier?.name || "—"}

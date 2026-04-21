@@ -40,7 +40,7 @@ export async function POST(request: Request) {
           lastName,
           email,
           phone: phone || null,
-          status: "Pending",
+          status: "Applied",
           address: body.address || null,
           postcode: body.postcode || null,
           niNumber: body.niNumber || null,
