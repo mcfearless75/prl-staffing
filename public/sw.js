@@ -1,13 +1,26 @@
-// PRL Site Solutions - Service Worker
-const CACHE_NAME = "prl-portal-v1";
+// PRL Site Solutions - Service Worker v4
+const CACHE_NAME = "prl-portal-v4";
 const STATIC_ASSETS = [
-  "/portal",
   "/prl_logo.jpg",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
 ];
 
-// Install - cache static assets
+// Never cache these — always go to network
+function shouldBypass(url) {
+  const u = new URL(url);
+  return (
+    u.pathname.startsWith("/api/") ||
+    u.pathname.startsWith("/login") ||
+    u.pathname.startsWith("/_next/") ||
+    u.pathname.startsWith("/set-password") ||
+    u.pathname.startsWith("/setup-account") ||
+    u.pathname.includes("auth") ||
+    u.search.includes("token")
+  );
+}
+
+// Install - cache only static assets
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -15,25 +28,29 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
-// Activate - clean old caches
+// Activate - wipe ALL old caches immediately
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+      Promise.all(keys.map((k) => caches.delete(k)))
+    ).then(() => caches.open(CACHE_NAME))
   );
   self.clients.claim();
 });
 
-// Fetch - network first, fallback to cache
+// Fetch - network first for everything; only fall back to cache for static assets
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  // Always bypass to network for auth/API/Next.js chunks
+  if (shouldBypass(event.request.url)) return;
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache successful responses
-        if (response.status === 200) {
+        // Only cache images and icons — not HTML pages
+        const contentType = response.headers.get("content-type") || "";
+        if (response.status === 200 && (contentType.includes("image") || contentType.includes("font"))) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
@@ -58,27 +75,22 @@ self.addEventListener("push", (event) => {
       { action: "dismiss", title: "Dismiss" },
     ],
   };
-
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 // Handle notification click
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-
   if (event.action === "dismiss") return;
-
   const url = event.notification.data?.url || "/portal";
   event.waitUntil(
     self.clients.matchAll({ type: "window" }).then((clients) => {
-      // Focus existing window if open
       for (const client of clients) {
         if (client.url.includes("/portal") && "focus" in client) {
           client.navigate(url);
           return client.focus();
         }
       }
-      // Open new window
       return self.clients.openWindow(url);
     })
   );
