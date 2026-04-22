@@ -12,7 +12,11 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { contractorId, phone, email, address, postcode, emergencyContactName, emergencyContactPhone, emergencyContactRelation } = body;
+    const {
+      contractorId, phone, email, address, postcode,
+      dateOfBirth, niNumber, nextOfKin,
+      emergencyContactName, emergencyContactPhone, emergencyContactRelation,
+    } = body;
 
     // Security: contractors can only update their own profile
     if (contractorId !== sessionUser.contractorId) {
@@ -27,6 +31,9 @@ export async function PUT(request: Request) {
         email: email || null,
         address: address || null,
         postcode: postcode || null,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        niNumber: niNumber || null,
+        nextOfKin: nextOfKin || null,
         emergencyContactName: emergencyContactName || null,
         emergencyContactPhone: emergencyContactPhone || null,
         emergencyContactRelation: emergencyContactRelation || null,

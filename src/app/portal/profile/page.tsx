@@ -58,6 +58,9 @@ export default async function PortalProfilePage() {
         email={contractor.email || ""}
         address={(contractor as Record<string, unknown>).address as string || ""}
         postcode={(contractor as Record<string, unknown>).postcode as string || ""}
+        dateOfBirth={contractor.dateOfBirth ? new Date(contractor.dateOfBirth).toISOString().split("T")[0] : ""}
+        niNumber={contractor.niNumber || ""}
+        nextOfKin={(contractor as Record<string, unknown>).nextOfKin as string || ""}
         emergencyContactName={(contractor as Record<string, unknown>).emergencyContactName as string || ""}
         emergencyContactPhone={(contractor as Record<string, unknown>).emergencyContactPhone as string || ""}
         emergencyContactRelation={(contractor as Record<string, unknown>).emergencyContactRelation as string || ""}

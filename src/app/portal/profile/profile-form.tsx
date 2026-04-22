@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Phone, MapPin, AlertTriangle } from "lucide-react";
+import { Mail, Phone, MapPin, AlertTriangle, Calendar, Shield, Users } from "lucide-react";
 
 export function ProfileForm({
   contractorId,
@@ -9,6 +9,9 @@ export function ProfileForm({
   email,
   address,
   postcode,
+  dateOfBirth,
+  niNumber,
+  nextOfKin,
   emergencyContactName,
   emergencyContactPhone,
   emergencyContactRelation,
@@ -18,6 +21,9 @@ export function ProfileForm({
   email: string;
   address: string;
   postcode: string;
+  dateOfBirth: string;
+  niNumber: string;
+  nextOfKin: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
   emergencyContactRelation: string;
@@ -27,6 +33,9 @@ export function ProfileForm({
     email,
     address,
     postcode,
+    dateOfBirth,
+    niNumber,
+    nextOfKin,
     emergencyContactName,
     emergencyContactPhone,
     emergencyContactRelation,
@@ -40,6 +49,9 @@ export function ProfileForm({
     formData.email !== email ||
     formData.address !== address ||
     formData.postcode !== postcode ||
+    formData.dateOfBirth !== dateOfBirth ||
+    formData.niNumber !== niNumber ||
+    formData.nextOfKin !== nextOfKin ||
     formData.emergencyContactName !== emergencyContactName ||
     formData.emergencyContactPhone !== emergencyContactPhone ||
     formData.emergencyContactRelation !== emergencyContactRelation;
@@ -123,6 +135,44 @@ export function ProfileForm({
               onChange={(e) => setFormData({ ...formData, postcode: e.target.value.toUpperCase() })}
               className={`${inputClass} max-w-[140px]`}
               placeholder="XX1 1XX"
+            />
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-[10px] font-medium text-gray-500 mb-1">
+              <Calendar className="h-3 w-3" /> Date of Birth
+            </label>
+            <input
+              type="date"
+              value={formData.dateOfBirth}
+              onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+              className={`${inputClass} max-w-[200px]`}
+              max={new Date().toISOString().split("T")[0]}
+            />
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-[10px] font-medium text-gray-500 mb-1">
+              <Shield className="h-3 w-3" /> NI Number
+            </label>
+            <input
+              type="text"
+              value={formData.niNumber}
+              onChange={(e) => setFormData({ ...formData, niNumber: e.target.value.toUpperCase() })}
+              className={`${inputClass} max-w-[200px] font-mono`}
+              placeholder="AB 12 34 56 C"
+              maxLength={13}
+            />
+            <p className="text-[10px] text-gray-400 mt-1">Format: AB 12 34 56 C</p>
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-[10px] font-medium text-gray-500 mb-1">
+              <Users className="h-3 w-3" /> Next of Kin
+            </label>
+            <input
+              type="text"
+              value={formData.nextOfKin}
+              onChange={(e) => setFormData({ ...formData, nextOfKin: e.target.value })}
+              className={inputClass}
+              placeholder="Name, relationship, phone number"
             />
           </div>
         </div>
