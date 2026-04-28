@@ -64,14 +64,14 @@ export default async function PortalDashboard() {
             Add PRISM to your home screen for quick access — works like a regular app, no app store needed.
           </p>
           <p className="text-[11px] font-semibold text-blue-900 mb-1">
-            🌐 Web address: <span className="font-mono bg-white border border-blue-200 rounded px-1.5 py-0.5 text-blue-800">www.prismworkforce.online</span>
+            🌐 Install address: <span className="font-mono bg-white border border-blue-200 rounded px-1.5 py-0.5 text-blue-800">www.prismworkforce.online/install</span>
           </p>
 
           {/* iPhone */}
           <div className="rounded-lg bg-white border border-blue-200 p-3">
             <p className="text-xs font-semibold text-gray-800 mb-2">🍎 iPhone / iPad (Safari)</p>
             <ol className="text-xs text-gray-600 space-y-1 list-none">
-              <li><span className="font-semibold text-gray-700">1.</span> Open <strong>Safari</strong> and go to <strong>www.prismworkforce.online</strong></li>
+              <li><span className="font-semibold text-gray-700">1.</span> Open <strong>Safari</strong> and go to <strong>www.prismworkforce.online/install</strong></li>
               <li><span className="font-semibold text-gray-700">2.</span> Tap the <strong>Share</strong> button at the bottom of the screen (the box with an arrow pointing up)</li>
               <li><span className="font-semibold text-gray-700">3.</span> Scroll down and tap <strong>&quot;Add to Home Screen&quot;</strong></li>
               <li><span className="font-semibold text-gray-700">4.</span> Tap <strong>Add</strong> — PRISM will appear on your home screen</li>
@@ -82,7 +82,7 @@ export default async function PortalDashboard() {
           <div className="rounded-lg bg-white border border-blue-200 p-3">
             <p className="text-xs font-semibold text-gray-800 mb-2">🤖 Android (Chrome)</p>
             <ol className="text-xs text-gray-600 space-y-1 list-none">
-              <li><span className="font-semibold text-gray-700">1.</span> Open <strong>Chrome</strong> and go to <strong>www.prismworkforce.online</strong></li>
+              <li><span className="font-semibold text-gray-700">1.</span> Open <strong>Chrome</strong> and go to <strong>www.prismworkforce.online/install</strong></li>
               <li><span className="font-semibold text-gray-700">2.</span> Tap the <strong>three dots</strong> menu (top right)</li>
               <li><span className="font-semibold text-gray-700">3.</span> Tap <strong>&quot;Add to Home screen&quot;</strong></li>
               <li><span className="font-semibold text-gray-700">4.</span> Tap <strong>Add</strong> — done!</li>
