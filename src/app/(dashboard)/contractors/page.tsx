@@ -174,12 +174,20 @@ export default async function ContractorsPage({
                     {contractor.supplier?.name || "—"}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right">
-                    <Link
-                      href={`/contractors/${contractor.id}`}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                    >
-                      View
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      <Link
+                        href={`/contractors/${contractor.id}`}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                      >
+                        View
+                      </Link>
+                      <Link
+                        href={`/contractors/${contractor.id}/edit`}
+                        className="text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        Edit
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

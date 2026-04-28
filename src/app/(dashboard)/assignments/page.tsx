@@ -158,12 +158,20 @@ export default async function AssignmentsPage({
                       </Badge>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right">
-                      <Link
-                        href={`/assignments/${assignment.id}`}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                      >
-                        View
-                      </Link>
+                      <div className="flex items-center justify-end gap-3">
+                        <Link
+                          href={`/assignments/${assignment.id}`}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                        >
+                          View
+                        </Link>
+                        <Link
+                          href={`/assignments/${assignment.id}/edit`}
+                          className="text-sm font-medium text-gray-600 hover:text-gray-900"
+                        >
+                          Edit
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
