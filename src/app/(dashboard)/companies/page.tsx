@@ -2,8 +2,8 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/badge";
 import { Plus, Search } from "lucide-react";
+import { CompaniesTable } from "./companies-table";
 
 export default async function CompaniesPage({
   searchParams,
@@ -59,74 +59,14 @@ export default async function CompaniesPage({
         </button>
       </form>
 
+      {/* Count */}
+      <p className="text-sm text-gray-500">
+        {companies.length} {companies.length === 1 ? "company" : "companies"}{search ? ` matching "${search}"` : " total"}
+      </p>
+
       {/* Companies Table */}
       {companies.length > 0 ? (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  City
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Contact Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Contact Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Phone
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Active
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {companies.map((company) => (
-                <tr
-                  key={company.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                    {company.name}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {company.city || "—"}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {company.contactName || "—"}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {company.contactEmail || "—"}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {company.contactPhone || "—"}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <Badge variant={company.isActive ? "Active" : "Inactive"}>
-                      {company.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right">
-                    <Link
-                      href={`/companies/${company.id}`}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <CompaniesTable companies={companies} />
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center">
           <p className="text-sm text-gray-500">
@@ -136,10 +76,7 @@ export default async function CompaniesPage({
                 Clear search
               </Link>
             ) : (
-              <Link
-                href="/companies/new"
-                className="text-blue-600 hover:underline"
-              >
+              <Link href="/companies/new" className="text-blue-600 hover:underline">
                 Add your first company
               </Link>
             )}
