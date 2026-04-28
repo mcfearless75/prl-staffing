@@ -231,18 +231,53 @@ function buildResendEmailHtml(
 </html>`;
 }
 
+function getMissingFields(contractor: {
+  phone: string | null;
+  address: string | null;
+  postcode: string | null;
+  dateOfBirth: Date | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  niNumber: string | null;
+}): string[] {
+  const missing: string[] = [];
+  if (!contractor.phone) missing.push("Phone number");
+  if (!contractor.address) missing.push("Home address");
+  if (!contractor.postcode) missing.push("Postcode");
+  if (!contractor.dateOfBirth) missing.push("Date of birth");
+  if (!contractor.emergencyContactName) missing.push("Emergency contact name");
+  if (!contractor.emergencyContactPhone) missing.push("Emergency contact phone");
+  if (!contractor.niNumber) missing.push("NI number");
+  return missing;
+}
+
 function buildProfileCompletionHtml(
   firstName: string,
   portalUrl: string,
   missing: string[],
   hasDocs: boolean,
-  trackingToken: string
+  trackingToken: string,
+  deadline?: string
 ): string {
   const trackingPixel = `${APP_URL}/api/campaign/track/${trackingToken}`;
   const todoItems = [
     ...missing.map((f) => `<li>&#9744; ${f}</li>`),
     ...(!hasDocs ? ["<li>&#9744; Upload your compliance documents (CSCS card, Right to Work, DBS, etc.)</li>"] : []),
   ].join("\n          ");
+
+  const urgencyBanner = deadline
+    ? `<div style="background:#fee2e2;border:2px solid #fca5a5;border-radius:8px;padding:16px;margin:0 0 20px;text-align:center;">
+        <p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 4px;">&#128338; Deadline: ${deadline}</p>
+        <p style="color:#b91c1c;font-size:13px;margin:0;line-height:1.6;">
+          We need <strong>everyone</strong> to have their vital details updated by <strong>${deadline}</strong>. Please log in and complete your profile as soon as possible — this is essential before you can be placed on site.
+        </p>
+      </div>`
+    : `<div style="background:#fee2e2;border:2px solid #fca5a5;border-radius:8px;padding:16px;margin:0 0 20px;text-align:center;">
+        <p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 4px;">&#9888; Action Required — Please complete as soon as possible</p>
+        <p style="color:#b91c1c;font-size:13px;margin:0;line-height:1.6;">
+          Your PRISM profile is <strong>incomplete</strong>. You must complete it before you can be placed on site. Please log in and finish the items listed below.
+        </p>
+      </div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -266,16 +301,13 @@ function buildProfileCompletionHtml(
       <p style="color:#1f2937;font-size:16px;font-weight:600;margin:0 0 8px;">Hi ${firstName},</p>
 
       <p style="color:#4b5563;font-size:14px;line-height:1.7;margin:0 0 16px;">
-        First of all — <strong>thank you</strong> for signing up to PRISM. We really appreciate everyone who has already set up their account and we're delighted with the response so far.
+        ${deadline
+          ? `First of all — <strong>thank you</strong> for signing up to PRISM. We really appreciate everyone who has already set up their account and we're delighted with the response so far.`
+          : `We can see your PRISM profile still has some outstanding items that need completing before you can be placed on site. This is a reminder to log in and finish them off — it only takes a few minutes.`
+        }
       </p>
 
-      <!-- Deadline banner -->
-      <div style="background:#fee2e2;border:2px solid #fca5a5;border-radius:8px;padding:16px;margin:0 0 20px;text-align:center;">
-        <p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 4px;">&#128338; Deadline: Friday 24th April</p>
-        <p style="color:#b91c1c;font-size:13px;margin:0;line-height:1.6;">
-          We need <strong>everyone</strong> to have their vital details updated by <strong>Friday 24th April</strong>. Please log in and complete your profile as soon as possible — this is essential before you can be placed on site.
-        </p>
-      </div>
+      ${urgencyBanner}
 
       <!-- Action required box -->
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:20px;margin:0 0 24px;">
@@ -362,17 +394,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "RESEND_API_KEY not configured" }, { status: 500 });
     }
 
-    // mode: "profileCompletion" | "resend" | undefined (normal launch)
+    // mode: "profileCompletion" | "resend" | "resendAll" | "incompleteOnly" | undefined (normal launch)
     let isResend = false;
     let isProfileCompletion = false;
     let isResendAll = false;
+    let isIncompleteOnly = false;
     try {
       const body = await request.json();
       isResend = body?.resend === true;
       isProfileCompletion = body?.mode === "profileCompletion";
       isResendAll = body?.mode === "resendAll";
-      // resendAll uses the same profile completion email template
-      if (isResendAll) isProfileCompletion = true;
+      isIncompleteOnly = body?.mode === "incompleteOnly";
+      // resendAll and incompleteOnly use the profile completion email template
+      if (isResendAll || isIncompleteOnly) isProfileCompletion = true;
     } catch {
       // no body or non-JSON — default to normal send
     }
@@ -385,8 +419,8 @@ export async function POST(request: Request) {
     };
 
     const contractors = await prisma.contractor.findMany({
-      where: isResendAll
-        // Resend to ALL activated contractors regardless of previous sends
+      where: isResendAll || isIncompleteOnly
+        // Fetch ALL activated contractors; incompleteOnly will filter in-code
         ? { ...baseWhere, contractorLogin: { isNot: null } }
         : isProfileCompletion
         // Profile completion: only activated contractors who haven't been sent this yet
@@ -434,25 +468,27 @@ export async function POST(request: Request) {
 
         if (isProfileCompletion) {
           // Work out what's missing for this contractor
-          const missingFields: string[] = [];
-          if (!contractor.phone) missingFields.push("Phone number");
-          if (!contractor.address) missingFields.push("Home address");
-          if (!contractor.postcode) missingFields.push("Postcode");
-          if (!contractor.dateOfBirth) missingFields.push("Date of birth");
-          if (!contractor.emergencyContactName) missingFields.push("Emergency contact name");
-          if (!contractor.emergencyContactPhone) missingFields.push("Emergency contact phone");
-          if (!contractor.niNumber) missingFields.push("NI number");
+          const missingFields = getMissingFields(contractor);
           const hasDocs = contractor.compliances.some((d) => d.filePath);
+
+          // incompleteOnly: skip contractors who are already fully complete
+          if (isIncompleteOnly && missingFields.length === 0 && hasDocs) {
+            continue;
+          }
 
           html = buildProfileCompletionHtml(
             contractor.firstName,
             `${APP_URL}/portal`,
             missingFields,
             hasDocs,
-            trackingToken
+            trackingToken,
+            // Only pass a deadline for the original timed campaign, not the new ongoing one
+            isIncompleteOnly ? undefined : "Friday 24th April"
           );
-          subject = "Action Required by Fri 24th April: Complete your PRISM profile";
-          action = "Sent Profile Completion Email";
+          subject = isIncompleteOnly
+            ? "Action Required: Your PRISM profile is incomplete"
+            : "Action Required by Fri 24th April: Complete your PRISM profile";
+          action = isIncompleteOnly ? "Sent Incomplete Profile Campaign Email" : "Sent Profile Completion Email";
           details = `Profile completion reminder sent to ${email}`;
         } else {
           // Launch / corrective emails — also create a reset token
@@ -516,7 +552,7 @@ export async function POST(request: Request) {
     }
 
     // Campaign-level summary log
-    const campaignMode = isResendAll ? "Resend All" : isProfileCompletion ? "Profile Completion" : isResend ? "Resend Launch" : "Launch";
+    const campaignMode = isIncompleteOnly ? "Incomplete Contractors" : isResendAll ? "Resend All" : isProfileCompletion ? "Profile Completion" : isResend ? "Resend Launch" : "Launch";
     await prisma.activityLog.create({
       data: {
         userId: (session.user as { id?: string }).id,

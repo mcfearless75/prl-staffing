@@ -106,7 +106,8 @@ export default function CampaignPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          mode === "profileCompletion" ? { mode: "profileCompletion" }
+          mode === "incompleteOnly"    ? { mode: "incompleteOnly" }
+          : mode === "profileCompletion" ? { mode: "profileCompletion" }
           : mode === "resendAll"       ? { mode: "resendAll" }
           : mode === "resend"          ? { resend: true }
           : {}
@@ -146,8 +147,8 @@ export default function CampaignPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Campaign — Profile Completion</h1>
-          <p className="mt-1 text-sm text-gray-500">Chase contractors to complete their profiles and upload compliance documents</p>
+          <h1 className="text-2xl font-bold text-gray-900">Campaign — Incomplete Contractors</h1>
+          <p className="mt-1 text-sm text-gray-500">Chase all contractors who still have incomplete profiles or missing documents</p>
         </div>
         <button onClick={fetchStats} disabled={loading}
           className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50">
@@ -172,7 +173,9 @@ export default function CampaignPage() {
       {sendResult && (
         <div className={`rounded-xl border p-4 ${sendResult.failed > 0 ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"}`}>
           <p className={`font-medium ${sendResult.failed > 0 ? "text-amber-800" : "text-green-800"}`}>
-            {sendResult.mode === "profileCompletion" ? "Profile completion emails" : "Campaign emails"} sent: {sendResult.sent} sent, {sendResult.failed} failed
+            {sendResult.mode === "incompleteOnly" ? "Incomplete contractor emails"
+              : sendResult.mode === "profileCompletion" ? "Profile completion emails"
+              : "Campaign emails"} sent: {sendResult.sent} sent, {sendResult.failed} failed
           </p>
           {sendResult.errors.length > 0 && (
             <ul className="mt-2 space-y-1">
@@ -187,17 +190,17 @@ export default function CampaignPage() {
         </div>
       )}
 
-      {/* Main action: Profile Completion */}
+      {/* ── NEW CAMPAIGN: Incomplete Contractors ── */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Email preview */}
-        <div className="rounded-xl border-2 border-amber-200 bg-white p-6">
+        <div className="rounded-xl border-2 border-red-200 bg-white p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
-            Profile Completion Email Preview
+            <XCircle className="h-5 w-5 text-red-500" />
+            Incomplete Contractors — Email Preview
           </h2>
           <div className="space-y-3 text-sm text-gray-600">
             <div className="flex gap-2"><span className="font-medium w-16 shrink-0">From:</span><span>PRL Site Solutions &lt;infotech@prlsitesolutions.co.uk&gt;</span></div>
-            <div className="flex gap-2"><span className="font-medium w-16 shrink-0">Subject:</span><span>Action Required by Fri 24th April: Complete your PRISM profile</span></div>
+            <div className="flex gap-2"><span className="font-medium w-16 shrink-0">Subject:</span><span className="font-semibold text-red-700">Action Required: Your PRISM profile is incomplete</span></div>
             <hr />
             <div className="rounded-lg bg-[#1F4E79] p-4 text-center">
               <p className="text-white font-bold text-lg tracking-widest">PRISM</p>
@@ -205,12 +208,12 @@ export default function CampaignPage() {
             </div>
             <div className="rounded-lg bg-gray-50 border p-4 space-y-2">
               <p className="font-medium text-gray-800">Hi [First Name],</p>
-              <p className="text-xs text-gray-600 leading-relaxed"><strong>Thank you</strong> for signing up to PRISM — we really appreciate everyone who has set up their account.</p>
+              <p className="text-xs text-gray-600 leading-relaxed">We can see your PRISM profile still has some outstanding items that need completing before you can be placed on site.</p>
               <div className="rounded bg-red-50 border border-red-300 p-2 text-center">
-                <p className="text-xs font-bold text-red-800">🕐 Deadline: Friday 24th April — please complete ASAP</p>
+                <p className="text-xs font-bold text-red-800">⚠ Action Required — Please complete as soon as possible</p>
               </div>
               <div className="rounded bg-amber-50 border border-amber-200 p-3">
-                <p className="text-xs font-bold text-amber-800 mb-1">⚠ Please complete the following as soon as possible:</p>
+                <p className="text-xs font-bold text-amber-800 mb-1">Each person receives their own personalised list, e.g.:</p>
                 <ul className="text-xs text-gray-700 space-y-0.5 list-none">
                   <li>☐ Phone number</li>
                   <li>☐ Home address &amp; postcode</li>
@@ -223,63 +226,89 @@ export default function CampaignPage() {
               <div className="text-center py-2">
                 <span className="inline-block bg-blue-600 text-white text-xs font-semibold px-6 py-2 rounded-lg">Complete My Profile Now</span>
               </div>
-              <p className="text-xs text-gray-500">Need help? Email infotech@prlsitesolutions.co.uk</p>
             </div>
           </div>
         </div>
 
         {/* Send panel */}
-        <div className="rounded-xl border-2 border-amber-200 bg-white p-6 flex flex-col justify-between">
+        <div className="rounded-xl border-2 border-red-200 bg-white p-6 flex flex-col justify-between">
           <div>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">Send Profile Completion Reminder</h2>
+            <h2 className="text-base font-semibold text-gray-900 mb-2">Send to All Incomplete Contractors</h2>
             <p className="text-sm text-gray-500 mb-4 leading-relaxed">
-              Sends to all <strong>{notYetReminded}</strong> activated contractors who haven&apos;t yet received a profile completion request. Each email lists exactly what they still need to fill in.
+              Sends a personalised reminder to every activated contractor who still has an incomplete profile or missing documents — <strong>{incompleteCount} people</strong>. Anyone already 100% complete is automatically skipped.
             </p>
 
-            <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 mb-4">
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 mb-4">
               <div className="flex gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-amber-800">Targeting activated contractors only</p>
-                  <p className="text-xs text-amber-700 mt-1">
-                    <strong>{notYetReminded}</strong> contractors signed up but not yet chased · <strong>{incompleteCount}</strong> have incomplete profiles · <strong>{stats ? stats.total - stats.activated : "—"}</strong> still haven&apos;t signed up
+                  <p className="text-sm font-medium text-red-800">Targeting incomplete contractors only</p>
+                  <p className="text-xs text-red-700 mt-1">
+                    <strong>{incompleteCount}</strong> have incomplete profiles or missing docs · <strong>{stats?.profileCompleteCount ?? "—"}</strong> already fully complete (will be skipped) · <strong>{stats ? stats.total - stats.activated : "—"}</strong> not yet signed up
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-gray-600"><span>Will receive this email:</span><span className="font-semibold text-gray-900">{notYetReminded}</span></div>
-              <div className="flex justify-between text-gray-600"><span>Already sent profile reminder:</span><span className="font-semibold text-gray-900">{activatedContractors.filter(c => c.profileCompletionSentAt).length}</span></div>
-              <div className="flex justify-between text-gray-600"><span>Profiles fully complete:</span><span className="font-semibold text-green-700">{stats?.profileCompleteCount ?? "—"}</span></div>
-              <div className="flex justify-between text-gray-600"><span>Est. time:</span><span className="font-semibold text-gray-900">~{Math.ceil((notYetReminded * 0.6) / 60)} mins</span></div>
+              <div className="flex justify-between text-gray-600"><span>Will receive this email:</span><span className="font-semibold text-red-700">{incompleteCount}</span></div>
+              <div className="flex justify-between text-gray-600"><span>Skipped (already complete):</span><span className="font-semibold text-green-700">{stats?.profileCompleteCount ?? "—"}</span></div>
+              <div className="flex justify-between text-gray-600"><span>Est. send time:</span><span className="font-semibold text-gray-900">~{Math.ceil((incompleteCount * 0.6) / 60)} mins</span></div>
             </div>
           </div>
 
           <button
-            onClick={() => handleSend("profileCompletion", `Send profile completion emails to ${notYetReminded} contractors who have signed up but not yet been chased?\n\nThis will ask them to complete their profile details and upload compliance documents.`)}
-            disabled={sending || notYetReminded === 0}
-            className="mt-6 flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-6 py-3 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={() => handleSend("incompleteOnly", `Send "incomplete profile" emails to all ${incompleteCount} contractors who haven't finished their profile?\n\nEach email is personalised with exactly what they still need to complete.\n\nContractors who are already 100% complete will be skipped.\n\nProceed?`)}
+            disabled={sending || incompleteCount === 0}
+            className="mt-6 flex items-center justify-center gap-2 rounded-lg bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {sending ? <><RefreshCw className="h-4 w-4 animate-spin" />Sending...</> : <><Send className="h-4 w-4" />Send Profile Completion to All ({notYetReminded})</>}
+            {sending ? <><RefreshCw className="h-4 w-4 animate-spin" />Sending...</> : <><Send className="h-4 w-4" />Send to All Incomplete ({incompleteCount})</>}
           </button>
-          {notYetReminded === 0 && !sending && (
-            <p className="text-center text-xs text-gray-400 mt-2">All activated contractors have been sent a profile completion request.</p>
+          {incompleteCount === 0 && !sending && (
+            <p className="text-center text-xs text-gray-400 mt-2">All activated contractors have complete profiles.</p>
           )}
-
-          {/* Resend to ALL — ignores previous sends */}
-          <div className="mt-3 border-t border-amber-100 pt-3">
-            <button
-              onClick={() => handleSend("resendAll", `⚠️ RESEND to ALL ${stats?.activated ?? 0} activated contractors — including the 288 already sent a reminder.\n\nThis will send another profile completion email to everyone who has signed up.\n\nProceed?`)}
-              disabled={sending}
-              className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-red-300 bg-red-50 px-6 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {sending ? <><RefreshCw className="h-4 w-4 animate-spin" />Sending...</> : <><Send className="h-4 w-4" />Resend to ALL Activated ({stats?.activated ?? 0})</>}
-            </button>
-            <p className="text-center text-[10px] text-gray-400 mt-1">Sends to everyone — including those already chased. Use for deadline reminders.</p>
-          </div>
         </div>
       </div>
+
+      {/* ── ARCHIVED CAMPAIGNS ── */}
+      <details className="rounded-xl border border-gray-200 bg-white">
+        <summary className="px-6 py-4 cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 list-none flex items-center gap-2">
+          <Mail className="h-4 w-4" />
+          Archived campaigns (April 2026 launch)
+          <span className="ml-auto text-xs bg-gray-100 text-gray-500 rounded-full px-2 py-0.5">archived</span>
+        </summary>
+        <div className="px-6 pb-6 border-t border-gray-100 pt-4 space-y-4">
+          <p className="text-xs text-gray-400">These campaigns targeted all contractors during the April 2026 launch period. They are archived here for reference — use the new campaign above going forward.</p>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Profile completion (first-time sends) */}
+            <div className="rounded-lg border border-gray-200 p-4">
+              <p className="text-sm font-semibold text-gray-700 mb-1">Profile Completion (first send only)</p>
+              <p className="text-xs text-gray-500 mb-3">Sends to activated contractors who have never been chased ({notYetReminded} remaining).</p>
+              <button
+                onClick={() => handleSend("profileCompletion", `Send profile completion emails to ${notYetReminded} contractors who haven't been chased yet?`)}
+                disabled={sending || notYetReminded === 0}
+                className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50 transition-colors"
+              >
+                <Send className="h-3 w-3" /> Send ({notYetReminded})
+              </button>
+            </div>
+
+            {/* Resend to ALL activated */}
+            <div className="rounded-lg border border-gray-200 p-4">
+              <p className="text-sm font-semibold text-gray-700 mb-1">Resend to ALL Activated</p>
+              <p className="text-xs text-gray-500 mb-3">Sends to all {stats?.activated ?? 0} activated contractors, including those already chased. Deadline reminder use only.</p>
+              <button
+                onClick={() => handleSend("resendAll", `⚠️ RESEND to ALL ${stats?.activated ?? 0} activated contractors?\n\nThis includes people already sent a reminder. Use only for deadline chasing.\n\nProceed?`)}
+                disabled={sending}
+                className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors"
+              >
+                <Send className="h-3 w-3" /> Resend All ({stats?.activated ?? 0})
+              </button>
+            </div>
+          </div>
+        </div>
+      </details>
 
       {/* Contractor table */}
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -354,23 +383,23 @@ export default function CampaignPage() {
         )}
       </div>
 
-      {/* Archived: original launch campaign (collapsed) */}
+      {/* Launch stats summary */}
       <details className="rounded-xl border border-gray-200 bg-white">
         <summary className="px-6 py-4 cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 list-none flex items-center gap-2">
           <Mail className="h-4 w-4" />
-          Original launch campaign stats (archived)
+          April 2026 launch stats
           <span className="ml-auto text-xs text-gray-400">click to expand</span>
         </summary>
         <div className="px-6 pb-5 border-t border-gray-100 pt-4">
           {stats && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-              <div className="text-center"><p className="text-xl font-bold text-gray-700">{stats.sent}</p><p className="text-gray-500">Emails sent</p></div>
-              <div className="text-center"><p className="text-xl font-bold text-amber-600">{stats.opened}</p><p className="text-gray-500">Opened</p></div>
-              <div className="text-center"><p className="text-xl font-bold text-green-600">{stats.activated}</p><p className="text-gray-500">Activated</p></div>
+              <div className="text-center"><p className="text-xl font-bold text-gray-700">{stats.sent}</p><p className="text-gray-500">Invited</p></div>
+              <div className="text-center"><p className="text-xl font-bold text-amber-600">{stats.opened}</p><p className="text-gray-500">Opened email</p></div>
+              <div className="text-center"><p className="text-xl font-bold text-green-600">{stats.activated}</p><p className="text-gray-500">Signed up</p></div>
               <div className="text-center"><p className="text-xl font-bold text-gray-400">{stats.pending}</p><p className="text-gray-500">Never opened</p></div>
             </div>
           )}
-          <p className="text-xs text-gray-400 mt-4">Launch emails were sent in April 2026. The corrective email (with correct www link) was sent to all 288 recipients.</p>
+          <p className="text-xs text-gray-400 mt-4">Launch emails sent April 2026. Corrective email (correct www link) sent to all 288 recipients.</p>
         </div>
       </details>
 

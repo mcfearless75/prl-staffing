@@ -75,12 +75,22 @@ export default async function EditComplianceRecordPage({
                     v{doc.version} · {formatDate(doc.createdAt)} · Uploaded by {doc.uploadedBy}
                   </p>
                 </div>
-                <a
-                  href={`/api/documents/download?id=${doc.id}`}
-                  className="shrink-0 text-xs font-medium text-blue-600 hover:text-blue-800"
-                >
-                  Download
-                </a>
+                <div className="shrink-0 flex items-center gap-3">
+                  <a
+                    href={`/api/documents/download?id=${doc.id}&view=true`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    View
+                  </a>
+                  <a
+                    href={`/api/documents/download?id=${doc.id}`}
+                    className="text-xs font-medium text-gray-600 hover:text-gray-900"
+                  >
+                    Download
+                  </a>
+                </div>
               </div>
             ))}
           </div>
