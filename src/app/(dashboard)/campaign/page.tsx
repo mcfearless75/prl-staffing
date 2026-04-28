@@ -192,11 +192,51 @@ export default function CampaignPage() {
 
       {/* ── NEW CAMPAIGN: Incomplete Contractors ── */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Email preview */}
+
+        {/* Send panel — FIRST so it's always visible */}
+        <div className="rounded-xl border-2 border-red-200 bg-white p-6 flex flex-col justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 mb-2">Send to All Incomplete Contractors</h2>
+            <p className="text-sm text-gray-500 mb-4 leading-relaxed">
+              Sends a personalised reminder to every activated contractor who still has an incomplete profile or missing documents — <strong>{incompleteCount} people</strong>. Anyone already 100% complete is automatically skipped.
+            </p>
+
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 mb-4">
+              <div className="flex gap-2">
+                <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-red-800">Targeting incomplete contractors only</p>
+                  <p className="text-xs text-red-700 mt-1">
+                    <strong>{incompleteCount}</strong> incomplete · <strong>{stats?.profileCompleteCount ?? "—"}</strong> fully complete (skipped) · <strong>{stats ? stats.total - stats.activated : "—"}</strong> not yet signed up
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between text-gray-600"><span>Will receive this email:</span><span className="font-semibold text-red-700">{incompleteCount}</span></div>
+              <div className="flex justify-between text-gray-600"><span>Skipped (already complete):</span><span className="font-semibold text-green-700">{stats?.profileCompleteCount ?? "—"}</span></div>
+              <div className="flex justify-between text-gray-600"><span>Est. send time:</span><span className="font-semibold text-gray-900">~{Math.ceil((incompleteCount * 0.6) / 60)} mins</span></div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => handleSend("incompleteOnly", `Send "incomplete profile" emails to all ${incompleteCount} contractors who haven't finished their profile?\n\nEach email is personalised with exactly what they still need to complete.\n\nContractors who are already 100% complete will be skipped.\n\nProceed?`)}
+            disabled={sending || incompleteCount === 0}
+            className="mt-6 flex items-center justify-center gap-2 rounded-lg bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {sending ? <><RefreshCw className="h-4 w-4 animate-spin" />Sending...</> : <><Send className="h-4 w-4" />Send to All Incomplete ({incompleteCount})</>}
+          </button>
+          {incompleteCount === 0 && !sending && (
+            <p className="text-center text-xs text-gray-400 mt-2">All activated contractors have complete profiles.</p>
+          )}
+        </div>
+
+        {/* Email preview — second column */}
         <div className="rounded-xl border-2 border-red-200 bg-white p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <XCircle className="h-5 w-5 text-red-500" />
-            Incomplete Contractors — Email Preview
+            Email Preview
           </h2>
           <div className="space-y-3 text-sm text-gray-600">
             <div className="flex gap-2"><span className="font-medium w-16 shrink-0">From:</span><span>PRL Site Solutions &lt;infotech@prlsitesolutions.co.uk&gt;</span></div>
@@ -230,44 +270,6 @@ export default function CampaignPage() {
           </div>
         </div>
 
-        {/* Send panel */}
-        <div className="rounded-xl border-2 border-red-200 bg-white p-6 flex flex-col justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">Send to All Incomplete Contractors</h2>
-            <p className="text-sm text-gray-500 mb-4 leading-relaxed">
-              Sends a personalised reminder to every activated contractor who still has an incomplete profile or missing documents — <strong>{incompleteCount} people</strong>. Anyone already 100% complete is automatically skipped.
-            </p>
-
-            <div className="rounded-lg bg-red-50 border border-red-200 p-4 mb-4">
-              <div className="flex gap-2">
-                <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-red-800">Targeting incomplete contractors only</p>
-                  <p className="text-xs text-red-700 mt-1">
-                    <strong>{incompleteCount}</strong> have incomplete profiles or missing docs · <strong>{stats?.profileCompleteCount ?? "—"}</strong> already fully complete (will be skipped) · <strong>{stats ? stats.total - stats.activated : "—"}</strong> not yet signed up
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-gray-600"><span>Will receive this email:</span><span className="font-semibold text-red-700">{incompleteCount}</span></div>
-              <div className="flex justify-between text-gray-600"><span>Skipped (already complete):</span><span className="font-semibold text-green-700">{stats?.profileCompleteCount ?? "—"}</span></div>
-              <div className="flex justify-between text-gray-600"><span>Est. send time:</span><span className="font-semibold text-gray-900">~{Math.ceil((incompleteCount * 0.6) / 60)} mins</span></div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => handleSend("incompleteOnly", `Send "incomplete profile" emails to all ${incompleteCount} contractors who haven't finished their profile?\n\nEach email is personalised with exactly what they still need to complete.\n\nContractors who are already 100% complete will be skipped.\n\nProceed?`)}
-            disabled={sending || incompleteCount === 0}
-            className="mt-6 flex items-center justify-center gap-2 rounded-lg bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {sending ? <><RefreshCw className="h-4 w-4 animate-spin" />Sending...</> : <><Send className="h-4 w-4" />Send to All Incomplete ({incompleteCount})</>}
-          </button>
-          {incompleteCount === 0 && !sending && (
-            <p className="text-center text-xs text-gray-400 mt-2">All activated contractors have complete profiles.</p>
-          )}
-        </div>
       </div>
 
       {/* ── ARCHIVED CAMPAIGNS ── */}
