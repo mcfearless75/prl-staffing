@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
-import { Clock, ShieldCheck, FileUp, User, Plus, ChevronRight } from "lucide-react";
+import { ShieldCheck, FileUp, User, Plus, ChevronRight, Smartphone } from "lucide-react";
 
 export default async function PortalDashboard() {
   const session = await auth();
@@ -51,6 +51,47 @@ export default async function PortalDashboard() {
           Welcome to your contractor portal
         </p>
       </div>
+
+      {/* Install banner */}
+      <details className="rounded-xl border border-blue-200 bg-blue-50">
+        <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium text-blue-800 list-none">
+          <Smartphone className="h-4 w-4 shrink-0" />
+          📲 Install the PRISM app on your phone
+          <span className="ml-auto text-xs text-blue-500">tap to expand</span>
+        </summary>
+        <div className="border-t border-blue-200 px-4 pb-4 pt-3 space-y-3">
+          <p className="text-xs text-blue-700">
+            Add PRISM to your home screen for quick access — works like a regular app, no app store needed.
+          </p>
+          <p className="text-[11px] font-semibold text-blue-900 mb-1">
+            🌐 Web address: <span className="font-mono bg-white border border-blue-200 rounded px-1.5 py-0.5 text-blue-800">www.prismworkforce.online</span>
+          </p>
+
+          {/* iPhone */}
+          <div className="rounded-lg bg-white border border-blue-200 p-3">
+            <p className="text-xs font-semibold text-gray-800 mb-2">🍎 iPhone / iPad (Safari)</p>
+            <ol className="text-xs text-gray-600 space-y-1 list-none">
+              <li><span className="font-semibold text-gray-700">1.</span> Open <strong>Safari</strong> and go to <strong>www.prismworkforce.online</strong></li>
+              <li><span className="font-semibold text-gray-700">2.</span> Tap the <strong>Share</strong> button at the bottom of the screen (the box with an arrow pointing up)</li>
+              <li><span className="font-semibold text-gray-700">3.</span> Scroll down and tap <strong>&quot;Add to Home Screen&quot;</strong></li>
+              <li><span className="font-semibold text-gray-700">4.</span> Tap <strong>Add</strong> — PRISM will appear on your home screen</li>
+            </ol>
+          </div>
+
+          {/* Android */}
+          <div className="rounded-lg bg-white border border-blue-200 p-3">
+            <p className="text-xs font-semibold text-gray-800 mb-2">🤖 Android (Chrome)</p>
+            <ol className="text-xs text-gray-600 space-y-1 list-none">
+              <li><span className="font-semibold text-gray-700">1.</span> Open <strong>Chrome</strong> and go to <strong>www.prismworkforce.online</strong></li>
+              <li><span className="font-semibold text-gray-700">2.</span> Tap the <strong>three dots</strong> menu (top right)</li>
+              <li><span className="font-semibold text-gray-700">3.</span> Tap <strong>&quot;Add to Home screen&quot;</strong></li>
+              <li><span className="font-semibold text-gray-700">4.</span> Tap <strong>Add</strong> — done!</li>
+            </ol>
+          </div>
+
+          <p className="text-[10px] text-blue-500 text-center">Need help? Call us on 0800 772 3959</p>
+        </div>
+      </details>
 
       {/* Quick Action Buttons */}
       <div className="grid grid-cols-2 gap-3">
