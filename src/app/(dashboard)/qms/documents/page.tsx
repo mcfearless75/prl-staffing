@@ -516,6 +516,7 @@ function QmsDocumentsInner() {
 
   const [documents, setDocuments] = useState<QmsDoc[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     if (!subfolderParam) return new Set<string>();
@@ -534,12 +535,16 @@ function QmsDocumentsInner() {
   const fetchDocuments = useCallback(async () => {
     try {
       const res = await fetch("/api/qms-documents/list");
-      if (res.ok) {
-        const data = await res.json();
-        setDocuments(data);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setFetchError(data.error || `Server error ${res.status}`);
+        return;
       }
+      const data = await res.json();
+      setDocuments(data);
+      setFetchError(null);
     } catch (err) {
-      console.error("Failed to fetch documents:", err);
+      setFetchError(err instanceof Error ? err.message : "Failed to load documents");
     } finally {
       setLoading(false);
     }
@@ -591,6 +596,53 @@ function QmsDocumentsInner() {
         </div>
       </div>
 
+      {/* Error banner */}
+      {fetchError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          ⚠️ Could not load documents: {fetchError}
+        </div>
+      )}
+
+      {/* Filtered docs panel — shown when arriving from a dashboard card */}
+      {subfolderParam && !loading && !fetchError && (() => {
+        const slashIdx = subfolderParam.indexOf("/");
+        const filterFolder = slashIdx > -1 ? subfolderParam.slice(0, slashIdx) : subfolderParam;
+        const filterSubfolder = slashIdx > -1 ? subfolderParam.slice(slashIdx + 1) : null;
+        const matchingDocs = documents.filter((d) =>
+          d.folder === filterFolder &&
+          (filterSubfolder ? d.subfolder === filterSubfolder : !d.subfolder)
+        );
+        const label = filterSubfolder ? `${filterFolder} / ${filterSubfolder}` : filterFolder;
+        return (
+          <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+            <p className="text-xs font-semibold text-blue-800 mb-3">
+              📁 {label} — {matchingDocs.length} document{matchingDocs.length !== 1 ? "s" : ""}
+            </p>
+            {matchingDocs.length === 0 ? (
+              <p className="text-xs text-blue-600 italic">No documents uploaded to this folder yet.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {matchingDocs.map((doc) => (
+                  <div key={doc.id} className="flex items-center gap-3 rounded-lg border border-blue-100 bg-white px-3 py-2">
+                    {getFileIcon(doc.fileType)}
+                    <span className="flex-1 min-w-0 text-xs font-medium text-gray-800 truncate">{doc.fileName}</span>
+                    <span className="shrink-0 text-[10px] text-gray-400">{formatFileSize(doc.fileSize)}</span>
+                    <span className="shrink-0 text-[10px] text-gray-400">{formatDate(doc.createdAt)}</span>
+                    <a
+                      href={`/api/qms-documents/download?id=${doc.id}`}
+                      className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                      title="Download"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Search Bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -608,6 +660,10 @@ function QmsDocumentsInner() {
         {loading ? (
           <div className="px-6 py-12 text-center">
             <p className="text-sm text-gray-500">Loading documents...</p>
+          </div>
+        ) : fetchError ? (
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm text-gray-400">Document tree unavailable — see error above.</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
