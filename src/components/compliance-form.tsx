@@ -6,6 +6,7 @@ interface ComplianceFormProps {
   record?: any;
   contractors: Array<{ id: string; firstName: string; lastName: string }>;
   action: (formData: FormData) => Promise<void>;
+  defaultContractorId?: string;
 }
 
 function toDateInputValue(date: Date | string | null | undefined): string {
@@ -18,6 +19,7 @@ export function ComplianceForm({
   record,
   contractors,
   action,
+  defaultContractorId,
 }: ComplianceFormProps) {
   return (
     <form action={action}>
@@ -35,7 +37,7 @@ export function ComplianceForm({
               id="contractorId"
               name="contractorId"
               required
-              defaultValue={record?.contractorId ?? ""}
+              defaultValue={record?.contractorId ?? defaultContractorId ?? ""}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Select a contractor</option>

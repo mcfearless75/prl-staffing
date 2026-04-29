@@ -13,7 +13,7 @@ export default async function ContractorDetailPage({
 }) {
   const { id } = await params;
 
-  const [contractor, activityLogs] = await Promise.all([
+  const [contractor, activityLogs, documents] = await Promise.all([
     prisma.contractor.findUnique({
       where: { id },
       include: {
@@ -26,6 +26,10 @@ export default async function ContractorDetailPage({
       where: { entityType: "Contractor", entityId: id },
       orderBy: { createdAt: "desc" },
       take: 50,
+    }),
+    prisma.document.findMany({
+      where: { contractorId: id },
+      orderBy: [{ type: "asc" }, { version: "desc" }],
     }),
   ]);
 
@@ -305,49 +309,40 @@ export default async function ContractorDetailPage({
 
       {/* Compliance */}
       <div className="rounded-xl border bg-white p-6">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">
-          Compliance
-        </h2>
-        {contractor.compliances.length === 0 ? (
-          <p className="text-sm text-gray-500">No compliance records found.</p>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Compliance</h2>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/contractors/${contractor.id}/edit`}
+              className="text-xs font-medium text-gray-500 hover:text-gray-800"
+            >
+              Upload Docs →
+            </Link>
+            <Link
+              href={`/compliance/new?contractorId=${contractor.id}`}
+              className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              + Add Record
+            </Link>
+          </div>
+        </div>
+        {contractor.compliances.length === 0 && documents.length === 0 ? (
+          <p className="text-sm text-gray-500">No compliance records or documents found.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Reference
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Expiry Date
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {contractor.compliances.map((compliance: any) => (
-                  <tr key={compliance.id} className={compliance.status === "Pending" ? "bg-amber-50" : ""}>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                      {compliance.type || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                      {compliance.reference || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                      {compliance.expiryDate
-                        ? new Date(compliance.expiryDate).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+          <div className="space-y-3">
+            {contractor.compliances.map((compliance: any) => {
+              const compDocs = documents.filter((d) => d.type === compliance.type ||
+                (compliance.type === "Right to Work" && ["Right to Work", "Passport", "Share Code"].includes(d.type)));
+              return (
+                <div key={compliance.id} className={`rounded-lg border px-4 py-3 ${
+                  compliance.status === "Expired" || compliance.status === "Non-Compliant" ? "border-red-200 bg-red-50" :
+                  compliance.status === "Expiring" ? "border-amber-200 bg-amber-50" :
+                  compliance.status === "Verified" ? "border-emerald-200 bg-emerald-50/50" :
+                  "border-gray-200 bg-gray-50"
+                }`}>
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`shrink-0 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                         compliance.status === "Verified" ? "bg-emerald-100 text-emerald-700" :
                         compliance.status === "Pending" ? "bg-amber-100 text-amber-700" :
                         compliance.status === "Expiring" ? "bg-orange-100 text-orange-700" :
@@ -356,29 +351,69 @@ export default async function ContractorDetailPage({
                       }`}>
                         {compliance.status || "-"}
                       </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
-                      <div className="flex items-center justify-end gap-2">
-                        {compliance.status !== "Verified" && (
-                          <a
-                            href={`/api/compliance/${compliance.id}/verify?redirect=/contractors/${contractor.id}`}
-                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
-                          >
-                            ✓ Approve
-                          </a>
-                        )}
-                        <Link
-                          href={`/compliance/${compliance.id}`}
-                          className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                      <span className="text-sm font-semibold text-gray-900">{compliance.type}</span>
+                      {compliance.reference && (
+                        <span className="text-xs text-gray-500">#{compliance.reference}</span>
+                      )}
+                      {compliance.expiryDate && (
+                        <span className="text-xs text-gray-500">
+                          Expires {new Date(compliance.expiryDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {compliance.status !== "Verified" && (
+                        <a
+                          href={`/api/compliance/${compliance.id}/verify?redirect=/contractors/${contractor.id}`}
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
                         >
-                          View
-                        </Link>
+                          ✓ Approve
+                        </a>
+                      )}
+                      <Link href={`/compliance/${compliance.id}`} className="text-xs font-medium text-blue-600 hover:text-blue-800">View</Link>
+                      <Link href={`/compliance/${compliance.id}/edit`} className="text-xs font-medium text-gray-500 hover:text-gray-800">Edit</Link>
+                    </div>
+                  </div>
+                  {/* Uploaded documents for this compliance type */}
+                  {compDocs.length > 0 && (
+                    <div className="mt-2 space-y-1 border-t border-gray-200 pt-2">
+                      {compDocs.map((doc) => (
+                        <div key={doc.id} className="flex items-center justify-between text-xs text-gray-600">
+                          <span className="truncate max-w-[60%]">📎 {doc.fileName}</span>
+                          <div className="flex gap-2 shrink-0">
+                            <a href={`/api/documents/download?id=${doc.id}&view=true`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View</a>
+                            <a href={`/api/documents/download?id=${doc.id}`} className="text-gray-500 hover:underline">Download</a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {/* Documents with no matching compliance record */}
+            {(() => {
+              const recordTypes = contractor.compliances.map((c: any) => c.type);
+              const orphanDocs = documents.filter((d) => !recordTypes.includes(d.type) &&
+                !(recordTypes.includes("Right to Work") && ["Passport", "Share Code"].includes(d.type)));
+              if (orphanDocs.length === 0) return null;
+              return (
+                <div className="rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-3">
+                  <p className="text-xs font-semibold text-blue-800 mb-2">📁 Uploaded documents (no linked record)</p>
+                  <div className="space-y-1">
+                    {orphanDocs.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between text-xs text-gray-600">
+                        <span className="truncate max-w-[60%]">{doc.type} — {doc.fileName}</span>
+                        <div className="flex gap-2 shrink-0">
+                          <a href={`/api/documents/download?id=${doc.id}&view=true`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View</a>
+                          <a href={`/api/documents/download?id=${doc.id}`} className="text-gray-500 hover:underline">Download</a>
+                        </div>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

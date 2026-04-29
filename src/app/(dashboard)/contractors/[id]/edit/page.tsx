@@ -23,7 +23,7 @@ export default async function EditContractorPage({
 }) {
   const { id } = await params;
 
-  const [contractor, suppliers, documents] = await Promise.all([
+  const [contractor, suppliers, documents, complianceRecords] = await Promise.all([
     prisma.contractor.findUnique({ where: { id } }),
     prisma.supplier.findMany({
       select: { id: true, name: true },
@@ -32,6 +32,10 @@ export default async function EditContractorPage({
     prisma.document.findMany({
       where: { contractorId: id },
       orderBy: [{ type: "asc" }, { version: "desc" }],
+    }),
+    prisma.complianceRecord.findMany({
+      where: { contractorId: id },
+      orderBy: { type: "asc" },
     }),
   ]);
 
@@ -44,6 +48,7 @@ export default async function EditContractorPage({
   const docsByType = DOC_TYPES.map((dt) => ({
     ...dt,
     docs: documents.filter((d) => d.type === dt.type),
+    record: complianceRecords.find((r) => r.type === dt.type) ?? null,
   }));
 
   return (
@@ -64,11 +69,35 @@ export default async function EditContractorPage({
           </p>
         </div>
         <div className="divide-y divide-gray-100">
-          {docsByType.map(({ type, label, emoji, docs }) => (
+          {docsByType.map(({ type, label, emoji, docs, record }) => (
             <div key={type} className="px-6 py-4 space-y-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-base">{emoji}</span>
                 <p className="text-sm font-semibold text-gray-900">{label}</p>
+                {/* Compliance record badge */}
+                {record ? (
+                  <span className={`text-xs font-medium rounded-full px-2 py-0.5 ${
+                    record.status === "Verified" ? "bg-emerald-100 text-emerald-700" :
+                    record.status === "Expiring" ? "bg-orange-100 text-orange-700" :
+                    record.status === "Expired" || record.status === "Non-Compliant" ? "bg-red-100 text-red-700" :
+                    "bg-amber-100 text-amber-700"
+                  }`}>
+                    {record.status}
+                    {record.expiryDate ? ` · expires ${new Date(record.expiryDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : ""}
+                  </span>
+                ) : (
+                  <a
+                    href={`/compliance/new?contractorId=${id}`}
+                    className="text-xs text-gray-400 hover:text-blue-600"
+                  >
+                    + Add record
+                  </a>
+                )}
+                {record && (
+                  <a href={`/compliance/${record.id}/edit`} className="text-xs text-gray-400 hover:text-blue-600 ml-1">
+                    Edit record →
+                  </a>
+                )}
                 {docs.length > 0 && (
                   <span className="ml-auto text-xs font-medium text-green-700 bg-green-100 rounded-full px-2 py-0.5">
                     {docs.length} file{docs.length > 1 ? "s" : ""}
