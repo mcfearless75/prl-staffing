@@ -4,7 +4,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate, getInitials, getStatusColor } from "@/lib/utils";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Upload } from "lucide-react";
 import { ContractorStatusSelect } from "@/components/contractor-status-select";
 
 export default async function ContractorsPage({
@@ -41,13 +41,22 @@ export default async function ContractorsPage({
       <PageHeader
         title="Contractors"
         action={
-          <Link
-            href="/contractors/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Add Contractor
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/contractors/import"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              <Upload className="h-4 w-4" />
+              Import
+            </Link>
+            <Link
+              href="/contractors/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Add Contractor
+            </Link>
+          </div>
         }
       />
 
