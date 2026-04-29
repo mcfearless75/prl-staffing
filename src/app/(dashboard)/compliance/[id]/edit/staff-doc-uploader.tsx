@@ -7,9 +7,11 @@ import { useRouter } from "next/navigation";
 export function StaffDocUploader({
   contractorId,
   docType,
+  successMessage,
 }: {
   contractorId: string;
   docType: string;
+  successMessage?: string;
 }) {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -41,7 +43,9 @@ export function StaffDocUploader({
       const data = await res.json();
       setMessage({
         type: "success",
-        text: `${data.document.fileName} uploaded (v${data.document.version}). Now change status to "Verified" above and click Save Record.`,
+        text: successMessage
+          ? `${data.document.fileName} uploaded (v${data.document.version}). ${successMessage}`
+          : `${data.document.fileName} uploaded successfully (v${data.document.version}).`,
       });
       setSelectedFile(null);
       if (fileRef.current) fileRef.current.value = "";

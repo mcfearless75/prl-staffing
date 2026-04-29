@@ -74,6 +74,12 @@ export default async function ContractorDetailPage({
           </div>
           <div className="flex items-center gap-3">
             <Link
+              href="/contractors"
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+            >
+              ← Contractors
+            </Link>
+            <Link
               href={`/contractors/${contractor.id}/ir35`}
               className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-100 transition-colors"
             >

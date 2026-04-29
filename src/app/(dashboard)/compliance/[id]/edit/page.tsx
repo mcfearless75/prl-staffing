@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { ComplianceForm } from "@/components/compliance-form";
 import { updateComplianceRecord } from "../../actions";
@@ -28,24 +29,49 @@ export default async function EditComplianceRecordPage({
     notFound();
   }
 
-  // Get existing documents for this contractor + type
+  // Get existing documents — match related types (e.g. Right to Work also shows Passport + Share Code)
+  const relatedDocTypes: Record<string, string[]> = {
+    "Right to Work": ["Right to Work", "Passport", "Share Code"],
+  };
+  const searchTypes = relatedDocTypes[record.type] ?? [record.type];
   const existingDocs = await prisma.document.findMany({
     where: {
       contractorId: record.contractorId,
-      type: record.type,
+      type: { in: searchTypes },
     },
     orderBy: { version: "desc" },
   });
 
   const updateAction = updateComplianceRecord.bind(null, record.id);
 
+  const backUrl = `/contractors/${record.contractorId}`;
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Edit Compliance Record" />
+      <PageHeader
+        title="Edit Compliance Record"
+        action={
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/compliance/${record.id}`}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              ← Back to Record
+            </Link>
+            <Link
+              href={backUrl}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              ← Back to Profile
+            </Link>
+          </div>
+        }
+      />
       <ComplianceForm
         record={record}
         contractors={contractors}
         action={updateAction}
+        backUrl={backUrl}
       />
 
       {/* Document Upload Section */}
@@ -61,6 +87,7 @@ export default async function EditComplianceRecordPage({
         <StaffDocUploader
           contractorId={record.contractorId}
           docType={record.type}
+          successMessage='Now change the status above to "Verified" and save.'
         />
 
         {/* Existing documents */}

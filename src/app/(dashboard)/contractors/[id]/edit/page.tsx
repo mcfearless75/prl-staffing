@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { ContractorForm } from "@/components/contractor-form";
 import { updateContractor } from "../../actions";
@@ -53,7 +54,17 @@ export default async function EditContractorPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Edit Contractor" />
+      <PageHeader
+        title="Edit Contractor"
+        action={
+          <Link
+            href={`/contractors/${id}`}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            ← Back to Profile
+          </Link>
+        }
+      />
       <ContractorForm
         contractor={contractor}
         suppliers={suppliers}

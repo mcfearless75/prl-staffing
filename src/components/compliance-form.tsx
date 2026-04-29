@@ -7,6 +7,7 @@ interface ComplianceFormProps {
   contractors: Array<{ id: string; firstName: string; lastName: string }>;
   action: (formData: FormData) => Promise<void>;
   defaultContractorId?: string;
+  backUrl?: string;
 }
 
 function toDateInputValue(date: Date | string | null | undefined): string {
@@ -20,6 +21,7 @@ export function ComplianceForm({
   contractors,
   action,
   defaultContractorId,
+  backUrl,
 }: ComplianceFormProps) {
   return (
     <form action={action}>
@@ -193,7 +195,7 @@ export function ComplianceForm({
         {/* Actions */}
         <div className="mt-6 flex items-center justify-end gap-3">
           <Link
-            href="/compliance"
+            href={backUrl ?? "/compliance"}
             className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
           >
             Cancel

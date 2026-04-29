@@ -24,6 +24,7 @@ export default async function NewComplianceRecordPage({
         contractors={contractors}
         action={createComplianceRecord}
         defaultContractorId={defaultContractorId}
+        backUrl={defaultContractorId ? `/contractors/${defaultContractorId}` : "/compliance"}
       />
     </div>
   );
