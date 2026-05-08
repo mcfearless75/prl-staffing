@@ -91,21 +91,17 @@ Yes
 Via home router (ISP-provided, not managed by PRL). Windows Defender Firewall is active on all laptops — this is the software firewall for remote connections. Staff access organisational data and services via browser (Microsoft 365, PRISM) and Microsoft 365 apps with MFA enforced.
 
 **A2.5 Network equipment (firewalls/routers)**
-⚠️ List your office router/firewall:
-- [Make e.g. BT/Virgin/Draytek] [Model e.g. Business Hub 6] — quantity: 1 — office boundary router/firewall
-- Note: All staff laptops use Windows Defender Firewall (software firewall) — active at all times including when connecting via home/public networks
+- BT Openreach router — quantity: 1 — office boundary router/firewall
+  ⚠️ Note exact model from the router label (e.g. Smart Hub 2, EE Smart Hub etc.) and enter model number on the portal
+- All staff laptops use Windows Defender Firewall (software firewall) — active at all times including when connecting via home/public networks
 
 **A2.6 Laptops, desktops and virtual desktops**
-⚠️ IMPORTANT — you must provide make, Windows edition AND feature version:
-
-Example format: "5 x Dell laptops running Windows 11 Professional 24H2"
-
-Things to confirm:
+All devices: Windows 11 Professional — confirmed.
+⚠️ Still needed — complete the entry as: "[quantity] x [make e.g. Dell/HP/Lenovo] laptops running Windows 11 Professional [version e.g. 24H2]"
 - [ ] Make of laptops (Dell, HP, Lenovo, etc.)
-- [ ] Exact Windows edition (Home, Pro, Enterprise)
-- [ ] Feature version (check: Settings > System > About — look for "Version 24H2" or similar)
-- [ ] **CRITICAL:** No devices must be running Windows 10 without ESU subscription (EOL Oct 14 2025)
-- [ ] Any BYOD devices that access M365 or PRISM must also be listed
+- [ ] Feature version (check: Settings > System > About — look for "Version" e.g. 24H2)
+- Windows 10: None in use — confirmed ✅
+- BYOD: ⚠️ List any personal devices that access M365 or PRISM
 
 **A2.6.1 Thin clients** — None in use
 
@@ -247,17 +243,16 @@ Mobile devices: PIN or biometric (fingerprint/face). Device manufacturer's defau
 ## SECTION A6 — SECURITY UPDATE MANAGEMENT
 
 **A6.1 All operating systems supported with regular security updates?**
-Yes — all devices run Windows 11 (supported by Microsoft until at least 2031). No device runs Windows 10 or earlier without ESU subscription.
-⚠️ Confirm: Check no device is running Windows 10 — EOL was October 14 2025.
+Yes — all devices run Windows 11 Professional (supported by Microsoft until at least 2031). No device runs Windows 10 or earlier. ✅ Confirmed.
 
 **A6.2 All software supported with regular vulnerability fixes?**
 Yes — all software in use is from supported vendors: Microsoft 365, Windows 11, Microsoft Edge/Chrome browsers. Unsupported software is not in use.
 
 **A6.2.1 Internet browsers**
-⚠️ List all browsers and their current version numbers:
-- Microsoft Edge — Version [check: Edge menu > Help > About] e.g. "Edge 136.x"
-- Google Chrome — Version [check: Chrome menu > Help > About] e.g. "Chrome 136.x" (if installed)
-Both browsers receive automatic updates.
+- Google Chrome — latest version, automatic updates enabled ✅
+  ⚠️ Enter exact version number: Chrome menu (⋮) > Help > About Google Chrome — e.g. "Chrome 136.x.xxxx.xx"
+  (The portal requires a version number — "latest" is not accepted)
+- Microsoft Edge is also installed on Windows 11 by default — ⚠️ confirm whether staff use it and if so note its version too
 
 **A6.2.2 Malware protection software**
 Microsoft Defender Antivirus — Version: ⚠️ [check: Windows Security > Virus & threat protection > About]
@@ -326,12 +321,10 @@ Yes — principle of least privilege applied. Standard users have standard Windo
 Yes — administrator access is granted only by the MD. Any request for admin-level access requires MD approval. This is documented (email or written record) before access is granted.
 
 **A7.6 Separate accounts used for administrative tasks?**
-⚠️ This is a common fail point — confirm the following is in place:
-- The M365 global admin account is a SEPARATE account from the day-to-day user account (e.g., admin@prlsitesolutions.co.uk used only for admin tasks, not for email/browsing)
-- The Windows local administrator account is not used for day-to-day work
-- PRISM admin account used only for admin tasks
-
-If the MD uses a single account for both admin and day-to-day work, this needs to be changed before applying.
+Yes — M365 administration is performed by an external IT administrator (Infotech/IT provider) using a separate admin account, not the day-to-day PRL staff accounts. Day-to-day staff use standard @prlsitesolutions.co.uk accounts with no admin privileges. ✅
+- Windows local administrator accounts are separate from standard day-to-day user accounts
+- PRISM admin access is held by the IT administrator / MD only, not used for routine operations
+⚠️ Confirm the M365 global admin account identity is documented in the admin account register (A7.8)
 
 **A7.7 Admin accounts not used for email/browsing?**
 Yes — administrative accounts are used only for configuration and user management tasks. Day-to-day email, browsing and operational work is done on standard user accounts. Staff are trained on this policy.
@@ -427,26 +420,30 @@ Staff are instructed to request any new software via the MD before installation.
 
 ## GAPS TO ADDRESS BEFORE SUBMITTING
 
-| # | Item | Action Required |
-|---|---|---|
-| 1 | Windows version/edition | Check all laptops: Settings > System > About. Need edition (Pro/Home) and Version (24H2 etc.) |
-| 2 | No Windows 10 devices | Confirm all laptops are Windows 11. Windows 10 is EOL since Oct 2025 |
-| 3 | Mobile devices | List all phones/tablets used for M365 or PRISM (make + OS version) |
-| 4 | Browser versions | Check Edge and Chrome version numbers |
-| 5 | Defender version | Check Windows Security > Virus protection > About |
-| 6 | Office/Outlook version | Check any Office app > File > Account > About |
-| 7 | Router make/model | Check office router — needed for A2.5 |
-| 8 | Router password process | Confirm default password was changed, document how to change it |
-| 9 | Firewall rules reviewed | Log into router admin and confirm no unnecessary inbound rules — document date |
-| 10 | Separate admin accounts | Confirm M365 admin is a separate account from day-to-day M365 account |
-| 11 | Admin account register | Create a spreadsheet listing all admin accounts across all systems |
-| 12 | Social media MFA | Enable MFA on LinkedIn and any other business social media accounts |
-| 13 | NCSC Early Warning | Sign up at ncsc.gov.uk/early-warning-service (free) |
-| 14 | Approved apps list | Document list of approved applications staff may install |
-| 15 | Remote worker count | Count all staff permitted to work remotely |
-| 16 | Companies House number | Needed for A1.4 |
-| 17 | Staff count | Including anyone with access to org data |
-| 18 | IT responsible person | Name and role of internal person managing IT |
+| # | Item | Status | Action Required |
+|---|---|---|---|
+| 1 | Windows edition | ✅ Done | Windows 11 Pro confirmed on all laptops |
+| 2 | No Windows 10 | ✅ Done | Confirmed — no Windows 10 devices |
+| 3 | Windows feature version | ⚠️ Outstanding | Check one laptop: Settings > System > About — note "Version" (e.g. 24H2) |
+| 4 | Laptop make | ⚠️ Outstanding | Note make (Dell/HP/Lenovo etc.) — needed for portal entry |
+| 5 | Chrome version | ⚠️ Outstanding | Chrome menu (⋮) > Help > About — note full version number e.g. 136.x.xxxx.xx |
+| 6 | Edge version | ⚠️ Outstanding | Edge installed by default on Win11 — confirm if used; if so note version |
+| 7 | Defender version | ⚠️ Outstanding | Windows Security > Virus & threat protection > Manage settings > scroll to About |
+| 8 | Office/Outlook version | ⚠️ Outstanding | Any Office app > File > Account > About — e.g. "Version 2504" |
+| 9 | Router model | ⚠️ Outstanding | BT Openreach confirmed — check label on router for model name/number |
+| 10 | Router password changed | ⚠️ Outstanding | Confirm factory default password was changed; document when |
+| 11 | Firewall rules reviewed | ⚠️ Outstanding | Log into router admin, confirm no open inbound rules, note review date |
+| 12 | Separate admin accounts | ✅ Done | M365 admin is Infotech (IT provider) — separate from day-to-day PRL accounts |
+| 13 | Admin account register | ⚠️ Outstanding | Create spreadsheet: all admin accounts across M365, Railway, Cloudflare, GitHub, GoDaddy |
+| 14 | Mobile devices | ⚠️ Outstanding | List phones/tablets used for M365 or PRISM: make + OS version |
+| 15 | Social media MFA | ⚠️ Outstanding | Enable MFA on LinkedIn and any other business social accounts |
+| 16 | NCSC Early Warning | ⚠️ Outstanding | Sign up free: ncsc.gov.uk/early-warning-service |
+| 17 | Approved apps list | ⚠️ Outstanding | Simple doc listing software staff are permitted to install |
+| 18 | Remote worker count | ⚠️ Outstanding | Number of staff with permission to work remotely |
+| 19 | Companies House number | ⚠️ Outstanding | Find at beta.companieshouse.gov.uk |
+| 20 | Staff count | ⚠️ Outstanding | Total headcount with access to org data |
+| 21 | Registered address | ⚠️ Outstanding | As shown on Companies House |
+| 22 | Insurance opt-in email | ⚠️ Outstanding | Email address for free cyber insurance documents |
 
 ---
 
