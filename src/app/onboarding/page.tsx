@@ -173,11 +173,6 @@ export default function OnboardingPage() {
                   <textarea value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} rows={2}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Company Reg No</label>
-                  <input type="text" value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-                </div>
               </div>
             </div>
 
@@ -314,11 +309,6 @@ export default function OnboardingPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">NI Number</label>
                   <input type="text" value={niNumber} onChange={(e) => setNiNumber(e.target.value)}
                     placeholder="e.g. AB123456C"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">UTR Number</label>
-                  <input type="text" value={utrNumber} onChange={(e) => setUtrNumber(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                 </div>
                 <div>
