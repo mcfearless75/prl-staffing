@@ -394,17 +394,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "RESEND_API_KEY not configured" }, { status: 500 });
     }
 
-    // mode: "profileCompletion" | "resend" | "resendAll" | "incompleteOnly" | undefined (normal launch)
+    // mode: "profileCompletion" | "resend" | "resendAll" | "incompleteOnly" | "newUsers" | undefined (normal launch)
     let isResend = false;
     let isProfileCompletion = false;
     let isResendAll = false;
     let isIncompleteOnly = false;
+    let isNewUsers = false;
     try {
       const body = await request.json();
       isResend = body?.resend === true;
       isProfileCompletion = body?.mode === "profileCompletion";
       isResendAll = body?.mode === "resendAll";
       isIncompleteOnly = body?.mode === "incompleteOnly";
+      isNewUsers = body?.mode === "newUsers";
       // resendAll and incompleteOnly use the profile completion email template
       if (isResendAll || isIncompleteOnly) isProfileCompletion = true;
     } catch {
@@ -428,7 +430,7 @@ export async function POST(request: Request) {
         : isResend
         // Resend: everyone
         ? baseWhere
-        // Normal launch: only those not yet invited
+        // newUsers + normal launch: only those not yet invited
         : { ...baseWhere, inviteSentAt: null },
       select: {
         id: true,
@@ -552,7 +554,7 @@ export async function POST(request: Request) {
     }
 
     // Campaign-level summary log
-    const campaignMode = isIncompleteOnly ? "Incomplete Contractors" : isResendAll ? "Resend All" : isProfileCompletion ? "Profile Completion" : isResend ? "Resend Launch" : "Launch";
+    const campaignMode = isIncompleteOnly ? "Incomplete Contractors" : isResendAll ? "Resend All" : isProfileCompletion ? "Profile Completion" : isResend ? "Resend Launch" : isNewUsers ? "New Users" : "Launch";
     await prisma.activityLog.create({
       data: {
         userId: (session.user as { id?: string }).id,

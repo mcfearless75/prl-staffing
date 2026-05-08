@@ -80,6 +80,8 @@ export default function CampaignPage() {
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number; errors: string[]; mode?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "opened" | "incomplete" | "complete" | "notSignedUp">("all");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ created: number; alreadyExisted: number; noEmail: string[] } | null>(null);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -96,6 +98,27 @@ export default function CampaignPage() {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
+  async function handleImport(batch: "april" | "may" = "april") {
+    const label = batch === "may" ? "9 (May 2026)" : "91 (April 2026)";
+    if (!confirm(`Import ${label} contractors?\n\nAlready-existing records are skipped automatically.\n\nProceed?`)) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await fetch("/api/import-contractors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batch }),
+      });
+      const data = await res.json();
+      if (!res.ok) setError(data.error || "Import failed");
+      else { setImportResult(data); await fetchStats(); }
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function handleSend(mode: string, confirmMsg: string) {
     if (!confirm(confirmMsg)) return;
     setSending(true);
@@ -110,6 +133,7 @@ export default function CampaignPage() {
           : mode === "profileCompletion" ? { mode: "profileCompletion" }
           : mode === "resendAll"       ? { mode: "resendAll" }
           : mode === "resend"          ? { resend: true }
+          : mode === "newUsers"        ? { mode: "newUsers" }
           : {}
         ),
       });
@@ -175,6 +199,7 @@ export default function CampaignPage() {
           <p className={`font-medium ${sendResult.failed > 0 ? "text-amber-800" : "text-green-800"}`}>
             {sendResult.mode === "incompleteOnly" ? "Incomplete contractor emails"
               : sendResult.mode === "profileCompletion" ? "Profile completion emails"
+              : sendResult.mode === "newUsers" ? "New user welcome emails"
               : "Campaign emails"} sent: {sendResult.sent} sent, {sendResult.failed} failed
           </p>
           {sendResult.errors.length > 0 && (
@@ -187,6 +212,90 @@ export default function CampaignPage() {
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4">
           <p className="text-sm font-medium text-red-800">{error}</p>
+        </div>
+      )}
+
+      {/* ── IMPORT NEW BATCH ── */}
+      {importResult ? (
+        <div className="rounded-xl border border-green-200 bg-green-50 p-4 flex items-start gap-3">
+          <CheckCircle className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-green-800">Import complete — {importResult.created} new contractors added</p>
+            <p className="text-xs text-green-700 mt-0.5">{importResult.alreadyExisted} already existed (skipped) · {importResult.noEmail.length} still need email addresses manually</p>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-sm font-semibold text-gray-700">Import contractor batch</p>
+            <p className="text-xs text-gray-500 mt-0.5">Safe to run multiple times — duplicates are skipped automatically.</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => handleImport("april")}
+              disabled={importing}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+            >
+              {importing ? <><RefreshCw className="h-4 w-4 animate-spin" />Importing...</> : <><Users className="h-4 w-4" />April (91)</>}
+            </button>
+            <button
+              onClick={() => handleImport("may")}
+              disabled={importing}
+              className="flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition-colors"
+            >
+              {importing ? <><RefreshCw className="h-4 w-4 animate-spin" />Importing...</> : <><Users className="h-4 w-4" />May (9)</>}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── NEW USERS CAMPAIGN ── */}
+      {(stats?.pending ?? 0) > 0 && (
+        <div className="rounded-xl border-2 border-blue-400 bg-blue-50 p-6">
+          <div className="flex items-start justify-between flex-wrap gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
+                  <Mail className="h-3.5 w-3.5" /> New Batch
+                </span>
+                <span className="text-xs text-blue-600 font-medium">{stats?.pending} contractors waiting</span>
+              </div>
+              <h2 className="text-lg font-bold text-blue-900 mb-1">Send Welcome Email to New Users</h2>
+              <p className="text-sm text-blue-700 leading-relaxed max-w-xl">
+                There {stats?.pending === 1 ? "is" : "are"} <strong>{stats?.pending}</strong> contractor{stats?.pending === 1 ? "" : "s"} who have never been sent an invite. This sends them the PRISM welcome email with a link to set up their account.
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-4xl font-black text-blue-700 leading-none">{stats?.pending}</p>
+              <p className="text-xs text-blue-500 mt-0.5">not yet invited</p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-3 gap-3 text-center text-sm">
+            <div className="rounded-lg bg-white border border-blue-200 py-2.5 px-3">
+              <p className="font-bold text-blue-800">{stats?.pending}</p>
+              <p className="text-blue-500 text-xs">Will receive</p>
+            </div>
+            <div className="rounded-lg bg-white border border-blue-200 py-2.5 px-3">
+              <p className="font-bold text-gray-700">{stats?.sent}</p>
+              <p className="text-gray-400 text-xs">Already sent</p>
+            </div>
+            <div className="rounded-lg bg-white border border-blue-200 py-2.5 px-3">
+              <p className="font-bold text-gray-700">~{Math.ceil(((stats?.pending ?? 0) * 0.6) / 60)} min</p>
+              <p className="text-gray-400 text-xs">Est. send time</p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3 flex-wrap">
+            <button
+              onClick={() => handleSend("newUsers", `Send the PRISM welcome email to all ${stats?.pending} new contractors who haven't been invited yet?\n\nEach email includes a "Set Up My Account" link.\n\nAlready-invited contractors are automatically skipped.\n\nProceed?`)}
+              disabled={sending}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              {sending ? <><RefreshCw className="h-4 w-4 animate-spin" />Sending...</> : <><Send className="h-4 w-4" />Send Welcome to {stats?.pending} New Users</>}
+            </button>
+            <p className="text-xs text-blue-500">Sends: "Welcome to the PRL Site Solutions Contractor Portal"</p>
+          </div>
         </div>
       )}
 
