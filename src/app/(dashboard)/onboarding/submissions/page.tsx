@@ -4,7 +4,8 @@ import Link from "next/link";
 import { formatDate, getInitials } from "@/lib/utils";
 import { Badge } from "@/components/badge";
 import { PageHeader } from "@/components/page-header";
-import { Plus, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { NewSupplierButton } from "./new-supplier-button";
 
 export default async function OnboardingSubmissionsPage({
   searchParams,
@@ -35,14 +36,17 @@ export default async function OnboardingSubmissionsPage({
       <PageHeader
         title="Onboarding Submissions"
         action={
-          <a
-            href="/onboarding"
-            target="_blank"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
-          >
-            <ExternalLink className="h-4 w-4" />
-            View Public Form
-          </a>
+          <div className="flex items-center gap-3">
+            <NewSupplierButton />
+            <a
+              href="/onboarding"
+              target="_blank"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Public Form
+            </a>
+          </div>
         }
       />
 
