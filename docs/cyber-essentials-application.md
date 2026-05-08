@@ -91,8 +91,9 @@ Yes
 Via home router (ISP-provided, not managed by PRL). Windows Defender Firewall is active on all laptops — this is the software firewall for remote connections. Staff access organisational data and services via browser (Microsoft 365, PRISM) and Microsoft 365 apps with MFA enforced.
 
 **A2.5 Network equipment (firewalls/routers)**
-- BT Openreach router — quantity: 1 — office boundary router/firewall
-  ⚠️ Note exact model from the router label (e.g. Smart Hub 2, EE Smart Hub etc.) and enter model number on the portal
+- Virgin Media Hub 5, Model F3896LG-VMB (Sagemcom) — quantity: 1 — office boundary router/firewall
+  Admin interface: http://192.168.0.1
+  ⚠️ CRITICAL: Factory default admin password is printed on the router label — must be changed before CE submission (A4.2 fail if not changed). Log into 192.168.0.1, change to a 12+ character unique password, store in password manager, note the date.
 - All staff laptops use Windows Defender Firewall (software firewall) — active at all times including when connecting via home/public networks
 
 **A2.6 Laptops, desktops and virtual desktops**
@@ -430,8 +431,8 @@ Staff are instructed to request any new software via the MD before installation.
 | 6 | Edge version | ⚠️ Outstanding | Edge installed by default on Win11 — confirm if used; if so note version |
 | 7 | Defender version | ⚠️ Outstanding | Windows Security > Virus & threat protection > Manage settings > scroll to About |
 | 8 | Office/Outlook version | ⚠️ Outstanding | Any Office app > File > Account > About — e.g. "Version 2504" |
-| 9 | Router model | ⚠️ Outstanding | BT Openreach confirmed — check label on router for model name/number |
-| 10 | Router password changed | ⚠️ Outstanding | Confirm factory default password was changed; document when |
+| 9 | Router model | ✅ Done | Virgin Media Hub 5, Model F3896LG-VMB (Sagemcom) |
+| 10 | Router password changed | ⚠️ ACTION REQUIRED | Log into 192.168.0.1 — change default admin password to 12+ char unique password NOW — CE fail if not done |
 | 11 | Firewall rules reviewed | ⚠️ Outstanding | Log into router admin, confirm no open inbound rules, note review date |
 | 12 | Separate admin accounts | ✅ Done | M365 admin is Infotech (IT provider) — separate from day-to-day PRL accounts |
 | 13 | Admin account register | ⚠️ Outstanding | Create spreadsheet: all admin accounts across M365, Railway, Cloudflare, GitHub, GoDaddy |
