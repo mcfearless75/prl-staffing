@@ -97,10 +97,8 @@ Via home router (ISP-provided, not managed by PRL). Windows Defender Firewall is
 - All staff laptops use Windows Defender Firewall (software firewall) — active at all times including when connecting via home/public networks
 
 **A2.6 Laptops, desktops and virtual desktops**
-All devices: Windows 11 Professional — confirmed.
-⚠️ Still needed — complete the entry as: "[quantity] x [make e.g. Dell/HP/Lenovo] laptops running Windows 11 Professional [version e.g. 24H2]"
-- [ ] Make of laptops (Dell, HP, Lenovo, etc.)
-- [ ] Feature version (check: Settings > System > About — look for "Version" e.g. 24H2)
+- [quantity] x ASUS Vivobook M1605YA laptops — Windows 11 Home, Version 25H2, Build 26200.8328
+  ⚠️ Fill in quantity. Check all other laptops — confirm whether they are also Home or Pro (this device shows Home, not Pro as initially expected)
 - Windows 10: None in use — confirmed ✅
 - BYOD: ⚠️ List any personal devices that access M365 or PRISM
 
@@ -243,7 +241,7 @@ Mobile devices: PIN or biometric (fingerprint/face). Device manufacturer's defau
 ## SECTION A6 — SECURITY UPDATE MANAGEMENT
 
 **A6.1 All operating systems supported with regular security updates?**
-Yes — all devices run Windows 11 Professional (supported by Microsoft until at least 2031). No device runs Windows 10 or earlier. ✅ Confirmed.
+Yes — all devices run Windows 11 (Version 25H2, Build 26200.8328 — confirmed on ASUS Vivobook M1605YA). Windows 11 is supported by Microsoft until at least 2031. No device runs Windows 10 or earlier. ✅ Confirmed.
 
 **A6.2 All software supported with regular vulnerability fixes?**
 Yes — all software in use is from supported vendors: Microsoft 365, Windows 11, Microsoft Edge/Chrome browsers. Unsupported software is not in use.
@@ -424,8 +422,9 @@ Staff are instructed to request any new software via the MD before installation.
 |---|---|---|---|
 | 1 | Windows edition | ✅ Done | Windows 11 Pro confirmed on all laptops |
 | 2 | No Windows 10 | ✅ Done | Confirmed — no Windows 10 devices |
-| 3 | Windows feature version | ⚠️ Outstanding | Check one laptop: Settings > System > About — note "Version" (e.g. 24H2) |
-| 4 | Laptop make | ⚠️ Outstanding | Note make (Dell/HP/Lenovo etc.) — needed for portal entry |
+| 3 | Windows feature version | ✅ Done | Version 25H2, Build 26200.8328 — confirmed on ASUS Vivobook M1605YA |
+| 4 | Laptop make/model | ✅ Done | ASUS Vivobook M1605YA — ⚠️ confirm quantity and whether other laptops match |
+| 4a | Windows edition | ⚠️ Check | This device shows Home (not Pro) — verify edition on all devices and enter accurately |
 | 5 | Chrome version | ⚠️ Outstanding | Chrome menu (⋮) > Help > About — note full version number e.g. 136.x.xxxx.xx |
 | 6 | Edge version | ⚠️ Outstanding | Edge installed by default on Win11 — confirm if used; if so note version |
 | 7 | Defender version | ⚠️ Outstanding | Windows Security > Virus & threat protection > Manage settings > scroll to About |
