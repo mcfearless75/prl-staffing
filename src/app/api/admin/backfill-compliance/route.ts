@@ -23,7 +23,8 @@ const TYPE_MAP: Record<string, string> = {
   "IR35 Assessment": "IR35 Assessment",
 };
 
-export async function GET() {
+export async function GET(req: Request) {
+  const autoVerify = new URL(req.url).searchParams.get("autoVerify") === "true";
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -65,8 +66,10 @@ export async function GET() {
         type: complianceType,
         documentName: doc.fileName,
         filePath: doc.storageKey || null,
-        status: "Pending",
-        notes: `Backfilled from uploaded document "${doc.fileName}" (${doc.type}) — awaiting staff verification.`,
+        status: autoVerify ? "Verified" : "Pending",
+        notes: autoVerify
+          ? `Auto-verified from uploaded document "${doc.fileName}" (${doc.type}).`
+          : `Backfilled from uploaded document "${doc.fileName}" (${doc.type}) — awaiting staff verification.`,
       },
     });
 

@@ -18,7 +18,10 @@ import { ComplianceScoreRing } from "./compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
 import { getComplianceGaps } from "@/lib/compliance-gaps";
 import { ComplianceCharts } from "./compliance-charts";
-import { BackfillButton } from "./compliance-actions";
+import { BackfillButton, AutoVerifyBackfillButton } from "./compliance-actions";
+import BulkVerifyButton from "./bulk-verify-button";
+import { ChaseExportButton } from "./chase-export-button";
+import { ChaseEmailButton } from "./chase-email-button";
 
 const COMPLIANCE_TYPES = [
   "CV",
@@ -299,6 +302,8 @@ export default async function CompliancePage({
         action={
           <div className="flex flex-wrap gap-2">
             <BackfillButton />
+            <AutoVerifyBackfillButton />
+            <BulkVerifyButton />
             <Link
               href="/compliance/requirements"
               className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
@@ -656,7 +661,7 @@ export default async function CompliancePage({
       {/* No Records — contractor chase list */}
       {noRecordContractors.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-200 bg-gray-50">
             <div>
               <h2 className="text-sm font-semibold text-gray-900">
                 No Compliance Records ({noRecordContractors.length})
@@ -664,6 +669,10 @@ export default async function CompliancePage({
               <p className="text-xs text-gray-500 mt-0.5">
                 Active contractors with nothing on file — chase or add records
               </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <ChaseExportButton />
+              <ChaseEmailButton />
             </div>
           </div>
           <div className="divide-y divide-gray-100">
