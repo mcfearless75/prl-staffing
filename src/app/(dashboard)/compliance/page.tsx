@@ -125,9 +125,11 @@ export default async function CompliancePage({
     else pendingReview++;
   }
 
+  const noRecords = totalContractors - contractorsWithRecords;
+  // Score is against the full workforce — honest audit number
   const riskScore =
-    contractorsWithRecords > 0
-      ? Math.round((fullyCompliant / contractorsWithRecords) * 100)
+    totalContractors > 0
+      ? Math.round((fullyCompliant / totalContractors) * 100)
       : 0;
 
   // ── Per-type breakdown — unique contractors per type ─────────────────────
@@ -292,40 +294,42 @@ export default async function CompliancePage({
           <div className="flex flex-col items-center gap-1">
             <ComplianceScoreRing score={riskScore} />
             <p className="text-[10px] text-gray-400 text-center leading-tight max-w-[72px]">
-              of contractors with records
+              of total workforce
             </p>
           </div>
         </div>
 
-        {/* Summary Cards Row — contractor-centric */}
-        <div className="grid grid-cols-4 gap-4 mb-3">
+        {/* Summary Cards — full workforce view for audit */}
+        <div className="grid grid-cols-5 gap-3 mb-2">
           <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center">
-            <p className="text-3xl font-bold text-emerald-700">
-              {fullyCompliant}
-            </p>
-            <p className="text-sm font-medium text-emerald-600">
-              Fully Compliant
-            </p>
+            <p className="text-3xl font-bold text-emerald-700">{fullyCompliant}</p>
+            <p className="text-xs font-medium text-emerald-600 mt-1">Fully Compliant</p>
           </div>
           <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-center">
-            <p className="text-3xl font-bold text-amber-700">
-              {contractorExpiring}
-            </p>
-            <p className="text-sm font-medium text-amber-600">Expiring</p>
+            <p className="text-3xl font-bold text-amber-700">{contractorExpiring}</p>
+            <p className="text-xs font-medium text-amber-600 mt-1">Expiring Soon</p>
           </div>
           <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-center">
             <p className="text-3xl font-bold text-red-700">{actionRequired}</p>
-            <p className="text-sm font-medium text-red-600">Action Required</p>
+            <p className="text-xs font-medium text-red-600 mt-1">Action Required</p>
           </div>
-          <div className="rounded-xl bg-gray-50 border border-gray-200 p-4 text-center">
-            <p className="text-3xl font-bold text-gray-700">{pendingReview}</p>
-            <p className="text-sm font-medium text-gray-500">Pending Review</p>
+          <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 text-center">
+            <p className="text-3xl font-bold text-blue-700">{pendingReview}</p>
+            <p className="text-xs font-medium text-blue-600 mt-1">Pending Review</p>
+          </div>
+          <div className="rounded-xl bg-gray-100 border border-gray-300 p-4 text-center">
+            <p className="text-3xl font-bold text-gray-600">{noRecords}</p>
+            <p className="text-xs font-medium text-gray-500 mt-1">No Records</p>
           </div>
         </div>
-        <p className="text-xs text-gray-400 mb-6 text-right">
-          {contractorsWithRecords} of {totalContractors} contractors have
-          compliance records
-        </p>
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-xs text-gray-500">
+            Total workforce: <span className="font-semibold text-gray-900">{totalContractors}</span> contractors
+            &nbsp;·&nbsp;
+            <span className="text-red-600 font-medium">{noRecords} have no compliance documents on file</span>
+          </p>
+          <p className="text-xs text-gray-400">{contractorsWithRecords} contractors have at least one record</p>
+        </div>
 
         {/* Per-Type Progress Bars — Requidex Style */}
         <div className="space-y-4">
