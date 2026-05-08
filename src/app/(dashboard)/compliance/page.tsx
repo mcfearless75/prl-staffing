@@ -17,6 +17,7 @@ import {
 import { ComplianceScoreRing } from "./compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
 import { getComplianceGaps } from "@/lib/compliance-gaps";
+import { ComplianceCharts } from "./compliance-charts";
 
 const COMPLIANCE_TYPES = [
   "CV",
@@ -261,6 +262,23 @@ export default async function CompliancePage({
     }
   }
 
+  // ── Chart data ───────────────────────────────────────────────────────────
+  const workforceChartData = [
+    { name: "Fully Compliant", value: fullyCompliant, color: "#10b981" },
+    { name: "Expiring Soon",   value: contractorExpiring, color: "#f59e0b" },
+    { name: "Action Required", value: actionRequired, color: "#ef4444" },
+    { name: "Pending Review",  value: pendingReview, color: "#3b82f6" },
+    { name: "No Records",      value: noRecords, color: "#e5e7eb" },
+  ];
+
+  const typeCoverageData = typeBreakdown.map((t) => ({
+    type: t.type,
+    contractors: t.total,
+    verified: t.verified,
+    notVerified: t.total - t.verified,
+    percentage: t.percentage,
+  }));
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -379,6 +397,15 @@ export default async function CompliancePage({
           )}
         </div>
       </div>
+
+      {/* Charts */}
+      {typeCoverageData.length > 0 && (
+        <ComplianceCharts
+          workforce={workforceChartData}
+          typeCoverage={typeCoverageData}
+          totalContractors={totalContractors}
+        />
+      )}
 
       {/* Compliance Gaps */}
       {criticalGaps.length > 0 && (
