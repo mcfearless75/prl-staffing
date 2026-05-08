@@ -19,7 +19,7 @@ LTD — Limited Company
 ⚠️ [Enter total headcount including agency workers and contractors who access organisational data]
 
 **A1.4 Registration number**
-⚠️ [Enter Companies House number — find at beta.companieshouse.gov.uk]
+14358717
 
 **A1.5 Registered address**
 ⚠️ [Enter registered address as shown on Companies House]
@@ -438,7 +438,7 @@ Staff are instructed to request any new software via the MD before installation.
 | 16 | NCSC Early Warning | ✅ Done | Registered on MyNCSC — PRL Site Solutions Ltd, 0 findings |
 | 17 | Approved apps list | ⚠️ Outstanding | Simple doc listing software staff are permitted to install |
 | 18 | Remote worker count | ⚠️ Outstanding | Number of staff with permission to work remotely |
-| 19 | Companies House number | ⚠️ Outstanding | Find at beta.companieshouse.gov.uk |
+| 19 | Companies House number | ✅ Done | 14358717 |
 | 20 | Staff count | ⚠️ Outstanding | Total headcount with access to org data |
 | 21 | Registered address | ⚠️ Outstanding | As shown on Companies House |
 | 22 | Insurance opt-in email | ⚠️ Outstanding | Email address for free cyber insurance documents |
