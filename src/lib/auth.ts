@@ -43,7 +43,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           ipData.count += 1;
         }
 
-        const email = credentials.email as string;
+        const email = (credentials.email as string).toLowerCase().trim();
         const password = credentials.password as string;
 
         // Try staff user first (only if they have a password set — SSO-only users have empty hash)
