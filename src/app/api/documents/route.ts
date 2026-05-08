@@ -128,7 +128,10 @@ export async function POST(request: NextRequest) {
 
     if (COMPLIANCE_DOC_TYPES.includes(type)) {
       // Map document types to compliance types
-      const complianceType = type === "Passport" ? "Right to Work" : type;
+      const complianceType =
+        type === "Passport" || type === "Share Code" ? "Right to Work"
+        : type === "IR35 Assessment" ? "IR35 Assessment"
+        : type;
 
       // Check for existing compliance record
       const existingCompliance = await prisma.complianceRecord.findFirst({
