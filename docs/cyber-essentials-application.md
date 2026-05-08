@@ -111,10 +111,11 @@ No on-premises servers. All services are cloud-hosted:
 Railway manages OS-level patching of underlying infrastructure.
 
 **A2.8 Tablets and mobile devices**
-⚠️ List all mobile devices where staff access organisational data (M365 email/Teams/PRISM):
-- Personal smartphones (BYOD) used for Microsoft 365 (Outlook/Teams) — must be listed
-- Example format: "iPhone iOS 18.x" or "Samsung Android 15"
-- Note: Devices used ONLY for MFA app or voice/text calls are out of scope
+5 x BYOD smartphones used to access Microsoft 365 (Outlook/Teams):
+- 4 x Apple iPhone — iOS latest (18.x), fully patched ✅
+- 1 x Android smartphone — Android latest, fully patched ✅
+All devices use screen lock (PIN/biometric). Personal devices managed via Microsoft 365 Conditional Access (MFA enforced for M365 sign-in).
+⚠️ Check exact iOS version on one iPhone: Settings → General → About → iOS Version (e.g. 18.4.1)
 
 **A2.9 Cloud services**
 All cloud services in use (cloud services cannot be excluded from scope):
@@ -435,7 +436,7 @@ Staff must request approval from the MD or IT Administrator before installing an
 | 11 | Firewall rules reviewed | ✅ Done | No custom inbound port rules configured — confirmed January 2025 |
 | 12 | Separate admin accounts | ✅ Done | M365 admin is Infotech (IT provider) — separate from day-to-day PRL accounts |
 | 13 | Admin account register | ⚠️ Outstanding | Create spreadsheet: all admin accounts across M365, Railway, Cloudflare, GitHub, GoDaddy |
-| 14 | Mobile devices | ⚠️ Outstanding | List phones/tablets used for M365 or PRISM: make + OS version |
+| 14 | Mobile devices | ✅ Done | 4 x iPhone (iOS 18.x latest) + 1 x Android (latest) — all patched, screen lock enabled |
 | 15 | Social media MFA | ⚠️ Outstanding | Enable MFA on LinkedIn and any other business social accounts |
 | 16 | NCSC Early Warning | ✅ Done | Registered on MyNCSC — PRL Site Solutions Ltd, 0 findings |
 | 17 | Approved apps list | ✅ Done | docs/approved-applications-list.md created — M365, Chrome, Edge, Defender, Acrobat, Zoom |
