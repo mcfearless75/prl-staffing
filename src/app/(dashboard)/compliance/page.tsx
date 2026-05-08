@@ -289,7 +289,12 @@ export default async function CompliancePage({
           <h2 className="text-lg font-semibold text-gray-900">
             Compliance Overview
           </h2>
-          <ComplianceScoreRing score={riskScore} />
+          <div className="flex flex-col items-center gap-1">
+            <ComplianceScoreRing score={riskScore} />
+            <p className="text-[10px] text-gray-400 text-center leading-tight max-w-[72px]">
+              of contractors with records
+            </p>
+          </div>
         </div>
 
         {/* Summary Cards Row — contractor-centric */}
@@ -518,18 +523,18 @@ export default async function CompliancePage({
                   className={`hover:bg-gray-50 transition-colors ${getRowBorderColor(record.status)}`}
                 >
                   <td className="whitespace-nowrap px-6 py-4">
-                    <div className="flex items-center gap-3">
+                    <Link href={`/contractors/${record.contractor.id}`} className="flex items-center gap-3 group">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-medium text-white">
                         {getInitials(
                           record.contractor.firstName,
                           record.contractor.lastName
                         )}
                       </div>
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
                         {record.contractor.firstName}{" "}
                         {record.contractor.lastName}
                       </span>
-                    </div>
+                    </Link>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     {record.type}
