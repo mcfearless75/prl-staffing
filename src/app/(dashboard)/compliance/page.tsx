@@ -18,6 +18,7 @@ import { ComplianceScoreRing } from "./compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
 import { getComplianceGaps } from "@/lib/compliance-gaps";
 import { ComplianceCharts } from "./compliance-charts";
+import { BackfillButton } from "./compliance-actions";
 
 const COMPLIANCE_TYPES = [
   "CV",
@@ -80,6 +81,17 @@ export default async function CompliancePage({
       where: { status: { notIn: ["Left", "Inactive"] } },
     }),
   ]);
+
+  // Contractors with no compliance records at all (for chase view)
+  const contractorIdsWithRecords = [...new Set(allRecords.map((r) => r.contractorId))];
+  const noRecordContractors = await prisma.contractor.findMany({
+    where: {
+      id: { notIn: contractorIdsWithRecords },
+      status: { notIn: ["Left", "Inactive"] },
+    },
+    orderBy: [{ status: "asc" }, { lastName: "asc" }],
+    select: { id: true, firstName: true, lastName: true, email: true, status: true, phone: true },
+  });
 
   // Get actual types from DB for the filter dropdown
   const actualTypes = Array.from(new Set(allRecords.map((r) => r.type))).sort();
@@ -285,7 +297,8 @@ export default async function CompliancePage({
         title="Compliance Dashboard"
         description="Workforce compliance monitoring and risk scoring"
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <BackfillButton />
             <Link
               href="/compliance/requirements"
               className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
@@ -637,6 +650,59 @@ export default async function CompliancePage({
               </Link>
             )}
           </p>
+        </div>
+      )}
+
+      {/* No Records — contractor chase list */}
+      {noRecordContractors.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">
+                No Compliance Records ({noRecordContractors.length})
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Active contractors with nothing on file — chase or add records
+              </p>
+            </div>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {noRecordContractors.map((c) => {
+              const statusColor =
+                c.status === "Active" ? "bg-emerald-100 text-emerald-700"
+                : c.status === "On Site" ? "bg-blue-100 text-blue-700"
+                : c.status === "Pending Docs" ? "bg-orange-100 text-orange-700"
+                : c.status === "Applied" ? "bg-purple-100 text-purple-700"
+                : "bg-gray-100 text-gray-600";
+              const initials = (c.firstName?.[0] ?? "") + (c.lastName?.[0] ?? "");
+              return (
+                <div key={c.id} className="flex items-center justify-between gap-4 px-6 py-3 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
+                      {initials}
+                    </div>
+                    <div className="min-w-0">
+                      <Link href={`/contractors/${c.id}`} className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors">
+                        {c.firstName} {c.lastName}
+                      </Link>
+                      {c.email && <p className="text-xs text-gray-400 truncate">{c.email}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColor}`}>
+                      {c.status}
+                    </span>
+                    <Link
+                      href={`/compliance/new?contractorId=${c.id}`}
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                    >
+                      + Add Record
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
