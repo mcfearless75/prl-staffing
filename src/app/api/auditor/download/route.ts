@@ -13,13 +13,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const documentId = searchParams.get("id");
-    const token = searchParams.get("token");
 
+    // Read JWT from httpOnly cookie (never from query param)
+    const token = request.cookies.get("auditor_token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    // Verify auditor JWT
     try {
       await jwtVerify(token, getJwtSecret());
     } catch {

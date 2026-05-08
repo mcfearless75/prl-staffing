@@ -109,11 +109,17 @@ export async function POST(request: NextRequest) {
       .setExpirationTime("24h")
       .sign(getJwtSecret());
 
-    return Response.json({
-      token,
-      name: auditor.name,
-      organisation: auditor.organisation,
-    });
+    // Set httpOnly cookie — token never exposed to JS (XSS-safe)
+    return new Response(
+      JSON.stringify({ name: auditor.name, organisation: auditor.organisation }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Set-Cookie": `auditor_token=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=86400; Secure`,
+        },
+      }
+    );
   } catch (error) {
     console.error("Auditor login error:", error);
     return Response.json({ error: "Login failed" }, { status: 500 });

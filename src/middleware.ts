@@ -33,6 +33,12 @@ export default auth((req) => {
     }
   }
 
+  if (path === "/api/auditor/login") {
+    if (!rateLimit(`auditor-login:${ip}`, 10, 60_000)) {
+      return new NextResponse("Too Many Requests", { status: 429 });
+    }
+  }
+
   const isLoggedIn = !!req.auth;
   const isLoginPage = req.nextUrl.pathname === "/login";
   const isSetPasswordPage = req.nextUrl.pathname === "/set-password";
@@ -90,5 +96,6 @@ export const config = {
     "/api/auth/callback/:path*",
     "/api/admin/:path*",
     "/api/compliance/upload-doc",
+    "/api/auditor/login",
   ],
 };
