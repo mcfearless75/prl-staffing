@@ -163,7 +163,7 @@ Yes — office network is protected by router/firewall at boundary. All staff la
 Yes — Windows Defender Firewall is enabled on all Windows 11 laptops. It is active at all times, including when behind the office router. Staff are not permitted to disable it.
 
 **A4.2 Changed default passwords on all boundary firewall devices?**
-Yes — the office router/firewall admin password has been changed from the manufacturer default to a strong, unique password.
+Yes — the Virgin Media Hub 5 admin password was changed from the manufacturer default approximately 4 months ago. The new password is stored in the organisation's password manager.
 
 **A4.2.1 Process for changing firewall password**
 Access router admin interface via browser (192.168.x.x or device-specific address), navigate to Admin/Password settings, enter current and new password. New password is stored securely in the organisation's password manager. Process is carried out by [MD/IT lead] when required.
@@ -182,8 +182,7 @@ Yes — there is an established process to change router and Windows account pas
 Yes — inbound connections are reviewed annually. Any requirement to open a port is approved by the MD, documented in writing, and reviewed to confirm it is still needed. No inbound ports are currently open beyond defaults.
 
 **A4.6 Firewall rules reviewed in last 12 months?**
-⚠️ Confirm: Has someone logged into the office router admin and checked that no unnecessary rules are open?
-Process: MD or designated person reviews router settings annually, removes any rules no longer needed, and documents the review date. Review completed: [date].
+Yes — router admin reviewed; no custom inbound port rules are configured. Default router behaviour blocks unsolicited inbound connections. Review completed: January 2025 (approx 4 months ago).
 
 **A4.7 Firewall configured to allow unauthenticated inbound connections?**
 No — firewall blocks all unauthenticated inbound connections by default. Only outbound connections initiated by devices on the network are permitted.
@@ -432,8 +431,8 @@ Staff are instructed to request any new software via the MD before installation.
 | 7 | Defender version | ⚠️ Outstanding | Windows Security > Virus & threat protection > Manage settings > scroll to About |
 | 8 | Office/Outlook version | ⚠️ Outstanding | Any Office app > File > Account > About — e.g. "Version 2504" |
 | 9 | Router model | ✅ Done | Virgin Media Hub 5, Model F3896LG-VMB (Sagemcom) |
-| 10 | Router password changed | ⚠️ ACTION REQUIRED | Log into 192.168.0.1 — change default admin password to 12+ char unique password NOW — CE fail if not done |
-| 11 | Firewall rules reviewed | ⚠️ Outstanding | Log into router admin, confirm no open inbound rules, note review date |
+| 10 | Router password changed | ✅ Done | Admin password changed ~4 months ago from factory default |
+| 11 | Firewall rules reviewed | ✅ Done | No custom inbound port rules configured — confirmed January 2025 |
 | 12 | Separate admin accounts | ✅ Done | M365 admin is Infotech (IT provider) — separate from day-to-day PRL accounts |
 | 13 | Admin account register | ⚠️ Outstanding | Create spreadsheet: all admin accounts across M365, Railway, Cloudflare, GitHub, GoDaddy |
 | 14 | Mobile devices | ⚠️ Outstanding | List phones/tablets used for M365 or PRISM: make + OS version |
