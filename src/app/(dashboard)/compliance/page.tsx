@@ -67,7 +67,7 @@ export default async function CompliancePage({
   // Sync statuses based on expiry dates before fetching
   await syncComplianceStatuses();
 
-  const [records, allRecords, gaps] = await Promise.all([
+  const [records, allRecords, gaps, totalContractors] = await Promise.all([
     prisma.complianceRecord.findMany({
       where,
       include: { contractor: true },
@@ -75,6 +75,9 @@ export default async function CompliancePage({
     }),
     prisma.complianceRecord.findMany({ include: { contractor: true } }),
     getComplianceGaps(),
+    prisma.contractor.count({
+      where: { status: { notIn: ["Left", "Inactive"] } },
+    }),
   ]);
 
   // Get actual types from DB for the filter dropdown
@@ -85,31 +88,100 @@ export default async function CompliancePage({
     (g) => g.status === "missing" || g.status === "expired"
   );
 
-  // Calculate counts from DB (now accurate after sync)
-  const counts = {
-    Verified: allRecords.filter((r) => r.status === "Verified").length,
-    Pending: allRecords.filter((r) => r.status === "Pending").length,
-    Expiring: allRecords.filter((r) => r.status === "Expiring").length,
-    Expired: allRecords.filter((r) => r.status === "Expired").length,
-    "Non-Compliant": allRecords.filter((r) => r.status === "Non-Compliant")
-      .length,
-  };
+  // ── Contractor-centric metrics ──────────────────────────────────────────────
+  // Group all records by contractorId
+  const recordsByContractor = new Map<
+    string,
+    { status: string; contractorId: string }[]
+  >();
+  for (const r of allRecords) {
+    const existing = recordsByContractor.get(r.contractorId) ?? [];
+    existing.push({ status: r.status, contractorId: r.contractorId });
+    recordsByContractor.set(r.contractorId, existing);
+  }
 
-  const totalRecords = allRecords.length;
-  const compliantCount = counts.Verified;
+  // Derive worst status per contractor
+  function worstStatus(
+    statuses: string[]
+  ): "Verified" | "Expiring" | "Non-Compliant" | "Pending" {
+    if (statuses.some((s) => s === "Expired" || s === "Non-Compliant"))
+      return "Non-Compliant";
+    if (statuses.some((s) => s === "Expiring")) return "Expiring";
+    if (statuses.some((s) => s === "Pending")) return "Pending";
+    return "Verified";
+  }
+
+  const contractorsWithRecords = recordsByContractor.size;
+  let fullyCompliant = 0;
+  let contractorExpiring = 0;
+  let actionRequired = 0;
+  let pendingReview = 0;
+
+  for (const recs of recordsByContractor.values()) {
+    const worst = worstStatus(recs.map((r) => r.status));
+    if (worst === "Verified") fullyCompliant++;
+    else if (worst === "Expiring") contractorExpiring++;
+    else if (worst === "Non-Compliant") actionRequired++;
+    else pendingReview++;
+  }
+
   const riskScore =
-    totalRecords > 0 ? Math.round((compliantCount / totalRecords) * 100) : 0;
+    contractorsWithRecords > 0
+      ? Math.round((fullyCompliant / contractorsWithRecords) * 100)
+      : 0;
 
-  // Per-type breakdown for progress bars
-  const typeBreakdown = COMPLIANCE_TYPES.map((typeName) => {
-    const ofType = allRecords.filter((r) => r.type === typeName);
-    const total = ofType.length;
-    const verified = ofType.filter((r) => r.status === "Verified").length;
-    const expiring = ofType.filter((r) => r.status === "Expiring").length;
-    const expired = ofType.filter(
-      (r) => r.status === "Expired" || r.status === "Non-Compliant"
-    ).length;
-    const pending = ofType.filter((r) => r.status === "Pending").length;
+  // ── Per-type breakdown — unique contractors per type ─────────────────────
+  // Types that collapse into "Right to Work"
+  const RTW_TYPES = new Set(["Passport", "Share Code", "Right to Work"]);
+
+  // Display order: RTW first in place of the three separate types, rest unchanged
+  const DISPLAY_TYPES = [
+    "CV",
+    "CSCS",
+    "CCNSG",
+    "NPORS",
+    "Right to Work",
+    "DBS",
+    "P45",
+    "P60",
+    "Insurance",
+    "IR35 Assessment",
+    "Qualification",
+    "Other",
+  ] as const;
+
+  type DisplayTypeName = (typeof DISPLAY_TYPES)[number];
+
+  const typeBreakdown = DISPLAY_TYPES.map((displayName) => {
+    // Records belonging to this display row
+    const ofType = allRecords.filter((r) =>
+      displayName === "Right to Work"
+        ? RTW_TYPES.has(r.type)
+        : r.type === displayName
+    );
+
+    // Unique contractors who have this type
+    const contractorIds = new Set(ofType.map((r) => r.contractorId));
+    const total = contractorIds.size;
+    if (total === 0) return null;
+
+    // Per-contractor worst status for this type group
+    let verified = 0;
+    let expiring = 0;
+    let expired = 0;
+    let pending = 0;
+
+    for (const cid of contractorIds) {
+      const statuses = ofType
+        .filter((r) => r.contractorId === cid)
+        .map((r) => r.status);
+      const worst = worstStatus(statuses);
+      if (worst === "Verified") verified++;
+      else if (worst === "Expiring") expiring++;
+      else if (worst === "Non-Compliant") expired++;
+      else pending++;
+    }
+
     const percentage = total > 0 ? Math.round((verified / total) * 100) : 0;
 
     let displayStatus: string;
@@ -120,7 +192,7 @@ export default async function CompliancePage({
     else displayStatus = "None";
 
     return {
-      type: typeName,
+      type: displayName as DisplayTypeName,
       total,
       verified,
       expiring,
@@ -129,7 +201,7 @@ export default async function CompliancePage({
       percentage,
       displayStatus,
     };
-  }).filter((t) => t.total > 0);
+  }).filter((t): t is NonNullable<typeof t> => t !== null);
 
   function getRowBorderColor(recordStatus: string) {
     switch (recordStatus) {
@@ -220,27 +292,35 @@ export default async function CompliancePage({
           <ComplianceScoreRing score={riskScore} />
         </div>
 
-        {/* Summary Cards Row */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        {/* Summary Cards Row — contractor-centric */}
+        <div className="grid grid-cols-4 gap-4 mb-3">
           <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center">
             <p className="text-3xl font-bold text-emerald-700">
-              {compliantCount}
+              {fullyCompliant}
             </p>
-            <p className="text-sm font-medium text-emerald-600">Compliant</p>
+            <p className="text-sm font-medium text-emerald-600">
+              Fully Compliant
+            </p>
           </div>
           <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-center">
             <p className="text-3xl font-bold text-amber-700">
-              {counts.Expiring}
+              {contractorExpiring}
             </p>
             <p className="text-sm font-medium text-amber-600">Expiring</p>
           </div>
           <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-center">
-            <p className="text-3xl font-bold text-red-700">
-              {counts.Expired + counts["Non-Compliant"]}
-            </p>
-            <p className="text-sm font-medium text-red-600">Non-Compliant</p>
+            <p className="text-3xl font-bold text-red-700">{actionRequired}</p>
+            <p className="text-sm font-medium text-red-600">Action Required</p>
+          </div>
+          <div className="rounded-xl bg-gray-50 border border-gray-200 p-4 text-center">
+            <p className="text-3xl font-bold text-gray-700">{pendingReview}</p>
+            <p className="text-sm font-medium text-gray-500">Pending Review</p>
           </div>
         </div>
+        <p className="text-xs text-gray-400 mb-6 text-right">
+          {contractorsWithRecords} of {totalContractors} contractors have
+          compliance records
+        </p>
 
         {/* Per-Type Progress Bars — Requidex Style */}
         <div className="space-y-4">
@@ -258,7 +338,8 @@ export default async function CompliancePage({
                     {item.type}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {item.verified}/{item.total} verified
+                    {item.total} contractor{item.total !== 1 ? "s" : ""} /{" "}
+                    {item.verified} verified
                   </span>
                 </div>
                 <div
