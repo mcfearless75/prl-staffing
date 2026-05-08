@@ -99,6 +99,36 @@ export default async function DashboardPage() {
       ? Math.round((verifiedComplianceRecords / totalComplianceRecords) * 100)
       : 0;
 
+  const [allComplianceRecords, totalContractorCount] = await Promise.all([
+    prisma.complianceRecord.findMany({ select: { contractorId: true, status: true } }),
+    prisma.contractor.count({ where: { status: { notIn: ["Left", "Inactive"] } } }),
+  ]);
+
+  const contractorIdsWithRecords = new Set(allComplianceRecords.map((r) => r.contractorId));
+  const byContractor = new Map<string, string[]>();
+  for (const r of allComplianceRecords) {
+    const existing = byContractor.get(r.contractorId) ?? [];
+    existing.push(r.status);
+    byContractor.set(r.contractorId, existing);
+  }
+  function worstStatus(statuses: string[]) {
+    if (statuses.some((s) => s === "Expired" || s === "Non-Compliant")) return "Non-Compliant";
+    if (statuses.some((s) => s === "Expiring")) return "Expiring";
+    if (statuses.some((s) => s === "Pending")) return "Pending";
+    return "Verified";
+  }
+  let complianceFullyCompliant = 0, compliancePending = 0, complianceActionRequired = 0;
+  for (const statuses of byContractor.values()) {
+    const w = worstStatus(statuses);
+    if (w === "Verified") complianceFullyCompliant++;
+    else if (w === "Pending") compliancePending++;
+    else complianceActionRequired++;
+  }
+  const complianceNoRecords = totalContractorCount - contractorIdsWithRecords.size;
+  const workforceScore = totalContractorCount > 0
+    ? Math.round((complianceFullyCompliant / totalContractorCount) * 100)
+    : 0;
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -156,6 +186,63 @@ export default async function DashboardPage() {
           icon={MessageSquare}
           href="/payment-queries"
         />
+      </div>
+
+      {/* Compliance Overview Card */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Compliance</h2>
+          <Link
+            href="/compliance"
+            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+          >
+            View Dashboard &rarr;
+          </Link>
+        </div>
+        <div className="flex flex-col items-center py-2">
+          <span
+            className={`text-6xl font-bold ${
+              workforceScore >= 80
+                ? "text-green-600"
+                : workforceScore >= 50
+                ? "text-amber-500"
+                : "text-red-600"
+            }`}
+          >
+            {workforceScore}%
+          </span>
+          <p className="mt-1 text-sm text-gray-500">of workforce fully compliant</p>
+        </div>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
+            <span className="h-2 w-2 rounded-full bg-green-500" />
+            Fully Compliant: {complianceFullyCompliant}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            Pending: {compliancePending}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
+            <span className="h-2 w-2 rounded-full bg-red-500" />
+            Action Required: {complianceActionRequired}
+          </span>
+          {complianceNoRecords > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+              <span className="h-2 w-2 rounded-full bg-gray-400" />
+              No Records: {complianceNoRecords}
+            </span>
+          )}
+        </div>
+        {compliancePending > 0 && (
+          <div className="mt-5 flex justify-center">
+            <Link
+              href="/compliance/review"
+              className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              Review Queue ({compliancePending})
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Campaign Activity — live feed, auto-refreshes every 30s */}

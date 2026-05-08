@@ -16,7 +16,7 @@ export async function GET() {
         where: { status: { in: ["Submitted", "Draft"] } },
       }),
       prisma.complianceRecord.count({
-        where: { status: { in: ["Expiring", "Expired"] } },
+        where: { status: { in: ["Pending", "Non-Compliant", "Expired"] } },
       }),
       prisma.invoice.count({
         where: { status: "Draft" },
