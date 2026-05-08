@@ -5,7 +5,6 @@ import { Resend } from "resend";
 
 const apiKey = process.env.RESEND_API_KEY;
 const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
-const baseUrl = process.env.NEXTAUTH_URL || "https://prl-staffing-production.up.railway.app";
 
 function escapeHtml(str: string): string {
   return str
@@ -85,8 +84,6 @@ export async function POST(request: Request) {
 
   if (apiKey) {
     const resend = new Resend(apiKey);
-    const submissionUrl = `${baseUrl}/onboarding/submissions/${agreement.id}`;
-
     const ratesData = (rates || []) as Array<{ description: string; rate: string; basis: string }>;
     const breakdownData = (breakdown || []) as string[];
 
@@ -235,51 +232,25 @@ export async function POST(request: Request) {
 </body>
 </html>`;
 
+    // Build recipient list: contractor + Helen always + session user if different
+    const recipients = [sendToEmail];
+    if (!recipients.includes("helen@prlsitesolutions.co.uk")) {
+      recipients.push("helen@prlsitesolutions.co.uk");
+    }
+    const sessionEmail = session.user.email;
+    if (sessionEmail && !recipients.includes(sessionEmail)) {
+      recipients.push(sessionEmail);
+    }
+
     try {
       await resend.emails.send({
         from: fromEmail,
-        to: sendToEmail,
-        subject: "You've been invited to join PRISM Workforce",
+        to: recipients,
+        subject: `Supply Agreement — ${escapeHtml(companyName)} (${escapeHtml(contactName)})`,
         html: contractorHtml,
       });
     } catch (err) {
-      console.error("[onboarding/invite] Failed to send contractor invite email:", err);
-    }
-
-    const internalRecipients = ["helen@prlsitesolutions.co.uk"];
-    const sessionEmail = session.user.email;
-    if (sessionEmail && sessionEmail !== "helen@prlsitesolutions.co.uk") {
-      internalRecipients.push(sessionEmail);
-    }
-
-    const internalHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"></head>
-<body style="font-family:Arial,Helvetica,sans-serif;color:#333333;padding:32px;">
-  <h2 style="margin:0 0 16px;color:#005f8c;">Supplier Invite Sent</h2>
-  <p style="margin:0 0 8px;">An onboarding invite has been sent to: <strong>${escapeHtml(sendToEmail)}</strong></p>
-  <table cellpadding="0" cellspacing="0" style="margin:16px 0;border-left:3px solid #005f8c;padding-left:16px;">
-    <tr><td style="padding:4px 0;"><strong>Company:</strong> ${escapeHtml(companyName)}</td></tr>
-    <tr><td style="padding:4px 0;"><strong>Contact:</strong> ${escapeHtml(contactName)}</td></tr>
-    <tr><td style="padding:4px 0;"><strong>Supply of:</strong> ${escapeHtml(supplyOf || "—")}</td></tr>
-    <tr><td style="padding:4px 0;"><strong>Site:</strong> ${escapeHtml(siteLocation || "—")}</td></tr>
-  </table>
-  <p style="margin:16px 0 0;">
-    <a href="${escapeHtml(submissionUrl)}" style="color:#005f8c;">View in PRISM: ${escapeHtml(submissionUrl)}</a>
-  </p>
-</body>
-</html>`;
-
-    try {
-      await resend.emails.send({
-        from: fromEmail,
-        to: internalRecipients,
-        subject: `Supplier invite sent — ${companyName} (${contactName})`,
-        html: internalHtml,
-      });
-    } catch (err) {
-      console.error("[onboarding/invite] Failed to send internal notification email:", err);
+      console.error("[onboarding/invite] Failed to send invite email:", err);
     }
   } else {
     console.warn("[onboarding/invite] RESEND_API_KEY not set — emails skipped");
