@@ -97,10 +97,10 @@ Via home router (ISP-provided, not managed by PRL). Windows Defender Firewall is
 - All staff laptops use Windows Defender Firewall (software firewall) — active at all times including when connecting via home/public networks
 
 **A2.6 Laptops, desktops and virtual desktops**
-- [quantity] x ASUS Vivobook M1605YA laptops — Windows 11 Home, Version 25H2, Build 26200.8328
-  ⚠️ Fill in quantity. Check all other laptops — confirm whether they are also Home or Pro (this device shows Home, not Pro as initially expected)
-- Windows 10: None in use — confirmed ✅
-- BYOD: ⚠️ List any personal devices that access M365 or PRISM
+5 x ASUS Vivobook M1605YA laptops — Windows 11 Home, Version 25H2, Build 26200.8328 ✅
+All 5 running latest Windows, Chrome 148.0.7778.97, and Microsoft Defender (up to date).
+Windows 10: None in use ✅
+BYOD: ⚠️ List any personal phones/tablets used to access M365 or PRISM — must be included in scope
 
 **A2.6.1 Thin clients** — None in use
 
@@ -421,9 +421,8 @@ Staff are instructed to request any new software via the MD before installation.
 |---|---|---|---|
 | 1 | Windows edition | ✅ Done | Windows 11 Pro confirmed on all laptops |
 | 2 | No Windows 10 | ✅ Done | Confirmed — no Windows 10 devices |
-| 3 | Windows feature version | ✅ Done | Version 25H2, Build 26200.8328 — confirmed on ASUS Vivobook M1605YA |
-| 4 | Laptop make/model | ✅ Done | ASUS Vivobook M1605YA — ⚠️ confirm quantity and whether other laptops match |
-| 4a | Windows edition | ⚠️ Check | This device shows Home (not Pro) — verify edition on all devices and enter accurately |
+| 3 | Windows feature version | ✅ Done | Version 25H2, Build 26200.8328 — all 5 laptops confirmed |
+| 4 | Laptop make/model + count | ✅ Done | 5 x ASUS Vivobook M1605YA — Windows 11 Home, all up to date |
 | 5 | Chrome version | ✅ Done | Chrome 148.0.7778.97 (Official Build, 64-bit) — managed by organisation |
 | 6 | Edge version | ⚠️ Outstanding | Edge installed by default on Win11 — confirm if used; if so note version |
 | 7 | Defender version | ⚠️ Outstanding | Windows Security > Virus & threat protection > Manage settings > scroll to About |
