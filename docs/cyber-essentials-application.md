@@ -247,10 +247,9 @@ Yes — all devices run Windows 11 (Version 25H2, Build 26200.8328 — confirmed
 Yes — all software in use is from supported vendors: Microsoft 365, Windows 11, Microsoft Edge/Chrome browsers. Unsupported software is not in use.
 
 **A6.2.1 Internet browsers**
-- Google Chrome — latest version, automatic updates enabled ✅
-  ⚠️ Enter exact version number: Chrome menu (⋮) > Help > About Google Chrome — e.g. "Chrome 136.x.xxxx.xx"
-  (The portal requires a version number — "latest" is not accepted)
-- Microsoft Edge is also installed on Windows 11 by default — ⚠️ confirm whether staff use it and if so note its version too
+- Google Chrome — Version 148.0.7778.97 (Official Build, 64-bit) — up to date, automatic updates enabled ✅
+  Browser is managed by the organisation (Chrome policy applied) ✅
+- Microsoft Edge is installed on Windows 11 by default — ⚠️ confirm if staff use it; if so note its version
 
 **A6.2.2 Malware protection software**
 Microsoft Defender Antivirus — Version: ⚠️ [check: Windows Security > Virus & threat protection > About]
@@ -425,7 +424,7 @@ Staff are instructed to request any new software via the MD before installation.
 | 3 | Windows feature version | ✅ Done | Version 25H2, Build 26200.8328 — confirmed on ASUS Vivobook M1605YA |
 | 4 | Laptop make/model | ✅ Done | ASUS Vivobook M1605YA — ⚠️ confirm quantity and whether other laptops match |
 | 4a | Windows edition | ⚠️ Check | This device shows Home (not Pro) — verify edition on all devices and enter accurately |
-| 5 | Chrome version | ⚠️ Outstanding | Chrome menu (⋮) > Help > About — note full version number e.g. 136.x.xxxx.xx |
+| 5 | Chrome version | ✅ Done | Chrome 148.0.7778.97 (Official Build, 64-bit) — managed by organisation |
 | 6 | Edge version | ⚠️ Outstanding | Edge installed by default on Win11 — confirm if used; if so note version |
 | 7 | Defender version | ⚠️ Outstanding | Windows Security > Virus & threat protection > Manage settings > scroll to About |
 | 8 | Office/Outlook version | ⚠️ Outstanding | Any Office app > File > Account > About — e.g. "Version 2504" |
