@@ -22,6 +22,7 @@ import { BackfillButton, AutoVerifyBackfillButton } from "./compliance-actions";
 import BulkVerifyButton from "./bulk-verify-button";
 import { ChaseExportButton } from "./chase-export-button";
 import { ChaseEmailButton } from "./chase-email-button";
+import { ExpiryAlertButton } from "./expiry-alert-button";
 
 const COMPLIANCE_TYPES = [
   "CV",
@@ -304,6 +305,19 @@ export default async function CompliancePage({
             <BackfillButton />
             <AutoVerifyBackfillButton />
             <BulkVerifyButton />
+            <ExpiryAlertButton />
+            <Link
+              href="/compliance/review"
+              className="inline-flex items-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-800 hover:bg-purple-100 transition-colors"
+            >
+              Review Queue
+            </Link>
+            <Link
+              href="/compliance/report"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Audit Report
+            </Link>
             <Link
               href="/compliance/requirements"
               className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
