@@ -405,13 +405,16 @@ Yes — Microsoft Defender SmartScreen is enabled in Microsoft Edge (default bro
 Yes — Windows Defender SmartScreen blocks execution of unrecognised or unsigned applications. Staff are instructed not to bypass SmartScreen warnings. Standard user accounts cannot install software without admin credentials.
 
 **A8.5 Only approved applications installed, with maintained list?**
-⚠️ Create and maintain an approved applications list. This does not require MDM software — a documented list of approved software is sufficient.
-Current approved applications include:
-- Microsoft 365 Apps (Word, Excel, Outlook, Teams, OneDrive)
-- Microsoft Edge
-- Google Chrome (if used)
-- [Any other software — list here]
-Staff are instructed to request any new software via the MD before installation.
+Yes — an approved applications list is maintained (see docs/approved-applications-list.md).
+Approved applications:
+- Microsoft 365 Apps (Word, Excel, Outlook, Teams, OneDrive, PowerPoint)
+- Microsoft Edge (built into Windows 11)
+- Google Chrome (managed by organisation policy)
+- Microsoft Defender Antivirus (built into Windows 11)
+- Adobe Acrobat Reader
+- Zoom (where required by clients)
+- Windows 11 built-in apps
+Staff must request approval from the MD or IT Administrator before installing any software not on this list. Standard user accounts and Windows SmartScreen technically restrict unauthorised installations.
 
 ---
 
@@ -435,7 +438,7 @@ Staff are instructed to request any new software via the MD before installation.
 | 14 | Mobile devices | ⚠️ Outstanding | List phones/tablets used for M365 or PRISM: make + OS version |
 | 15 | Social media MFA | ⚠️ Outstanding | Enable MFA on LinkedIn and any other business social accounts |
 | 16 | NCSC Early Warning | ✅ Done | Registered on MyNCSC — PRL Site Solutions Ltd, 0 findings |
-| 17 | Approved apps list | ⚠️ Outstanding | Simple doc listing software staff are permitted to install |
+| 17 | Approved apps list | ✅ Done | docs/approved-applications-list.md created — M365, Chrome, Edge, Defender, Acrobat, Zoom |
 | 18 | Remote worker count | ⚠️ Outstanding | Number of staff with permission to work remotely |
 | 19 | Companies House number | ✅ Done | 14358717 |
 | 20 | Staff count | ⚠️ Outstanding | Total headcount with access to org data |
