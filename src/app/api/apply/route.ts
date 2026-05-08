@@ -57,7 +57,11 @@ export async function POST(request: Request) {
             motoringConvictions: body.motoringConvictions,
             regularUseOf: body.regularUseOf,
             endorsementDetails: body.endorsementDetails,
-            nextOfKin: body.nextOfKin,
+            emergencyContactName: body.emergencyContactName || null,
+            emergencyContactRelation: body.emergencyContactRelation || null,
+            emergencyContactPhone: body.emergencyContactPhone || null,
+            nextOfKin: [body.emergencyContactName, body.emergencyContactRelation, body.emergencyContactPhone]
+              .filter(Boolean).join(" | ") || null,
             bankName: body.bankName,
             nameOnAccount: body.nameOnAccount,
             accountInYourName: body.accountInYourName,
@@ -155,7 +159,9 @@ export async function POST(request: Request) {
               ["Motoring Convictions", body.motoringConvictions],
               ["Regular Use Of", body.regularUseOf],
               ["Endorsement Details", body.endorsementDetails],
-              ["Next of Kin", body.nextOfKin],
+              ["Next of Kin — Name", body.emergencyContactName],
+              ["Next of Kin — Relationship", body.emergencyContactRelation],
+              ["Next of Kin — Phone", body.emergencyContactPhone],
             ])}
 
             ${section("Bank Details", [

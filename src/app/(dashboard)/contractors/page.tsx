@@ -4,17 +4,45 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate, getInitials, getStatusColor } from "@/lib/utils";
-import { Plus, Search, Upload } from "lucide-react";
+import { Plus, Search, Upload, ArrowUpDown } from "lucide-react";
 import { ContractorStatusSelect } from "@/components/contractor-status-select";
+
+type ComplianceStatus = "Verified" | "Expiring" | "Pending" | "Non-Compliant" | "No Records";
+
+function deriveComplianceStatus(records: { status: string }[]): ComplianceStatus {
+  if (records.length === 0) return "No Records";
+  const statuses = records.map((r) => r.status);
+  if (statuses.some((s) => s === "Expired" || s === "Non-Compliant")) return "Non-Compliant";
+  if (statuses.some((s) => s === "Expiring")) return "Expiring";
+  if (statuses.some((s) => s === "Pending")) return "Pending";
+  if (statuses.every((s) => s === "Verified")) return "Verified";
+  return "Pending";
+}
+
+function ComplianceBadge({ status }: { status: ComplianceStatus }) {
+  const styles: Record<ComplianceStatus, string> = {
+    Verified: "bg-emerald-100 text-emerald-700",
+    Expiring: "bg-amber-100 text-amber-700",
+    Pending: "bg-gray-100 text-gray-600",
+    "Non-Compliant": "bg-red-100 text-red-700",
+    "No Records": "bg-gray-100 text-gray-400",
+  };
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status]}`}>
+      {status}
+    </span>
+  );
+}
 
 export default async function ContractorsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ search?: string; status?: string }>;
+  searchParams?: Promise<{ search?: string; status?: string; sortBy?: string }>;
 }) {
   const params = await searchParams;
   const search = params?.search || "";
   const status = params?.status || "";
+  const sortBy = params?.sortBy === "firstName" ? "firstName" : "lastName";
 
   const where: Record<string, unknown> = {};
 
@@ -32,9 +60,16 @@ export default async function ContractorsPage({
 
   const contractors = await prisma.contractor.findMany({
     where,
-    include: { supplier: true },
-    orderBy: { lastName: "asc" },
+    include: {
+      supplier: true,
+      compliances: { select: { id: true, status: true, type: true } },
+    },
+    orderBy: sortBy === "firstName" ? { firstName: "asc" } : { lastName: "asc" },
   });
+
+  // Build sort-toggle URL (flip between firstName / lastName, keep other params)
+  const nextSort = sortBy === "lastName" ? "firstName" : "lastName";
+  const sortToggleHref = `/contractors?sortBy=${nextSort}${search ? `&search=${encodeURIComponent(search)}` : ""}${status ? `&status=${encodeURIComponent(status)}` : ""}`;
 
   return (
     <div className="space-y-6">
@@ -76,7 +111,7 @@ export default async function ContractorsPage({
         ].map((tab) => (
           <Link
             key={tab.value}
-            href={tab.value ? `/contractors?status=${encodeURIComponent(tab.value)}${search ? `&search=${encodeURIComponent(search)}` : ""}` : "/contractors"}
+            href={tab.value ? `/contractors?status=${encodeURIComponent(tab.value)}${search ? `&search=${encodeURIComponent(search)}` : ""}${sortBy !== "lastName" ? `&sortBy=${sortBy}` : ""}` : "/contractors"}
             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${tab.color} ${status === tab.value ? "ring-2 ring-offset-1 ring-current" : ""}`}
           >
             {tab.label}
@@ -127,7 +162,11 @@ export default async function ContractorsPage({
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Name
+                  <Link href={sortToggleHref} className="inline-flex items-center gap-1 hover:text-gray-900 transition-colors">
+                    Name
+                    <ArrowUpDown className="h-3 w-3" />
+                    <span className="normal-case font-normal text-gray-400">({sortBy === "firstName" ? "first" : "last"})</span>
+                  </Link>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Email
@@ -136,7 +175,7 @@ export default async function ContractorsPage({
                   Job Title
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Day Rate
+                  Compliance
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Status
@@ -171,10 +210,10 @@ export default async function ContractorsPage({
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     {contractor.jobTitle || "—"}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    {contractor.dayRate
-                      ? `£${contractor.dayRate.toFixed(2)}`
-                      : "—"}
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <Link href={`/compliance?search=${encodeURIComponent(contractor.firstName + " " + contractor.lastName)}`}>
+                      <ComplianceBadge status={deriveComplianceStatus(contractor.compliances)} />
+                    </Link>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <ContractorStatusSelect id={contractor.id} status={contractor.status} />
