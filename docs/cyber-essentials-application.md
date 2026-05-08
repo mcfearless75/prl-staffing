@@ -59,7 +59,7 @@ Internet Search / Other
 Yes
 
 **A1.16 Have you signed up to NCSC Early Warning Service?**
-⚠️ Sign up at ncsc.gov.uk/early-warning-service (free, recommended before applying)
+Yes — PRL Site Solutions Ltd is registered on MyNCSC (myncsc.ncsc.gov.uk). Organisation confirmed, 0 urgent findings, 0 advisory alerts. ✅
 
 ---
 
@@ -435,7 +435,7 @@ Staff are instructed to request any new software via the MD before installation.
 | 13 | Admin account register | ⚠️ Outstanding | Create spreadsheet: all admin accounts across M365, Railway, Cloudflare, GitHub, GoDaddy |
 | 14 | Mobile devices | ⚠️ Outstanding | List phones/tablets used for M365 or PRISM: make + OS version |
 | 15 | Social media MFA | ⚠️ Outstanding | Enable MFA on LinkedIn and any other business social accounts |
-| 16 | NCSC Early Warning | ⚠️ Outstanding | Sign up free: ncsc.gov.uk/early-warning-service |
+| 16 | NCSC Early Warning | ✅ Done | Registered on MyNCSC — PRL Site Solutions Ltd, 0 findings |
 | 17 | Approved apps list | ⚠️ Outstanding | Simple doc listing software staff are permitted to install |
 | 18 | Remote worker count | ⚠️ Outstanding | Number of staff with permission to work remotely |
 | 19 | Companies House number | ⚠️ Outstanding | Find at beta.companieshouse.gov.uk |
