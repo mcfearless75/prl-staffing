@@ -75,6 +75,8 @@ function buildEmailHtml(data: MetlenInductionBody): string {
 
               <p style="margin:0 0 20px 0;">Dear <strong>${e(contractorName)}</strong>,</p>
 
+              <p style="margin:0 0 20px 0;">This induction is being carried out on behalf of <strong>Metlen</strong>. Your company on record is <strong>PRL Site Solutions</strong>.</p>
+
               <!-- CTA Button -->
               <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
                 <tr>

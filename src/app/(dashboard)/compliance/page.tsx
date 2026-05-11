@@ -77,7 +77,7 @@ export default async function CompliancePage({
     prisma.complianceRecord.findMany({
       where,
       include: { contractor: true },
-      orderBy: { expiryDate: "asc" },
+      orderBy: [{ contractor: { firstName: "asc" } }, { contractor: { lastName: "asc" } }],
     }),
     prisma.complianceRecord.findMany({ include: { contractor: true } }),
     getComplianceGaps(),
@@ -93,7 +93,7 @@ export default async function CompliancePage({
       id: { notIn: contractorIdsWithRecords },
       status: { notIn: ["Left", "Inactive"] },
     },
-    orderBy: [{ status: "asc" }, { lastName: "asc" }],
+    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     select: { id: true, firstName: true, lastName: true, email: true, status: true, phone: true },
   });
 
