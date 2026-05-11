@@ -93,6 +93,30 @@ export default function CustomerFeedbackPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [rawPreview, setRawPreview] = useState("");
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/qms-reports/customer-feedback/import", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to parse");
+      const { rawText, ...fields } = data;
+      setForm(f => ({ ...f, ...fields }));
+      setRawPreview(rawText || "");
+      setShowModal(true);
+    } catch (err) {
+      alert("Could not parse document. Try the manual form instead.");
+    } finally {
+      setImporting(false);
+      e.target.value = "";
+    }
+  }
 
   function loadResponses() {
     fetch("/api/qms-reports/customer-feedback")
@@ -154,8 +178,12 @@ export default function CustomerFeedbackPage() {
         title="Customer Feedback"
         action={
           <div className="flex items-center gap-3">
+            <label className={`cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${importing ? "bg-gray-400" : "bg-emerald-600 hover:bg-emerald-700"}`}>
+              {importing ? "Reading..." : "Import Document"}
+              <input type="file" accept=".docx,.doc,.pdf" className="hidden" onChange={handleImport} disabled={importing} />
+            </label>
             <button
-              onClick={() => setShowModal(true)}
+              onClick={() => { setRawPreview(""); setForm(EMPTY_FORM); setShowModal(true); }}
               className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
             >
               + Add Response
@@ -330,6 +358,12 @@ export default function CustomerFeedbackPage() {
 
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
               {error && <p className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{error}</p>}
+              {rawPreview && (
+                <details className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-xs text-gray-500">
+                  <summary className="cursor-pointer font-medium text-gray-700">Extracted document text (click to view / verify)</summary>
+                  <pre className="mt-2 whitespace-pre-wrap font-mono text-[10px] max-h-40 overflow-y-auto">{rawPreview}</pre>
+                </details>
+              )}
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
