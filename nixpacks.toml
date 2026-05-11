@@ -14,3 +14,5 @@ cmd = "node .next/standalone/server.js"
 
 [variables]
 NODE_ENV = "production"
+# Dummy DATABASE_URL for build-time prisma generate (real value injected by Railway at runtime)
+DATABASE_URL = "postgresql://build:build@localhost:5432/build"
