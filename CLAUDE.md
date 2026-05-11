@@ -1,5 +1,20 @@
 # Claude Code Configuration - RuFlo V3
 
+## Project Identity — PRISM Workforce Management Portal
+
+- **Product**: PRISM — internal HR/compliance/QMS portal for PRL Site Solutions
+- **Live URL**: https://www.prismworkforce.online
+- **GitHub repo**: https://github.com/mcfearless75/prl-staffing
+- **Hosting**: Railway (NOT Render, NOT Vercel) — https://railway.com/project/b972e609-db91-4e2d-b293-ee17ce2e590e
+- **Database**: Railway PostgreSQL (same project, separate service)
+- **File storage**: Cloudflare R2 (env vars: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME)
+- **Email**: Resend (env var: RESEND_API_KEY) — from address: PRL Site Solutions <infotech@prlsitesolutions.co.uk>
+- **Auth**: NextAuth v5 — credentials (staff + contractors) + Microsoft Entra ID SSO for @prlsitesolutions.co.uk
+- **Stack**: Next.js 16 App Router + Prisma ORM + PostgreSQL + Tailwind CSS + TypeScript
+- **Deploy**: Auto-deploy on push to `master` branch → Railway picks up and rebuilds
+- **Local env**: `.env` has 0 credentials — all secrets live in Railway environment variables only
+- **IP rate limit**: In-memory map in auth.ts (20 attempts / 15 min per IP) — resets on server restart / new deploy
+
 ## Behavioral Rules (Always Enforced)
 
 - Do what has been asked; nothing more, nothing less
