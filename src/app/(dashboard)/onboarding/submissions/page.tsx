@@ -11,17 +11,19 @@ import { MetlenInductionButton } from "./metlen-induction-button";
 export default async function OnboardingSubmissionsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ status?: string }>;
+  searchParams?: Promise<{ status?: string; sort?: string }>;
 }) {
   const params = await searchParams;
   const filterStatus = params?.status || "";
+  // When viewing Approved, default sort is by last approved (updatedAt desc)
+  const sortByApproved = filterStatus === "Approved" || params?.sort === "approved";
 
   const where: Record<string, unknown> = {};
   if (filterStatus) where.status = filterStatus;
 
   const submissions = await prisma.supplyAgreement.findMany({
     where,
-    orderBy: { createdAt: "desc" },
+    orderBy: sortByApproved ? { updatedAt: "desc" } : { createdAt: "desc" },
   });
 
   const counts = {
@@ -73,15 +75,21 @@ export default async function OnboardingSubmissionsPage({
       </div>
 
       {/* Filter Pills */}
-      <div className="flex items-center gap-2">
-        <Link href="/onboarding/submissions" className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${!filterStatus ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href="/onboarding/submissions" className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${!filterStatus && !sortByApproved ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
           All ({counts.total})
         </Link>
-        {["Pending", "Reviewed", "Approved", "Rejected"].map((s) => (
+        {["Pending", "Reviewed", "Rejected"].map((s) => (
           <Link key={s} href={`/onboarding/submissions?status=${s}`} className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${filterStatus === s ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
             {s}
           </Link>
         ))}
+        <Link
+          href="/onboarding/submissions?status=Approved"
+          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${filterStatus === "Approved" ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+        >
+          Approved ↓ Last
+        </Link>
       </div>
 
       {/* Submissions Table */}
@@ -94,13 +102,27 @@ export default async function OnboardingSubmissionsPage({
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Company</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Supply Of</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Submitted</th>
+                {sortByApproved ? (
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-emerald-600">
+                    Approved On ↓
+                  </th>
+                ) : null}
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {submissions.map((sub) => (
-                <tr key={sub.id} className={`hover:bg-gray-50 transition-colors ${sub.status === "Pending" ? "bg-amber-50/40" : ""}`}>
+                <tr
+                  key={sub.id}
+                  className={`hover:bg-gray-50 transition-colors ${
+                    sub.status === "Pending"
+                      ? "bg-amber-50/40"
+                      : sub.status === "Approved" && sortByApproved
+                      ? "bg-emerald-50/20"
+                      : ""
+                  }`}
+                >
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-medium text-white">
@@ -115,6 +137,11 @@ export default async function OnboardingSubmissionsPage({
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{sub.companyName}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{sub.supplyOf || "—"}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{formatDate(sub.createdAt)}</td>
+                  {sortByApproved ? (
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-emerald-700">
+                      {formatDate(sub.updatedAt)}
+                    </td>
+                  ) : null}
                   <td className="whitespace-nowrap px-6 py-4">
                     <Badge variant={sub.status}>{sub.status}</Badge>
                   </td>

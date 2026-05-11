@@ -26,17 +26,63 @@ async function rejectApplicant(id: string) {
   revalidatePath("/");
 }
 
-export default async function ApplicantsPage() {
+export default async function ApplicantsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ view?: string }>;
+}) {
+  const params = await searchParams;
+  const view = params?.view === "approved" ? "approved" : "pending";
+
   const applicants = await prisma.contractor.findMany({
     where: { status: "Applied" },
     orderBy: { createdAt: "desc" },
   });
 
+  const recentlyApproved = await prisma.contractor.findMany({
+    where: { status: "Active" },
+    orderBy: { updatedAt: "desc" },
+    take: 50,
+  });
+
+  const activeList = view === "approved" ? recentlyApproved : applicants;
+
   return (
     <div className="space-y-6">
-      <PageHeader title="New Applicants" description={`${applicants.length} pending applications`} />
+      <PageHeader
+        title="Applicants"
+        description={
+          view === "approved"
+            ? `${recentlyApproved.length} recently approved contractors`
+            : `${applicants.length} pending applications`
+        }
+      />
 
-      {applicants.length > 0 ? (
+      {/* View Tabs */}
+      <div className="flex items-center gap-2">
+        <Link
+          href="/applicants"
+          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            view === "pending"
+              ? "bg-amber-500 text-white"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          }`}
+        >
+          Pending ({applicants.length})
+        </Link>
+        <Link
+          href="/applicants?view=approved"
+          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            view === "approved"
+              ? "bg-emerald-600 text-white"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          }`}
+        >
+          Recently Approved ({recentlyApproved.length})
+        </Link>
+      </div>
+
+      {activeList.length > 0 ? (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -45,31 +91,71 @@ export default async function ApplicantsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Phone</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Job Title</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Applied</th>
+                {view === "pending" ? (
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Applied</th>
+                ) : (
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Approved On ↓
+                  </th>
+                )}
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {applicants.map((a) => {
+              {activeList.map((a) => {
                 const approve = approveApplicant.bind(null, a.id);
                 const reject = rejectApplicant.bind(null, a.id);
                 return (
-                  <tr key={a.id} className="bg-amber-50/30 hover:bg-amber-50">
+                  <tr
+                    key={a.id}
+                    className={
+                      view === "approved"
+                        ? "bg-emerald-50/20 hover:bg-emerald-50"
+                        : "bg-amber-50/30 hover:bg-amber-50"
+                    }
+                  >
                     <td className="whitespace-nowrap px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-sm font-medium text-white">{getInitials(a.firstName, a.lastName)}</div>
-                        <span className="text-sm font-medium text-gray-900">{a.firstName} {a.lastName}</span>
+                        <div
+                          className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium text-white ${
+                            view === "approved" ? "bg-emerald-600" : "bg-amber-500"
+                          }`}
+                        >
+                          {getInitials(a.firstName, a.lastName)}
+                        </div>
+                        <span className="text-sm font-medium text-gray-900">
+                          {a.firstName} {a.lastName}
+                        </span>
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{a.email}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{a.phone || "—"}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{a.jobTitle || "—"}</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{formatDate(a.createdAt)}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      {view === "approved" ? formatDate(a.updatedAt) : formatDate(a.createdAt)}
+                    </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Link href={`/contractors/${a.id}`} className="text-xs font-medium text-blue-600 hover:text-blue-800">View</Link>
-                        <form action={approve}><button type="submit" className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700">Approve</button></form>
-                        <form action={reject}><button type="submit" className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700">Reject</button></form>
+                        <Link href={`/contractors/${a.id}`} className="text-xs font-medium text-blue-600 hover:text-blue-800">
+                          View
+                        </Link>
+                        {view === "pending" && (
+                          <>
+                            <form action={approve}>
+                              <button type="submit" className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700">
+                                Approve
+                              </button>
+                            </form>
+                            <form action={reject}>
+                              <button type="submit" className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700">
+                                Reject
+                              </button>
+                            </form>
+                          </>
+                        )}
+                        {view === "approved" && (
+                          <Badge variant="Active">Active</Badge>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -80,7 +166,9 @@ export default async function ApplicantsPage() {
         </div>
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center">
-          <p className="text-sm text-gray-500">No pending applications.</p>
+          <p className="text-sm text-gray-500">
+            {view === "approved" ? "No approved contractors yet." : "No pending applications."}
+          </p>
         </div>
       )}
     </div>
