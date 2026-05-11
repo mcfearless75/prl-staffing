@@ -36,7 +36,7 @@ const navigation = [
   { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
   { name: "Contractors", href: "/contractors", icon: Users, badgeKey: null },
   { name: "Companies", href: "/companies", icon: Building2, badgeKey: null },
-  { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
+  // { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
   // { name: "Timesheets", href: "/timesheets", icon: Clock, badgeKey: "pendingTimesheets" as const },
   // { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
   { name: "Compliance", href: "/compliance", icon: ShieldCheck, badgeKey: "complianceAlerts" as const },
