@@ -40,20 +40,68 @@ function Stars({ count }: { count: number }) {
   );
 }
 
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <span className="inline-flex gap-1">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <button
+          key={s}
+          type="button"
+          onClick={() => onChange(s)}
+          onMouseEnter={() => setHovered(s)}
+          onMouseLeave={() => setHovered(0)}
+          className="focus:outline-none"
+        >
+          <svg
+            className={`h-7 w-7 transition-colors ${
+              s <= (hovered || value) ? "text-yellow-400 fill-yellow-400" : "text-gray-300 fill-gray-300"
+            }`}
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1}
+          >
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+          </svg>
+        </button>
+      ))}
+    </span>
+  );
+}
+
+const EMPTY_FORM = {
+  companyName: "",
+  contactName: "",
+  contactEmail: "",
+  dateOfService: "",
+  overallSatisfaction: 0,
+  qualityOfWorkers: 0,
+  communication: 0,
+  compliance: 0,
+  valueForMoney: 0,
+  recommend: "",
+  whatDidWell: "",
+  whatToImprove: "",
+  otherComments: "",
+};
+
 export default function CustomerFeedbackPage() {
   const [responses, setResponses] = useState<SurveyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
+  function loadResponses() {
     fetch("/api/qms-reports/customer-feedback")
       .then((res) => res.json())
-      .then((data) => {
-        setResponses(data);
-        setLoading(false);
-      })
+      .then((data) => { setResponses(data); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => { loadResponses(); }, []);
 
   const totalResponses = responses.length;
   const avgScore =
@@ -62,6 +110,32 @@ export default function CustomerFeedbackPage() {
       : "0.0";
   const yesCount = responses.filter((r) => r.recommend === "Yes").length;
   const recommendRate = totalResponses > 0 ? Math.round((yesCount / totalResponses) * 100) : 0;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!form.companyName || !form.contactName || !form.contactEmail || !form.overallSatisfaction) {
+      setError("Company, contact name, email, and overall score are required.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/survey", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setShowModal(false);
+      setForm(EMPTY_FORM);
+      setLoading(true);
+      loadResponses();
+    } catch {
+      setError("Failed to save response. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -79,12 +153,20 @@ export default function CustomerFeedbackPage() {
       <PageHeader
         title="Customer Feedback"
         action={
-          <Link
-            href="/qms/reports"
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Back to Reports
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowModal(true)}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              + Add Response
+            </button>
+            <Link
+              href="/qms/reports"
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Back to Reports
+            </Link>
+          </div>
         }
       />
 
@@ -117,8 +199,14 @@ export default function CustomerFeedbackPage() {
         </div>
 
         {responses.length === 0 ? (
-          <div className="p-12 text-center text-sm text-gray-500">
-            No survey responses yet. Share the survey link with your clients to start collecting feedback.
+          <div className="p-12 text-center">
+            <p className="text-sm text-gray-500 mb-4">No survey responses yet.</p>
+            <button
+              onClick={() => setShowModal(true)}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              + Add First Response
+            </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -230,6 +318,102 @@ export default function CustomerFeedbackPage() {
           </div>
         )}
       </div>
+
+      {/* Add Response Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-2xl">
+            <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+              <h2 className="text-base font-semibold text-gray-900">Add Customer Feedback Response</h2>
+              <button onClick={() => { setShowModal(false); setError(""); setForm(EMPTY_FORM); }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+              {error && <p className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{error}</p>}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Company Name <span className="text-red-500">*</span></label>
+                  <input type="text" required value={form.companyName} onChange={e => setForm(f => ({ ...f, companyName: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Contact Name <span className="text-red-500">*</span></label>
+                  <input type="text" required value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Contact Email <span className="text-red-500">*</span></label>
+                  <input type="email" required value={form.contactEmail} onChange={e => setForm(f => ({ ...f, contactEmail: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Date of Service</label>
+                  <input type="date" value={form.dateOfService} onChange={e => setForm(f => ({ ...f, dateOfService: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-lg bg-gray-50 p-4">
+                <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Ratings</p>
+                {[
+                  { label: "Overall Satisfaction", key: "overallSatisfaction", required: true },
+                  { label: "Quality of Workers", key: "qualityOfWorkers", required: false },
+                  { label: "Communication", key: "communication", required: false },
+                  { label: "Compliance & Docs", key: "compliance", required: false },
+                  { label: "Value for Money", key: "valueForMoney", required: false },
+                ].map(({ label, key, required }) => (
+                  <div key={key} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</span>
+                    <StarPicker
+                      value={form[key as keyof typeof form] as number}
+                      onChange={v => setForm(f => ({ ...f, [key]: v }))}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Would you recommend PRL?</label>
+                <select value={form.recommend} onChange={e => setForm(f => ({ ...f, recommend: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                  <option value="">Select...</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                  <option value="Maybe">Maybe</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">What did we do well?</label>
+                <textarea rows={2} value={form.whatDidWell} onChange={e => setForm(f => ({ ...f, whatDidWell: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">What could we improve?</label>
+                <textarea rows={2} value={form.whatToImprove} onChange={e => setForm(f => ({ ...f, whatToImprove: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Other comments</label>
+                <textarea rows={2} value={form.otherComments} onChange={e => setForm(f => ({ ...f, otherComments: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                <button type="button" onClick={() => { setShowModal(false); setError(""); setForm(EMPTY_FORM); }}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={submitting}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                  {submitting ? "Saving..." : "Save Response"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
