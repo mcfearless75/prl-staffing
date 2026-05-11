@@ -9,7 +9,7 @@ export default async function QMSPage() {
     ncrCount, auditCount, reviewCount, riskCount, improvementCount,
     openNCRs, overdueNCRs, highRisks, docCount,
     lastUploadedDoc,
-    ncrDocs, auditDocs, reviewDocs, riskDocs, policyDocs,
+    ncrDocs, auditDocs, reviewDocs, riskDocs, policyDocs, customerSatisfactionDocs,
   ] = await Promise.all([
     prisma.nonConformance.count(),
     prisma.internalAudit.count(),
@@ -26,6 +26,7 @@ export default async function QMSPage() {
     prisma.qmsDocument.count({ where: { folder: "Core Procedures", subfolder: "Management Reviews" } }),
     prisma.qmsDocument.count({ where: { folder: "Core Procedures", subfolder: "Risks & Opportunities" } }),
     prisma.qmsDocument.count({ where: { folder: "Quality Manual & Policy" } }),
+    prisma.qmsDocument.count({ where: { folder: "Core Procedures", subfolder: "Customer Satisfaction" } }),
   ]);
 
   const folderCoverage = [
@@ -34,6 +35,7 @@ export default async function QMSPage() {
     { name: "Management Reviews", count: reviewDocs, href: "/qms/documents?subfolder=Core+Procedures%2FManagement+Reviews" },
     { name: "Risks & Opportunities", count: riskDocs, href: "/qms/documents?subfolder=Core+Procedures%2FRisks+%26+Opportunities" },
     { name: "Quality Manual & Policy", count: policyDocs, href: "/qms/documents?subfolder=Quality+Manual+%26+Policy" },
+    { name: "Customer Satisfaction", count: customerSatisfactionDocs, href: "/qms/documents?subfolder=Core+Procedures%2FCustomer+Satisfaction" },
   ];
   const coveredFolders = folderCoverage.filter((f) => f.count > 0).length;
 
@@ -184,7 +186,7 @@ export default async function QMSPage() {
           <h2 className="text-sm font-semibold text-gray-900">Document Coverage</h2>
           <span className="text-xs text-gray-500">{coveredFolders} of {folderCoverage.length} folders have documents</span>
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6">
           {folderCoverage.map((folder) => (
             <Link
               key={folder.name}
