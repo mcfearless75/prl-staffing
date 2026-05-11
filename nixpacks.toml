@@ -6,7 +6,12 @@ cmds = ["npm ci --prefer-offline"]
 cacheDirectories = ["node_modules"]
 
 [phases.build]
-cmds = ["npx prisma generate", "npm run build"]
+# Run prisma generate with an inline dummy URL (avoids DATABASE_URL validation error at build time)
+# The real DATABASE_URL from Railway env vars is used at runtime only
+cmds = [
+  "DATABASE_URL='postgresql://build:build@localhost/build' npx prisma generate",
+  "npm run build"
+]
 cacheDirectories = [".next/cache"]
 
 [start]
@@ -14,5 +19,3 @@ cmd = "node .next/standalone/server.js"
 
 [variables]
 NODE_ENV = "production"
-# Dummy DATABASE_URL for build-time prisma generate (real value injected by Railway at runtime)
-DATABASE_URL = "postgresql://build:build@localhost:5432/build"
