@@ -29,8 +29,6 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // Standalone output: minimal server bundle — faster Railway deploys & smaller image
-  output: "standalone",
   async redirects() {
     return [
       // Redirect apex domain → www, preserving full path + query string.
