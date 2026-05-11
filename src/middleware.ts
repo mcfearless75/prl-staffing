@@ -6,6 +6,14 @@ import { rateLimit } from "@/lib/rate-limit";
 const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
+  // Apex → www redirect — catches API calls that next.config.ts redirects miss
+  const host = req.headers.get("host") || "";
+  if (host === "prismworkforce.online") {
+    const url = req.nextUrl.clone();
+    url.host = "www.prismworkforce.online";
+    return NextResponse.redirect(url, 307);
+  }
+
   // Rate limiting — applied before auth checks
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
