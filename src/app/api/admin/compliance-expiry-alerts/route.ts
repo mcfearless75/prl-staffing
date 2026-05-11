@@ -3,8 +3,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
 const PORTAL_URL = "https://www.prismworkforce.online";
 
@@ -91,6 +89,7 @@ function buildEmailHtml(
 }
 
 export async function POST(req: NextRequest) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });

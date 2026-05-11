@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import mammoth from "mammoth";
-import pdfParse from "pdf-parse";
 
 function extractRating(text: string, label: string): number {
   // Match patterns like "Overall Satisfaction: 4", "4/5", "4 out of 5", "Score: 4"
@@ -139,6 +138,9 @@ export async function POST(req: NextRequest) {
       const result = await mammoth.extractRawText({ buffer });
       rawText = result.value;
     } else if (name.endsWith(".pdf")) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mod = await import("pdf-parse") as any;
+      const pdfParse: (buf: Buffer) => Promise<{ text: string }> = mod.default ?? mod;
       const result = await pdfParse(buffer);
       rawText = result.text;
     } else {
