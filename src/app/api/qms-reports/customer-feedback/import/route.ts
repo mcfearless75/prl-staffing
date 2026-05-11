@@ -138,13 +138,9 @@ export async function POST(req: NextRequest) {
       const result = await mammoth.extractRawText({ buffer });
       rawText = result.value;
     } else if (name.endsWith(".pdf")) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mod = await import("pdf-parse") as any;
-      const pdfParse: (buf: Buffer) => Promise<{ text: string }> = mod.default ?? mod;
-      const result = await pdfParse(buffer);
-      rawText = result.text;
+      return NextResponse.json({ error: "PDF import is not supported. Please save the document as .docx and try again." }, { status: 400 });
     } else {
-      return NextResponse.json({ error: "Unsupported file type. Use .docx, .doc, or .pdf" }, { status: 400 });
+      return NextResponse.json({ error: "Unsupported file type. Use .docx or .doc" }, { status: 400 });
     }
 
     const parsed = parseDocument(rawText);
