@@ -26,6 +26,7 @@ import {
   MessageSquare,
   UserCheck,
   Send,
+  Zap,
 } from "lucide-react";
 
 const navigation = [
@@ -43,6 +44,7 @@ const navigation = [
   // { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
   // { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
   { name: "Pay Queries", href: "/payment-queries", icon: MessageSquare, badgeKey: "openQueries" as const },
+  { name: "Workflows", href: "/workflows", icon: Zap, badgeKey: null },
   { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
   { name: "GDPR", href: "/gdpr", icon: Lock, badgeKey: null },
   { name: "QMS", href: "/qms", icon: Shield, badgeKey: null },

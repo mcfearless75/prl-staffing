@@ -626,6 +626,21 @@ model QmsDocument {
   updatedAt   DateTime @updatedAt
 }
 
+// ─── Agentic Workflow Engine ───
+model WorkflowLog {
+  id        String   @id @default(cuid())
+  workflow  String   // "compliance-chase" | "welcome-agent" | "stale-applicant"
+  action    String   // human-readable description
+  target    String?  // contractor id or email
+  outcome   String   // "sent" | "skipped" | "failed" | "escalated"
+  detail    String?  // extra context
+  createdAt DateTime @default(now())
+
+  @@index([workflow])
+  @@index([createdAt])
+  @@index([target])
+}
+
 // ─── Auditor Users (external auditors like Nutral) ───
 model AuditorUser {
   id           String   @id @default(cuid())
