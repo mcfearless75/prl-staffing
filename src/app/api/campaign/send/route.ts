@@ -382,6 +382,131 @@ function buildProfileCompletionHtml(
 </html>`;
 }
 
+function buildNoComplianceHtml(
+  firstName: string,
+  portalUrl: string,
+  isActivated: boolean,
+  trackingToken: string
+): string {
+  const trackingPixel = `${APP_URL}/api/campaign/track/${trackingToken}`;
+  const ctaUrl = isActivated ? portalUrl : `${APP_URL}/setup-account`;
+  const ctaLabel = isActivated ? "Upload My Documents Now" : "Set Up Account &amp; Upload Documents";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Action Required — No Compliance Documents on File</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+
+    <!-- Header -->
+    <div style="background:#1F4E79;border-radius:12px 12px 0 0;padding:32px 24px;text-align:center;">
+      <h1 style="color:#ffffff;margin:0;font-size:28px;letter-spacing:2px;font-weight:700;">PRISM</h1>
+      <p style="color:#93c5fd;margin:6px 0 0;font-size:13px;">PRL Site Solutions — Contractor Portal</p>
+    </div>
+
+    <!-- Body -->
+    <div style="background:#ffffff;border:1px solid #e5e7eb;border-top:none;padding:32px 24px;">
+
+      <p style="color:#1f2937;font-size:16px;font-weight:600;margin:0 0 8px;">Hi ${firstName},</p>
+
+      <p style="color:#4b5563;font-size:14px;line-height:1.7;margin:0 0 16px;">
+        We've checked your file on PRISM and we currently have <strong>no compliance documents on record</strong> for you. This means we are unable to place you on site until this is resolved.
+      </p>
+
+      <!-- Urgency banner -->
+      <div style="background:#fee2e2;border:2px solid #fca5a5;border-radius:8px;padding:16px;margin:0 0 20px;text-align:center;">
+        <p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 4px;">&#9888; No Compliance Documents on File</p>
+        <p style="color:#b91c1c;font-size:13px;margin:0;line-height:1.6;">
+          You cannot be placed on site until your compliance documents are uploaded and verified.
+        </p>
+      </div>
+
+      <!-- Required docs -->
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:20px;margin:0 0 24px;">
+        <p style="color:#92400e;font-size:14px;font-weight:700;margin:0 0 12px;">&#9888; Documents you will need to upload:</p>
+        <ul style="color:#374151;font-size:14px;line-height:2.2;padding-left:20px;margin:0;">
+          <li>&#9744; CSCS Card (Construction Skills Certification Scheme)</li>
+          <li>&#9744; Right to Work document (passport, visa, or share code)</li>
+          <li>&#9744; Public Liability Insurance certificate</li>
+          <li>&#9744; DBS certificate (if required for your role)</li>
+          <li>&#9744; Any relevant trade qualifications or certificates</li>
+        </ul>
+      </div>
+
+      <!-- Why it matters -->
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin:0 0 24px;">
+        <p style="color:#1e40af;font-size:13px;margin:0;line-height:1.7;">
+          <strong>Why is this required?</strong> Our clients have strict compliance requirements before any worker can be placed on site. Without verified documents, we are legally unable to assign you to any project — regardless of your availability or experience.
+        </p>
+      </div>
+
+      <!-- How to upload -->
+      <p style="color:#1f2937;font-size:15px;font-weight:600;margin:0 0 12px;">How to upload your documents:</p>
+      <table style="width:100%;border-collapse:collapse;margin:0 0 24px;">
+        <tr>
+          <td style="width:36px;vertical-align:top;padding-bottom:16px;">
+            <div style="width:28px;height:28px;background:#1F4E79;color:#fff;border-radius:50%;text-align:center;line-height:28px;font-size:13px;font-weight:700;">1</div>
+          </td>
+          <td style="vertical-align:top;padding-bottom:16px;padding-left:12px;">
+            <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">${isActivated ? `Log in at <a href="${APP_URL}" style="color:#1F4E79;font-weight:600;">www.prismworkforce.online</a>` : `Click the button below to set up your account at <a href="${APP_URL}" style="color:#1F4E79;font-weight:600;">www.prismworkforce.online</a>`}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="width:36px;vertical-align:top;padding-bottom:16px;">
+            <div style="width:28px;height:28px;background:#1F4E79;color:#fff;border-radius:50%;text-align:center;line-height:28px;font-size:13px;font-weight:700;">2</div>
+          </td>
+          <td style="vertical-align:top;padding-bottom:16px;padding-left:12px;">
+            <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">Go to <strong>My Documents</strong> in your profile</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="width:36px;vertical-align:top;">
+            <div style="width:28px;height:28px;background:#1F4E79;color:#fff;border-radius:50%;text-align:center;line-height:28px;font-size:13px;font-weight:700;">3</div>
+          </td>
+          <td style="vertical-align:top;padding-left:12px;">
+            <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">Upload each document — we'll verify them and update your compliance status</p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- CTA Button -->
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${ctaUrl}"
+           style="display:inline-block;background:#dc2626;color:#ffffff;padding:16px 40px;border-radius:8px;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:0.5px;">
+          ${ctaLabel}
+        </a>
+      </div>
+
+      <p style="color:#6b7280;font-size:12px;text-align:center;margin:0 0 24px;">
+        If you have trouble clicking the button, visit:<br/>
+        <a href="${ctaUrl}" style="color:#2563eb;word-break:break-all;">${ctaUrl}</a>
+      </p>
+
+      <!-- Help -->
+      <div style="border-top:1px solid #e5e7eb;padding-top:20px;">
+        <p style="color:#6b7280;font-size:13px;margin:0;">
+          Questions about what documents you need? Email us at <a href="mailto:${HELP_EMAIL}" style="color:#1F4E79;">${HELP_EMAIL}</a> — we're happy to help.
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:16px 24px;text-align:center;">
+      <p style="color:#9ca3af;font-size:11px;margin:0;">
+        PRL Site Solutions | Recruitment Specialists | <a href="${APP_URL}" style="color:#9ca3af;">www.prismworkforce.online</a>
+      </p>
+    </div>
+
+    <img src="${trackingPixel}" width="1" height="1" style="display:none;" alt="" />
+  </div>
+</body>
+</html>`;
+}
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -400,6 +525,7 @@ export async function POST(request: Request) {
     let isResendAll = false;
     let isIncompleteOnly = false;
     let isNewUsers = false;
+    let isNoCompliance = false;
     try {
       const body = await request.json();
       isResend = body?.resend === true;
@@ -407,6 +533,7 @@ export async function POST(request: Request) {
       isResendAll = body?.mode === "resendAll";
       isIncompleteOnly = body?.mode === "incompleteOnly";
       isNewUsers = body?.mode === "newUsers";
+      isNoCompliance = body?.mode === "noCompliance";
       // resendAll and incompleteOnly use the profile completion email template
       if (isResendAll || isIncompleteOnly) isProfileCompletion = true;
     } catch {
@@ -421,7 +548,9 @@ export async function POST(request: Request) {
     };
 
     const contractors = await prisma.contractor.findMany({
-      where: isResendAll || isIncompleteOnly
+      where: isNoCompliance
+        ? { ...baseWhere, compliances: { none: {} } }
+        : isResendAll || isIncompleteOnly
         // Fetch ALL activated contractors; incompleteOnly will filter in-code
         ? { ...baseWhere, contractorLogin: { isNot: null } }
         : isProfileCompletion
@@ -468,7 +597,18 @@ export async function POST(request: Request) {
         let action: string;
         let details: string;
 
-        if (isProfileCompletion) {
+        if (isNoCompliance) {
+          const isActivated = !!contractor.contractorLogin;
+          html = buildNoComplianceHtml(
+            contractor.firstName,
+            `${APP_URL}/portal`,
+            isActivated,
+            trackingToken
+          );
+          subject = "Action Required: No compliance documents on file — PRISM";
+          action = "Sent No-Compliance Campaign Email";
+          details = `No-compliance reminder sent to ${email}`;
+        } else if (isProfileCompletion) {
           // Work out what's missing for this contractor
           const missingFields = getMissingFields(contractor);
           const hasDocs = contractor.compliances.some((d) => d.filePath);
@@ -528,7 +668,7 @@ export async function POST(request: Request) {
         // Update contractor record
         await prisma.contractor.update({
           where: { id: contractor.id },
-          data: isProfileCompletion
+          data: isNoCompliance || isProfileCompletion
             ? { profileCompletionSentAt: new Date(), inviteToken: trackingToken }
             : { inviteToken: trackingToken, inviteSentAt: new Date() },
         });
@@ -554,7 +694,7 @@ export async function POST(request: Request) {
     }
 
     // Campaign-level summary log
-    const campaignMode = isIncompleteOnly ? "Incomplete Contractors" : isResendAll ? "Resend All" : isProfileCompletion ? "Profile Completion" : isResend ? "Resend Launch" : isNewUsers ? "New Users" : "Launch";
+    const campaignMode = isNoCompliance ? "No Compliance Chase" : isIncompleteOnly ? "Incomplete Contractors" : isResendAll ? "Resend All" : isProfileCompletion ? "Profile Completion" : isResend ? "Resend Launch" : isNewUsers ? "New Users" : "Launch";
     await prisma.activityLog.create({
       data: {
         userId: (session.user as { id?: string }).id,

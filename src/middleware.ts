@@ -1,9 +1,48 @@
 import NextAuth from "next-auth";
+import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth.config";
+import { rateLimit } from "@/lib/rate-limit";
 
 const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
+  // Apex → www redirect — catches API calls that next.config.ts redirects miss
+  const host = req.headers.get("host") || "";
+  if (host === "prismworkforce.online") {
+    const url = req.nextUrl.clone();
+    url.host = "www.prismworkforce.online";
+    return NextResponse.redirect(url, 307);
+  }
+
+  // Rate limiting — applied before auth checks
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
+
+  const path = req.nextUrl.pathname;
+
+  // Auth rate limiting handled in auth.ts authorize() — not here
+  // (duplicate middleware limiter caused "Something went wrong" after repeated attempts)
+
+  if (path.startsWith("/api/admin/")) {
+    if (!rateLimit(`admin:${ip}`, 30, 60_000)) {
+      return new NextResponse("Too Many Requests", { status: 429 });
+    }
+  }
+
+  if (path === "/api/compliance/upload-doc") {
+    if (!rateLimit(`upload:${ip}`, 5, 60_000)) {
+      return new NextResponse("Too Many Requests", { status: 429 });
+    }
+  }
+
+  if (path === "/api/auditor/login") {
+    if (!rateLimit(`auditor-login:${ip}`, 10, 60_000)) {
+      return new NextResponse("Too Many Requests", { status: 429 });
+    }
+  }
+
   const isLoggedIn = !!req.auth;
   const isLoginPage = req.nextUrl.pathname === "/login";
   const isSetPasswordPage = req.nextUrl.pathname === "/set-password";
@@ -53,5 +92,12 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|manifest\\.json|sw\\.js|.*\\.(?:png|jpg|jpeg|svg|ico|webp|json)$).*)"],
+  matcher: [
+    // All non-API, non-static routes (existing auth guard)
+    "/((?!api/|_next/static|_next/image|favicon.ico|manifest\\.json|sw\\.js|.*\\.(?:png|jpg|jpeg|svg|ico|webp|json)$).*)",
+    // Specific API routes that need rate limiting
+    "/api/admin/:path*",
+    "/api/compliance/upload-doc",
+    "/api/auditor/login",
+  ],
 };

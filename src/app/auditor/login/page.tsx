@@ -30,8 +30,7 @@ export default function AuditorLoginPage() {
         return;
       }
 
-      // Store token and auditor info
-      localStorage.setItem("auditor_token", data.token);
+      // Token is set as httpOnly cookie by the server — only store display info
       localStorage.setItem("auditor_name", data.name);
       localStorage.setItem("auditor_org", data.organisation);
 

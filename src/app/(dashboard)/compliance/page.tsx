@@ -17,6 +17,12 @@ import {
 import { ComplianceScoreRing } from "./compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
 import { getComplianceGaps } from "@/lib/compliance-gaps";
+import { ComplianceCharts } from "./compliance-charts";
+import { BackfillButton, AutoVerifyBackfillButton } from "./compliance-actions";
+import BulkVerifyButton from "./bulk-verify-button";
+import { ChaseExportButton } from "./chase-export-button";
+import { ChaseEmailButton } from "./chase-email-button";
+import { ExpiryAlertButton } from "./expiry-alert-button";
 
 const COMPLIANCE_TYPES = [
   "CV",
@@ -67,15 +73,29 @@ export default async function CompliancePage({
   // Sync statuses based on expiry dates before fetching
   await syncComplianceStatuses();
 
-  const [records, allRecords, gaps] = await Promise.all([
+  const [records, allRecords, gaps, totalContractors] = await Promise.all([
     prisma.complianceRecord.findMany({
       where,
       include: { contractor: true },
-      orderBy: { expiryDate: "asc" },
+      orderBy: [{ contractor: { firstName: "asc" } }, { contractor: { lastName: "asc" } }],
     }),
     prisma.complianceRecord.findMany({ include: { contractor: true } }),
     getComplianceGaps(),
+    prisma.contractor.count({
+      where: { status: { notIn: ["Left", "Inactive"] } },
+    }),
   ]);
+
+  // Contractors with no compliance records at all (for chase view)
+  const contractorIdsWithRecords = [...new Set(allRecords.map((r) => r.contractorId))];
+  const noRecordContractors = await prisma.contractor.findMany({
+    where: {
+      id: { notIn: contractorIdsWithRecords },
+      status: { notIn: ["Left", "Inactive"] },
+    },
+    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+    select: { id: true, firstName: true, lastName: true, email: true, status: true, phone: true },
+  });
 
   // Get actual types from DB for the filter dropdown
   const actualTypes = Array.from(new Set(allRecords.map((r) => r.type))).sort();
@@ -85,31 +105,102 @@ export default async function CompliancePage({
     (g) => g.status === "missing" || g.status === "expired"
   );
 
-  // Calculate counts from DB (now accurate after sync)
-  const counts = {
-    Verified: allRecords.filter((r) => r.status === "Verified").length,
-    Pending: allRecords.filter((r) => r.status === "Pending").length,
-    Expiring: allRecords.filter((r) => r.status === "Expiring").length,
-    Expired: allRecords.filter((r) => r.status === "Expired").length,
-    "Non-Compliant": allRecords.filter((r) => r.status === "Non-Compliant")
-      .length,
-  };
+  // ── Contractor-centric metrics ──────────────────────────────────────────────
+  // Group all records by contractorId
+  const recordsByContractor = new Map<
+    string,
+    { status: string; contractorId: string }[]
+  >();
+  for (const r of allRecords) {
+    const existing = recordsByContractor.get(r.contractorId) ?? [];
+    existing.push({ status: r.status, contractorId: r.contractorId });
+    recordsByContractor.set(r.contractorId, existing);
+  }
 
-  const totalRecords = allRecords.length;
-  const compliantCount = counts.Verified;
+  // Derive worst status per contractor
+  function worstStatus(
+    statuses: string[]
+  ): "Verified" | "Expiring" | "Non-Compliant" | "Pending" {
+    if (statuses.some((s) => s === "Expired" || s === "Non-Compliant"))
+      return "Non-Compliant";
+    if (statuses.some((s) => s === "Expiring")) return "Expiring";
+    if (statuses.some((s) => s === "Pending")) return "Pending";
+    return "Verified";
+  }
+
+  const contractorsWithRecords = recordsByContractor.size;
+  let fullyCompliant = 0;
+  let contractorExpiring = 0;
+  let actionRequired = 0;
+  let pendingReview = 0;
+
+  for (const recs of recordsByContractor.values()) {
+    const worst = worstStatus(recs.map((r) => r.status));
+    if (worst === "Verified") fullyCompliant++;
+    else if (worst === "Expiring") contractorExpiring++;
+    else if (worst === "Non-Compliant") actionRequired++;
+    else pendingReview++;
+  }
+
+  const noRecords = totalContractors - contractorsWithRecords;
+  // Score is against the full workforce — honest audit number
   const riskScore =
-    totalRecords > 0 ? Math.round((compliantCount / totalRecords) * 100) : 0;
+    totalContractors > 0
+      ? Math.round((fullyCompliant / totalContractors) * 100)
+      : 0;
 
-  // Per-type breakdown for progress bars
-  const typeBreakdown = COMPLIANCE_TYPES.map((typeName) => {
-    const ofType = allRecords.filter((r) => r.type === typeName);
-    const total = ofType.length;
-    const verified = ofType.filter((r) => r.status === "Verified").length;
-    const expiring = ofType.filter((r) => r.status === "Expiring").length;
-    const expired = ofType.filter(
-      (r) => r.status === "Expired" || r.status === "Non-Compliant"
-    ).length;
-    const pending = ofType.filter((r) => r.status === "Pending").length;
+  // ── Per-type breakdown — unique contractors per type ─────────────────────
+  // Types that collapse into "Right to Work"
+  const RTW_TYPES = new Set(["Passport", "Share Code", "Right to Work"]);
+
+  // Display order: RTW first in place of the three separate types, rest unchanged
+  const DISPLAY_TYPES = [
+    "CV",
+    "CSCS",
+    "CCNSG",
+    "NPORS",
+    "Right to Work",
+    "DBS",
+    "P45",
+    "P60",
+    "Insurance",
+    "IR35 Assessment",
+    "Qualification",
+    "Other",
+  ] as const;
+
+  type DisplayTypeName = (typeof DISPLAY_TYPES)[number];
+
+  const typeBreakdown = DISPLAY_TYPES.map((displayName) => {
+    // Records belonging to this display row
+    const ofType = allRecords.filter((r) =>
+      displayName === "Right to Work"
+        ? RTW_TYPES.has(r.type)
+        : r.type === displayName
+    );
+
+    // Unique contractors who have this type
+    const contractorIds = new Set(ofType.map((r) => r.contractorId));
+    const total = contractorIds.size;
+    if (total === 0) return null;
+
+    // Per-contractor worst status for this type group
+    let verified = 0;
+    let expiring = 0;
+    let expired = 0;
+    let pending = 0;
+
+    for (const cid of contractorIds) {
+      const statuses = ofType
+        .filter((r) => r.contractorId === cid)
+        .map((r) => r.status);
+      const worst = worstStatus(statuses);
+      if (worst === "Verified") verified++;
+      else if (worst === "Expiring") expiring++;
+      else if (worst === "Non-Compliant") expired++;
+      else pending++;
+    }
+
     const percentage = total > 0 ? Math.round((verified / total) * 100) : 0;
 
     let displayStatus: string;
@@ -120,7 +211,7 @@ export default async function CompliancePage({
     else displayStatus = "None";
 
     return {
-      type: typeName,
+      type: displayName as DisplayTypeName,
       total,
       verified,
       expiring,
@@ -129,7 +220,7 @@ export default async function CompliancePage({
       percentage,
       displayStatus,
     };
-  }).filter((t) => t.total > 0);
+  }).filter((t): t is NonNullable<typeof t> => t !== null);
 
   function getRowBorderColor(recordStatus: string) {
     switch (recordStatus) {
@@ -187,13 +278,46 @@ export default async function CompliancePage({
     }
   }
 
+  // ── Chart data ───────────────────────────────────────────────────────────
+  const workforceChartData = [
+    { name: "Fully Compliant", value: fullyCompliant, color: "#10b981" },
+    { name: "Expiring Soon",   value: contractorExpiring, color: "#f59e0b" },
+    { name: "Action Required", value: actionRequired, color: "#ef4444" },
+    { name: "Pending Review",  value: pendingReview, color: "#3b82f6" },
+    { name: "No Records",      value: noRecords, color: "#e5e7eb" },
+  ];
+
+  const typeCoverageData = typeBreakdown.map((t) => ({
+    type: t.type,
+    contractors: t.total,
+    verified: t.verified,
+    notVerified: t.total - t.verified,
+    percentage: t.percentage,
+  }));
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Compliance Dashboard"
         description="Workforce compliance monitoring and risk scoring"
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <BackfillButton />
+            <AutoVerifyBackfillButton />
+            <BulkVerifyButton />
+            <ExpiryAlertButton />
+            <Link
+              href="/compliance/review"
+              className="inline-flex items-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-800 hover:bg-purple-100 transition-colors"
+            >
+              Review Queue
+            </Link>
+            <Link
+              href="/compliance/report"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Audit Report
+            </Link>
             <Link
               href="/compliance/requirements"
               className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
@@ -217,29 +341,44 @@ export default async function CompliancePage({
           <h2 className="text-lg font-semibold text-gray-900">
             Compliance Overview
           </h2>
-          <ComplianceScoreRing score={riskScore} />
+          <div className="flex flex-col items-center gap-1">
+            <ComplianceScoreRing score={riskScore} />
+            <p className="text-[10px] text-gray-400 text-center leading-tight max-w-[72px]">
+              of total workforce
+            </p>
+          </div>
         </div>
 
-        {/* Summary Cards Row */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        {/* Summary Cards — full workforce view for audit */}
+        <div className="grid grid-cols-5 gap-3 mb-2">
           <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center">
-            <p className="text-3xl font-bold text-emerald-700">
-              {compliantCount}
-            </p>
-            <p className="text-sm font-medium text-emerald-600">Compliant</p>
+            <p className="text-3xl font-bold text-emerald-700">{fullyCompliant}</p>
+            <p className="text-xs font-medium text-emerald-600 mt-1">Fully Compliant</p>
           </div>
           <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-center">
-            <p className="text-3xl font-bold text-amber-700">
-              {counts.Expiring}
-            </p>
-            <p className="text-sm font-medium text-amber-600">Expiring</p>
+            <p className="text-3xl font-bold text-amber-700">{contractorExpiring}</p>
+            <p className="text-xs font-medium text-amber-600 mt-1">Expiring Soon</p>
           </div>
           <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-center">
-            <p className="text-3xl font-bold text-red-700">
-              {counts.Expired + counts["Non-Compliant"]}
-            </p>
-            <p className="text-sm font-medium text-red-600">Non-Compliant</p>
+            <p className="text-3xl font-bold text-red-700">{actionRequired}</p>
+            <p className="text-xs font-medium text-red-600 mt-1">Action Required</p>
           </div>
+          <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 text-center">
+            <p className="text-3xl font-bold text-blue-700">{pendingReview}</p>
+            <p className="text-xs font-medium text-blue-600 mt-1">Pending Review</p>
+          </div>
+          <div className="rounded-xl bg-gray-100 border border-gray-300 p-4 text-center">
+            <p className="text-3xl font-bold text-gray-600">{noRecords}</p>
+            <p className="text-xs font-medium text-gray-500 mt-1">No Records</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-xs text-gray-500">
+            Total workforce: <span className="font-semibold text-gray-900">{totalContractors}</span> contractors
+            &nbsp;·&nbsp;
+            <span className="text-red-600 font-medium">{noRecords} have no compliance documents on file</span>
+          </p>
+          <p className="text-xs text-gray-400">{contractorsWithRecords} contractors have at least one record</p>
         </div>
 
         {/* Per-Type Progress Bars — Requidex Style */}
@@ -258,7 +397,8 @@ export default async function CompliancePage({
                     {item.type}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {item.verified}/{item.total} verified
+                    {item.total} contractor{item.total !== 1 ? "s" : ""} /{" "}
+                    {item.verified} verified
                   </span>
                 </div>
                 <div
@@ -289,6 +429,15 @@ export default async function CompliancePage({
           )}
         </div>
       </div>
+
+      {/* Charts */}
+      {typeCoverageData.length > 0 && (
+        <ComplianceCharts
+          workforce={workforceChartData}
+          typeCoverage={typeCoverageData}
+          totalContractors={totalContractors}
+        />
+      )}
 
       {/* Compliance Gaps */}
       {criticalGaps.length > 0 && (
@@ -437,18 +586,18 @@ export default async function CompliancePage({
                   className={`hover:bg-gray-50 transition-colors ${getRowBorderColor(record.status)}`}
                 >
                   <td className="whitespace-nowrap px-6 py-4">
-                    <div className="flex items-center gap-3">
+                    <Link href={`/contractors/${record.contractor.id}`} className="flex items-center gap-3 group">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-medium text-white">
                         {getInitials(
                           record.contractor.firstName,
                           record.contractor.lastName
                         )}
                       </div>
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
                         {record.contractor.firstName}{" "}
                         {record.contractor.lastName}
                       </span>
-                    </div>
+                    </Link>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     {record.type}
@@ -520,6 +669,63 @@ export default async function CompliancePage({
               </Link>
             )}
           </p>
+        </div>
+      )}
+
+      {/* No Records — contractor chase list */}
+      {noRecordContractors.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">
+                No Compliance Records ({noRecordContractors.length})
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Active contractors with nothing on file — chase or add records
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <ChaseExportButton />
+              <ChaseEmailButton />
+            </div>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {noRecordContractors.map((c) => {
+              const statusColor =
+                c.status === "Active" ? "bg-emerald-100 text-emerald-700"
+                : c.status === "On Site" ? "bg-blue-100 text-blue-700"
+                : c.status === "Pending Docs" ? "bg-orange-100 text-orange-700"
+                : c.status === "Applied" ? "bg-purple-100 text-purple-700"
+                : "bg-gray-100 text-gray-600";
+              const initials = (c.firstName?.[0] ?? "") + (c.lastName?.[0] ?? "");
+              return (
+                <div key={c.id} className="flex items-center justify-between gap-4 px-6 py-3 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
+                      {initials}
+                    </div>
+                    <div className="min-w-0">
+                      <Link href={`/contractors/${c.id}`} className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors">
+                        {c.firstName} {c.lastName}
+                      </Link>
+                      {c.email && <p className="text-xs text-gray-400 truncate">{c.email}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColor}`}>
+                      {c.status}
+                    </span>
+                    <Link
+                      href={`/compliance/new?contractorId=${c.id}`}
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                    >
+                      + Add Record
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

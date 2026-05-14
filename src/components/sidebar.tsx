@@ -26,6 +26,7 @@ import {
   MessageSquare,
   UserCheck,
   Send,
+  Zap,
 } from "lucide-react";
 
 const navigation = [
@@ -36,22 +37,21 @@ const navigation = [
   { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
   { name: "Contractors", href: "/contractors", icon: Users, badgeKey: null },
   { name: "Companies", href: "/companies", icon: Building2, badgeKey: null },
-  { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
-  { name: "Timesheets", href: "/timesheets", icon: Clock, badgeKey: "pendingTimesheets" as const },
-  { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
+  // { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
+  // { name: "Timesheets", href: "/timesheets", icon: Clock, badgeKey: "pendingTimesheets" as const },
+  // { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
   { name: "Compliance", href: "/compliance", icon: ShieldCheck, badgeKey: "complianceAlerts" as const },
-  { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
-  { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
+  // { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
+  // { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
   { name: "Pay Queries", href: "/payment-queries", icon: MessageSquare, badgeKey: "openQueries" as const },
+  { name: "Workflows", href: "/workflows", icon: Zap, badgeKey: null },
   { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
   { name: "GDPR", href: "/gdpr", icon: Lock, badgeKey: null },
   { name: "QMS", href: "/qms", icon: Shield, badgeKey: null },
 ];
 
 type Counts = {
-  pendingTimesheets: number;
   complianceAlerts: number;
-  draftInvoices: number;
   pendingOnboarding: number;
   pendingApplicants: number;
   openQueries: number;
@@ -61,7 +61,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
-  const [counts, setCounts] = useState<Counts>({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0 });
+  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0 });
 
   // Fetch badge counts on mount and every 30 seconds
   useEffect(() => {
@@ -129,9 +129,7 @@ export function Sidebar() {
               {badgeCount > 0 && (
                 <span className={cn(
                   "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
-                  item.badgeKey === "pendingTimesheets"
-                    ? "bg-red-500 text-white animate-pulse"
-                    : item.badgeKey === "complianceAlerts"
+                  item.badgeKey === "complianceAlerts"
                     ? "bg-orange-500 text-white"
                     : "bg-blue-500 text-white"
                 )}>
@@ -171,11 +169,10 @@ export function Sidebar() {
             className="relative rounded-lg p-1.5 text-gray-600 hover:bg-gray-100"
           >
             <Menu className="h-6 w-6" />
-            {/* Red dot on hamburger when there are pending timesheets */}
-            {counts.pendingTimesheets > 0 && (
+            {counts.complianceAlerts > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500" />
               </span>
             )}
           </button>

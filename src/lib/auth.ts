@@ -33,8 +33,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const ip = forwarded ? forwarded.split(",")[0].trim() : "unknown";
         const now = Date.now();
         const ipData = ipAttempts.get(ip);
-        if (ipData && now < ipData.resetAt && ipData.count >= 20) {
-          throw new Error("Too many login attempts from this IP. Try again later.");
+        if (ipData && now < ipData.resetAt && ipData.count >= 50) {
+          // Return null (not throw) so NextAuth surfaces a clean "invalid credentials"
+          // rather than a generic "Something went wrong" in the UI
+          return null;
         }
         // Update IP attempt counter
         if (!ipData || now >= ipData.resetAt) {

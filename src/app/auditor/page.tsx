@@ -102,11 +102,6 @@ function FileTypeIcon({ fileType }: { fileType: string }) {
 }
 
 function DocumentRow({ doc }: { doc: QmsDocument }) {
-  const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("auditor_token")
-      : null;
-
   return (
     <div className="flex items-center gap-3 rounded-lg border border-gray-100 bg-white px-4 py-3 hover:bg-gray-50 transition-colors">
       <FileTypeIcon fileType={doc.fileType} />
@@ -123,7 +118,7 @@ function DocumentRow({ doc }: { doc: QmsDocument }) {
         </p>
       </div>
       <a
-        href={`/api/auditor/download?id=${doc.id}&token=${token ?? ""}`}
+        href={`/api/auditor/download?id=${doc.id}`}
         className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium hover:bg-gray-100 transition-colors"
         style={{ color: "#8EA698" }}
         title="Download"
@@ -307,27 +302,17 @@ export default function AuditorDashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("auditor_token");
+    // Display name stored client-side (non-sensitive, display only)
     const name = localStorage.getItem("auditor_name");
-
-    if (!token) {
-      router.push("/auditor/login");
-      return;
-    }
-
     setAuditorName(name || "Auditor");
 
     async function fetchDocuments() {
       try {
-        const res = await fetch("/api/auditor/documents", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        // Cookie is sent automatically — no Authorization header needed
+        const res = await fetch("/api/auditor/documents");
 
         if (res.status === 401) {
-          // Token expired or invalid
-          localStorage.removeItem("auditor_token");
+          // Token expired or invalid — clear display info and redirect
           localStorage.removeItem("auditor_name");
           localStorage.removeItem("auditor_org");
           router.push("/auditor/login");
@@ -351,8 +336,9 @@ export default function AuditorDashboard() {
     fetchDocuments();
   }, [router]);
 
-  function handleLogout() {
-    localStorage.removeItem("auditor_token");
+  async function handleLogout() {
+    // httpOnly cookies cannot be cleared from client JS — call server endpoint
+    await fetch("/api/auditor/logout", { method: "POST" });
     localStorage.removeItem("auditor_name");
     localStorage.removeItem("auditor_org");
     router.push("/auditor/login");

@@ -66,7 +66,9 @@ interface FormState {
   motoringConvictions: string;
   regularUseOf: string[];
   endorsementDetails: string;
-  nextOfKin: string;
+  nokName: string;
+  nokRelationship: string;
+  nokPhone: string;
   /* Section 2 */
   bankName: string;
   nameOnAccount: string;
@@ -125,7 +127,9 @@ const INITIAL: FormState = {
   motoringConvictions: "",
   regularUseOf: [],
   endorsementDetails: "",
-  nextOfKin: "",
+  nokName: "",
+  nokRelationship: "",
+  nokPhone: "",
   bankName: "",
   nameOnAccount: "",
   accountInYourName: "",
@@ -217,6 +221,9 @@ export default function ApplyPage() {
         waiverSignedDate: [form.waiverDay, form.waiverMonth, form.waiverYear]
           .filter(Boolean)
           .join("/"),
+        emergencyContactName: form.nokName,
+        emergencyContactRelation: form.nokRelationship,
+        emergencyContactPhone: form.nokPhone,
       };
 
       const res = await fetch("/api/apply", {
@@ -487,16 +494,46 @@ export default function ApplyPage() {
               />
             </div>
 
+            {/* Next of Kin — 3 separate required fields */}
             <div className="sm:col-span-2">
-              <label className={labelCls}>Next of Kin * (full details including contact number)</label>
-              <input
-                type="text"
-                required
-                value={form.nextOfKin}
-                onChange={(e) => set("nextOfKin", e.target.value)}
-                placeholder="Name, relationship, phone number"
-                className={inputCls}
-              />
+              <p className="text-sm font-semibold text-gray-800 mb-3 border-t border-gray-200 pt-4">
+                Next of Kin / Emergency Contact *
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                  <label className={labelCls}>Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.nokName}
+                    onChange={(e) => set("nokName", e.target.value)}
+                    placeholder="e.g. Victoria Smith"
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Relationship *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.nokRelationship}
+                    onChange={(e) => set("nokRelationship", e.target.value)}
+                    placeholder="e.g. Parent, Spouse, Partner"
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Contact Number *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={form.nokPhone}
+                    onChange={(e) => set("nokPhone", e.target.value)}
+                    placeholder="e.g. 07700 900000"
+                    className={inputCls}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -872,7 +909,7 @@ export default function ApplyPage() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={submitting || !form.firstName || !form.lastName || !form.email || !form.phone || !form.privacyAgreed || !form.signature}
+          disabled={submitting || !form.firstName || !form.lastName || !form.email || !form.phone || !form.nokName || !form.nokRelationship || !form.nokPhone || !form.privacyAgreed || !form.signature}
           className="w-full rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
         >
           {submitting ? "Submitting..." : "Apply Now"}

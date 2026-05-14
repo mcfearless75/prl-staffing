@@ -9,13 +9,11 @@ function getJwtSecret() {
 }
 
 async function verifyAuditorToken(request: NextRequest) {
-  const authHeader = request.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return null;
-  }
+  // Read from httpOnly cookie (not Authorization header)
+  const token = request.cookies.get("auditor_token")?.value;
+  if (!token) return null;
 
   try {
-    const token = authHeader.slice(7);
     const { payload } = await jwtVerify(token, getJwtSecret());
     return payload;
   } catch {

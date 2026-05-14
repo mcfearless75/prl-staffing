@@ -70,6 +70,7 @@ export async function GET() {
     const hasDocuments = activatedContractors.filter(
       (c) => c.compliances.some((d) => d.filePath)
     ).length;
+    const noComplianceCount = contractors.filter((c) => c.compliances.length === 0).length;
 
     const list = contractors.map((c) => {
       const { complete, missing } = profileComplete(c);
@@ -94,6 +95,7 @@ export async function GET() {
       total, sent, opened, activated, pending,
       profileCompleteCount,
       hasDocuments,
+      noComplianceCount,
       contractors: list,
     });
   } catch (err) {

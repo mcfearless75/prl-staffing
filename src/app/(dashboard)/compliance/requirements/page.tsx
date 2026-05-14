@@ -5,6 +5,11 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { Plus, Trash2, Building2, Briefcase } from "lucide-react";
 import { deleteRequirement } from "./actions";
+import {
+  COMPLIANCE_REQUIREMENTS,
+  ROLE_CATEGORIES,
+  getCellStatus,
+} from "@/lib/compliance-requirements";
 
 export default async function RequirementsPage() {
   const requirements = await prisma.complianceRequirement.findMany({
@@ -129,6 +134,83 @@ export default async function RequirementsPage() {
           ))}
         </div>
       )}
+
+      {/* Static requirements matrix */}
+      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
+          <h2 className="text-sm font-semibold text-gray-900">
+            Standard Requirements Matrix
+          </h2>
+          <p className="mt-0.5 text-xs text-gray-500">
+            Mandatory document types by contractor role category
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-40">
+                  Document Type
+                </th>
+                {ROLE_CATEGORIES.map((role) => (
+                  <th
+                    key={role}
+                    className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wide"
+                  >
+                    {role}
+                  </th>
+                ))}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Notes
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {COMPLIANCE_REQUIREMENTS.map((req) => (
+                <tr key={req.type} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-3 font-medium text-gray-900 whitespace-nowrap">
+                    {req.type}
+                  </td>
+                  {ROLE_CATEGORIES.map((role) => {
+                    const status = getCellStatus(req, role);
+                    return (
+                      <td key={role} className="px-4 py-3 text-center">
+                        {status === "mandatory" && (
+                          <span
+                            className="inline-flex items-center justify-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700"
+                            title="Mandatory"
+                          >
+                            Required
+                          </span>
+                        )}
+                        {status === "optional" && (
+                          <span
+                            className="text-gray-400 text-xs"
+                            title="Optional"
+                          >
+                            Optional
+                          </span>
+                        )}
+                        {status === "na" && (
+                          <span className="text-gray-200 text-xs">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="px-6 py-3 text-xs text-gray-500">
+                    {req.description}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="border-t border-gray-100 bg-gray-50 px-6 py-3">
+          <p className="text-xs text-gray-400">
+            These requirements are used to automatically identify compliance gaps per contractor.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
