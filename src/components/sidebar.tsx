@@ -27,10 +27,12 @@ import {
   UserCheck,
   Send,
   Zap,
+  Bot,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, badgeKey: null },
+  { name: "AI Assistant", href: "/ai", icon: Bot, badgeKey: null },
   { name: "Intelligence", href: "/intelligence", icon: Brain, badgeKey: null },
   { name: "Campaign", href: "/campaign", icon: Send, badgeKey: null },
   { name: "Applicants", href: "/applicants", icon: UserCheck, badgeKey: "pendingApplicants" as const },
