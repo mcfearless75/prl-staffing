@@ -150,13 +150,7 @@ export default async function DashboardPage({
 
   return (
     <div className="space-y-8">
-      {isDemoActive && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
-          Demo mode — compliance figures are illustrative only. Real data unchanged.
-        </div>
-      )}
-      <PageHeader
+<PageHeader
         title="Dashboard"
         description="Overview of your contractor workforce and compliance status."
       />
