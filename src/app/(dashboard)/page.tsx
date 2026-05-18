@@ -136,17 +136,21 @@ export default async function DashboardPage({
     ? Math.round((complianceFullyCompliant / totalContractorCount) * 100)
     : 0;
 
-  // Demo mode — override display figures without touching any real data
-  const displayWorkforceScore = isDemo ? 100 : workforceScore;
-  const displayComplianceScore = isDemo ? 100 : complianceScore;
-  const displayFullyCompliant = isDemo ? totalContractorCount : complianceFullyCompliant;
-  const displayPending = isDemo ? 0 : compliancePending;
-  const displayActionRequired = isDemo ? 0 : complianceActionRequired;
-  const displayNoRecords = isDemo ? 0 : complianceNoRecords;
+  // Demo mode — URL param OR today-only date override (reverts automatically at midnight)
+  const todayUK = new Date().toLocaleDateString("en-GB", { timeZone: "Europe/London" }); // "18/05/2026"
+  const demoDate = "18/05/2026";
+  const isDemoActive = isDemo || todayUK === demoDate;
+
+  const displayWorkforceScore = isDemoActive ? 100 : workforceScore;
+  const displayComplianceScore = isDemoActive ? 100 : complianceScore;
+  const displayFullyCompliant = isDemoActive ? totalContractorCount : complianceFullyCompliant;
+  const displayPending = isDemoActive ? 0 : compliancePending;
+  const displayActionRequired = isDemoActive ? 0 : complianceActionRequired;
+  const displayNoRecords = isDemoActive ? 0 : complianceNoRecords;
 
   return (
     <div className="space-y-8">
-      {isDemo && (
+      {isDemoActive && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 flex items-center gap-2">
           <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
           Demo mode — compliance figures are illustrative only. Real data unchanged.
