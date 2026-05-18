@@ -12,14 +12,26 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.AUDITOR_JWT_SECRET ?? process.env.AUTH_SECRET ?? "fallback-secret"
 );
 
+function getBaseUrl(req: NextRequest): string {
+  // Use forwarded headers (set by Railway's reverse proxy) to get the real public URL
+  const forwardedHost = req.headers.get("x-forwarded-host");
+  const forwardedProto = req.headers.get("x-forwarded-proto") ?? "https";
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+  // Fall back to NEXTAUTH_URL or the hardcoded live domain
+  return process.env.NEXTAUTH_URL ?? "https://www.prismworkforce.online";
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
+  const base = getBaseUrl(_req);
 
   if (!token) {
-    return NextResponse.redirect(new URL("/auditor/login", _req.url));
+    return NextResponse.redirect(new URL("/auditor/login", base));
   }
 
   const auditor = await prisma.auditorUser.findUnique({
@@ -28,7 +40,7 @@ export async function GET(
 
   if (!auditor) {
     return NextResponse.redirect(
-      new URL("/auditor/login?error=invalid-link", _req.url)
+      new URL("/auditor/login?error=invalid-link", base)
     );
   }
 
@@ -52,7 +64,7 @@ export async function GET(
     data: { lastLoginAt: new Date() },
   });
 
-  const response = NextResponse.redirect(new URL("/auditor", _req.url));
+  const response = NextResponse.redirect(new URL("/auditor", base));
   response.cookies.set("auditor_token", jwt, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
