@@ -641,16 +641,17 @@ model WorkflowLog {
   @@index([target])
 }
 
-// ─── Auditor Users (external auditors like Nutral) ───
+// ─── Auditor Users (external auditors) ───
 model AuditorUser {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   name         String
   passwordHash String
-  organisation String   @default("Nutral")
-  logoUrl      String?  @default("/nutral-logo.svg")
-  role         String   @default("auditor")
+  organisation String    @default("Nutral")
+  logoUrl      String?   @default("/nutral-logo.svg")
+  role         String    @default("auditor")
+  loginToken   String?   @unique  // magic-link token — bypasses password
   lastLoginAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
