@@ -12,15 +12,19 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.AUDITOR_JWT_SECRET ?? process.env.AUTH_SECRET ?? "fallback-secret"
 );
 
+const SITE_URL = "https://www.prismworkforce.online";
+
 function getBaseUrl(req: NextRequest): string {
-  // Use forwarded headers (set by Railway's reverse proxy) to get the real public URL
+  // Try forwarded headers first (reverse proxy)
   const forwardedHost = req.headers.get("x-forwarded-host");
   const forwardedProto = req.headers.get("x-forwarded-proto") ?? "https";
-  if (forwardedHost) {
+  if (forwardedHost && !forwardedHost.includes("0.0.0.0")) {
     return `${forwardedProto}://${forwardedHost}`;
   }
-  // Fall back to NEXTAUTH_URL or the hardcoded live domain
-  return process.env.NEXTAUTH_URL ?? "https://www.prismworkforce.online";
+  // NEXTAUTH_URL env var, or hardcoded live domain
+  const envUrl = process.env.NEXTAUTH_URL ?? process.env.AUTH_URL;
+  if (envUrl && !envUrl.includes("0.0.0.0")) return envUrl;
+  return SITE_URL;
 }
 
 export async function GET(
