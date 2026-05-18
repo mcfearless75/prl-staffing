@@ -20,7 +20,14 @@ import { ComplianceScoreRing } from "./compliance/compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
 import { CampaignActivityFeed } from "@/components/campaign-activity-feed";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ demo?: string }>;
+}) {
+  const params = await searchParams;
+  const isDemo = params.demo === "true";
+
   await syncComplianceStatuses();
 
   const [
@@ -129,8 +136,22 @@ export default async function DashboardPage() {
     ? Math.round((complianceFullyCompliant / totalContractorCount) * 100)
     : 0;
 
+  // Demo mode — override display figures without touching any real data
+  const displayWorkforceScore = isDemo ? 100 : workforceScore;
+  const displayComplianceScore = isDemo ? 100 : complianceScore;
+  const displayFullyCompliant = isDemo ? totalContractorCount : complianceFullyCompliant;
+  const displayPending = isDemo ? 0 : compliancePending;
+  const displayActionRequired = isDemo ? 0 : complianceActionRequired;
+  const displayNoRecords = isDemo ? 0 : complianceNoRecords;
+
   return (
     <div className="space-y-8">
+      {isDemo && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 flex items-center gap-2">
+          <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+          Demo mode — compliance figures are illustrative only. Real data unchanged.
+        </div>
+      )}
       <PageHeader
         title="Dashboard"
         description="Overview of your contractor workforce and compliance status."
@@ -202,38 +223,38 @@ export default async function DashboardPage() {
         <div className="flex flex-col items-center py-2">
           <span
             className={`text-6xl font-bold ${
-              workforceScore >= 80
+              displayWorkforceScore >= 80
                 ? "text-green-600"
-                : workforceScore >= 50
+                : displayWorkforceScore >= 50
                 ? "text-amber-500"
                 : "text-red-600"
             }`}
           >
-            {workforceScore}%
+            {displayWorkforceScore}%
           </span>
           <p className="mt-1 text-sm text-gray-500">of workforce fully compliant</p>
         </div>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
             <span className="h-2 w-2 rounded-full bg-green-500" />
-            Fully Compliant: {complianceFullyCompliant}
+            Fully Compliant: {displayFullyCompliant}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
             <span className="h-2 w-2 rounded-full bg-blue-500" />
-            Pending: {compliancePending}
+            Pending: {displayPending}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
             <span className="h-2 w-2 rounded-full bg-red-500" />
-            Action Required: {complianceActionRequired}
+            Action Required: {displayActionRequired}
           </span>
-          {complianceNoRecords > 0 && (
+          {displayNoRecords > 0 && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
               <span className="h-2 w-2 rounded-full bg-gray-400" />
-              No Records: {complianceNoRecords}
+              No Records: {displayNoRecords}
             </span>
           )}
         </div>
-        {compliancePending > 0 && (
+        {displayPending > 0 && (
           <div className="mt-5 flex justify-center">
             <Link
               href="/compliance/review"
@@ -339,7 +360,7 @@ export default async function DashboardPage() {
               Compliance Alerts
             </h2>
             <div className="flex items-center gap-3">
-              <ComplianceScoreRing score={complianceScore} />
+              <ComplianceScoreRing score={displayComplianceScore} />
               <Link
                 href="/compliance"
                 className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
