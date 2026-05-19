@@ -26,7 +26,7 @@ export default function DashboardLayout({
         {/* Footer */}
         <footer className="relative z-10 border-t border-gray-100 mt-8 px-4 lg:px-8 py-4 flex items-center gap-4">
           <img
-            src="/cyber-essentials.png"
+            src="/cyber-essentials-white.png"
             alt="Cyber Essentials Certified"
             height={48}
             className="h-12 w-auto object-contain"
