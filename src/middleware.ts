@@ -61,6 +61,7 @@ export default auth((req) => {
 
   if (req.nextUrl.pathname.startsWith("/payment-query")) return;
   if (req.nextUrl.pathname.startsWith("/grievance")) return;
+  if (req.nextUrl.pathname.startsWith("/policy-documents")) return;
   if (req.nextUrl.pathname === "/privacy") return;
   if (req.nextUrl.pathname === "/contract") return;
   if (req.nextUrl.pathname === "/install") return;

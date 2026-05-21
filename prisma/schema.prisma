@@ -355,6 +355,24 @@ model Grievance {
   updatedAt       DateTime  @updatedAt
 }
 
+// ─── Policy Documents ───
+model Policy {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String   // "Compliance & Ethics", "Data & Privacy", "Health & Safety", "Business Operations", "Accreditations"
+  filename    String
+  r2Key       String   // "policies/filename.pdf"
+  fileType    String   // "pdf" | "docx" | "xlsx"
+  fileSize    Int?
+  version     String?
+  isPublic    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  uploadedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 // ─── GDPR Consent Tracking ───
 model ConsentRecord {
   id            String   @id @default(cuid())
