@@ -32,12 +32,13 @@ export async function GET(
 
   const buffer = await getFromR2(policy.r2Key);
   const contentType = CONTENT_TYPES[policy.fileType] || "application/octet-stream";
+  const body = new Uint8Array(buffer);
 
-  return new NextResponse(buffer, {
+  return new NextResponse(body, {
     headers: {
       "Content-Type": contentType,
       "Content-Disposition": `inline; filename="${policy.filename}"`,
-      "Content-Length": String(buffer.length),
+      "Content-Length": String(body.byteLength),
       "Cache-Control": "private, max-age=3600",
     },
   });
