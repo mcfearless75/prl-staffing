@@ -24,6 +24,7 @@ import {
   UserPlus,
   Lock,
   MessageSquare,
+  AlertCircle,
   UserCheck,
   Send,
   Zap,
@@ -46,6 +47,7 @@ const navigation = [
   // { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
   // { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
   { name: "Pay Queries", href: "/payment-queries", icon: MessageSquare, badgeKey: "openQueries" as const },
+  { name: "Grievances", href: "/grievances", icon: AlertCircle, badgeKey: "openGrievances" as const },
   { name: "Workflows", href: "/workflows", icon: Zap, badgeKey: null },
   { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
   { name: "GDPR", href: "/gdpr", icon: Lock, badgeKey: null },
@@ -57,13 +59,14 @@ type Counts = {
   pendingOnboarding: number;
   pendingApplicants: number;
   openQueries: number;
+  openGrievances: number;
 };
 
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
-  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0 });
+  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0 });
 
   // Fetch badge counts on mount and every 30 seconds
   useEffect(() => {

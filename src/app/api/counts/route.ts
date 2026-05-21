@@ -11,7 +11,7 @@ export async function GET() {
   }
 
   try {
-    const [pendingTimesheets, complianceAlerts, draftInvoices, pendingOnboarding, pendingApplicants, openQueries] = await Promise.all([
+    const [pendingTimesheets, complianceAlerts, draftInvoices, pendingOnboarding, pendingApplicants, openQueries, openGrievances] = await Promise.all([
       prisma.timesheet.count({
         where: { status: { in: ["Submitted", "Draft"] } },
       }),
@@ -30,6 +30,9 @@ export async function GET() {
       prisma.paymentQuery.count({
         where: { status: { in: ["Open", "Assigned"] } },
       }),
+      prisma.grievance.count({
+        where: { status: { in: ["Open", "Assigned"] } },
+      }),
     ]);
 
     return NextResponse.json({
@@ -39,8 +42,9 @@ export async function GET() {
       pendingOnboarding,
       pendingApplicants,
       openQueries,
+      openGrievances,
     });
   } catch {
-    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0 });
+    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0 });
   }
 }

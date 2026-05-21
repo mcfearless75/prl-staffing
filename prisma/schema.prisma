@@ -327,6 +327,34 @@ model PaymentQuery {
   updatedAt           DateTime  @updatedAt
 }
 
+// ─── Grievances (ticket system) ───
+model Grievance {
+  id              String    @id @default(cuid())
+  ticketNumber    String    @unique // GRV-001, GRV-002
+  name            String
+  email           String
+  phone           String?
+  role            String?
+  site            String?
+  incidentDate    String?
+  grievanceType   String    // "Bullying / Harassment, Discrimination" etc
+  description     String
+  desiredOutcome  String?
+  raisedInformally String?  // "Yes" | "No"
+  witnesses       String?
+  signature       String
+  status          String    @default("Open") // Open, Assigned, Resolved, Closed
+  assignedTo      String?
+  assignedAt      DateTime?
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  resolutionNotes String?
+  closedAt        DateTime?
+  closedBy        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
 // ─── GDPR Consent Tracking ───
 model ConsentRecord {
   id            String   @id @default(cuid())
