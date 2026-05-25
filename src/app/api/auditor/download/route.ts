@@ -1,29 +1,11 @@
 import { prisma } from "@/lib/db";
 import { getFromR2 } from "@/lib/r2";
-import { jwtVerify } from "jose";
 import { NextRequest, NextResponse } from "next/server";
-
-function getJwtSecret() {
-  const secret = process.env.AUDITOR_JWT_SECRET || process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
-  if (!secret) throw new Error("No JWT secret configured");
-  return new TextEncoder().encode(secret);
-}
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const documentId = searchParams.get("id");
-
-    // Read JWT from httpOnly cookie (never from query param)
-    const token = request.cookies.get("auditor_token")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    try {
-      await jwtVerify(token, getJwtSecret());
-    } catch {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     if (!documentId) {
       return NextResponse.json({ error: "Missing document ID" }, { status: 400 });

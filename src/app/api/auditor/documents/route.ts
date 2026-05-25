@@ -1,33 +1,7 @@
 import { prisma } from "@/lib/db";
-import { jwtVerify } from "jose";
-import { NextRequest } from "next/server";
 
-function getJwtSecret() {
-  const secret = process.env.AUDITOR_JWT_SECRET || process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
-  if (!secret) throw new Error("No JWT secret configured (AUDITOR_JWT_SECRET or AUTH_SECRET required)");
-  return new TextEncoder().encode(secret);
-}
-
-async function verifyAuditorToken(request: NextRequest) {
-  // Read from httpOnly cookie (not Authorization header)
-  const token = request.cookies.get("auditor_token")?.value;
-  if (!token) return null;
-
+export async function GET() {
   try {
-    const { payload } = await jwtVerify(token, getJwtSecret());
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const payload = await verifyAuditorToken(request);
-    if (!payload) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const documents = await prisma.qmsDocument.findMany({
       orderBy: [{ folder: "asc" }, { subfolder: "asc" }, { fileName: "asc" }],
     });

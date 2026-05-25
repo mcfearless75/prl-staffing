@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 interface QmsDocument {
   id: string;
@@ -366,21 +365,12 @@ export default function AuditorDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const router = useRouter();
 
   useEffect(() => {
     async function fetchDocuments() {
       try {
         // Cookie is sent automatically — no Authorization header needed
         const res = await fetch("/api/auditor/documents");
-
-        if (res.status === 401) {
-          // Token expired or invalid — clear display info and redirect
-          localStorage.removeItem("auditor_name");
-          localStorage.removeItem("auditor_org");
-          router.push("/auditor/login");
-          return;
-        }
 
         if (!res.ok) {
           throw new Error("Failed to fetch documents");
@@ -402,15 +392,7 @@ export default function AuditorDashboard() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => Array.isArray(data) && setPolicies(data))
       .catch(() => {});
-  }, [router]);
-
-  async function handleLogout() {
-    // httpOnly cookies cannot be cleared from client JS — call server endpoint
-    await fetch("/api/auditor/logout", { method: "POST" });
-    localStorage.removeItem("auditor_name");
-    localStorage.removeItem("auditor_org");
-    router.push("/auditor/login");
-  }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -428,26 +410,7 @@ export default function AuditorDashboard() {
               PRL Site Solutions &mdash; QMS Audit Portal
             </h1>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            Logout
-          </button>
+          <div />
         </div>
         {/* Mobile title */}
         <div className="sm:hidden border-t border-gray-100 px-4 py-2 text-center">
