@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface QmsDocument {
@@ -288,6 +288,72 @@ function FolderSection({
   );
 }
 
+interface Policy {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  filename: string;
+  fileType: string;
+  fileSize: number | null;
+  version: string | null;
+  isPublic: boolean;
+}
+
+const CATEGORY_ORDER = [
+  "Compliance & Ethics",
+  "Data & Privacy",
+  "Health & Safety",
+  "Business Operations",
+  "Accreditations",
+  "Worker Documents",
+];
+
+function PolicyRow({ policy }: { policy: Policy }) {
+  const colours: Record<string, string> = {
+    pdf: "#E53E3E",
+    docx: "#2B6CB0",
+    xlsx: "#38A169",
+  };
+  const colour = colours[policy.fileType.toLowerCase()] || "#718096";
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-gray-100 bg-white px-4 py-3 hover:bg-gray-50 transition-colors">
+      <span
+        className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-bold text-white"
+        style={{ backgroundColor: colour }}
+      >
+        {policy.fileType.toUpperCase()}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate" style={{ color: "#424A54" }}>
+          {policy.name}
+        </p>
+        {(policy.description || policy.version) && (
+          <p className="text-xs text-gray-400 mt-0.5">
+            {[policy.description, policy.version ? `v${policy.version}` : null]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
+      </div>
+      <a
+        href={`/api/policies/${policy.id}/download`}
+        className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium hover:bg-gray-100 transition-colors"
+        style={{ color: "#8EA698" }}
+        title="Download"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        Download
+      </a>
+    </div>
+  );
+}
+
 export default function AuditorDashboard() {
   const [folderTree, setFolderTree] = useState<FolderGroup[]>([]);
   const [stats, setStats] = useState<Stats>({
@@ -295,6 +361,8 @@ export default function AuditorDashboard() {
     totalFolders: 0,
     lastUpdated: null,
   });
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [activeTab, setActiveTab] = useState<"qms" | "policies">("qms");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -334,6 +402,11 @@ export default function AuditorDashboard() {
     }
 
     fetchDocuments();
+
+    fetch("/api/auditor/policies")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => Array.isArray(data) && setPolicies(data))
+      .catch(() => {});
   }, [router]);
 
   async function handleLogout() {
@@ -437,84 +510,187 @@ export default function AuditorDashboard() {
           </div>
         </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search documents..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2"
-              style={
-                {
-                  "--tw-ring-color": "#8EA698",
-                } as React.CSSProperties
-              }
-            />
-          </div>
+        {/* Tab switcher */}
+        <div className="mb-6 flex gap-2 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab("qms")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === "qms"
+                ? "border-[#8EA698] text-[#424A54]"
+                : "border-transparent text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            QMS Documents
+          </button>
+          <button
+            onClick={() => setActiveTab("policies")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === "policies"
+                ? "border-[#8EA698] text-[#424A54]"
+                : "border-transparent text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            Policy Documents
+            {policies.length > 0 && (
+              <span className="ml-1.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                {policies.length}
+              </span>
+            )}
+          </button>
         </div>
 
-        {/* Content */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div
-                className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"
-                style={{ borderColor: "#8EA698", borderTopColor: "transparent" }}
-              />
-              <p className="mt-3 text-sm text-gray-500">
-                Loading documents...
-              </p>
+        {activeTab === "qms" && (
+          <>
+            {/* Search */}
+            <div className="mb-6">
+              <div className="relative">
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search documents..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2"
+                  style={{ "--tw-ring-color": "#8EA698" } as React.CSSProperties}
+                />
+              </div>
             </div>
-          </div>
-        ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        ) : folderTree.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
-            <svg
-              className="mx-auto text-gray-300"
-              width="48"
-              height="48"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-            </svg>
-            <p className="mt-4 text-sm text-gray-500">
-              No QMS documents found
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {folderTree.map((folder) => (
-              <FolderSection
-                key={folder.folder}
-                folder={folder}
-                searchTerm={searchTerm}
-              />
-            ))}
-          </div>
+
+            {/* QMS Content */}
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center">
+                  <div
+                    className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"
+                    style={{ borderColor: "#8EA698", borderTopColor: "transparent" }}
+                  />
+                  <p className="mt-3 text-sm text-gray-500">Loading documents...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            ) : folderTree.length === 0 ? (
+              <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
+                <svg
+                  className="mx-auto text-gray-300"
+                  width="48"
+                  height="48"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
+                <p className="mt-4 text-sm text-gray-500">No QMS documents found</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {folderTree.map((folder) => (
+                  <FolderSection
+                    key={folder.folder}
+                    folder={folder}
+                    searchTerm={searchTerm}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === "policies" && (
+          <>
+            {policies.length === 0 ? (
+              <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
+                <svg
+                  className="mx-auto text-gray-300"
+                  width="48"
+                  height="48"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <p className="mt-4 text-sm text-gray-500">No policy documents found</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {CATEGORY_ORDER.map((category) => {
+                  const catPolicies = policies.filter((p) => p.category === category);
+                  if (catPolicies.length === 0) return null;
+                  return (
+                    <div key={category} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                      <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="#8EA698"
+                          stroke="#8EA698"
+                          strokeWidth="1"
+                        >
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        </svg>
+                        <span className="text-sm font-semibold" style={{ color: "#424A54" }}>
+                          {category}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          ({catPolicies.length} document{catPolicies.length !== 1 ? "s" : ""})
+                        </span>
+                      </div>
+                      <div className="p-3 space-y-1.5">
+                        {catPolicies.map((policy) => (
+                          <PolicyRow key={policy.id} policy={policy} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Any categories not in CATEGORY_ORDER */}
+                {policies
+                  .filter((p) => !CATEGORY_ORDER.includes(p.category))
+                  .reduce<string[]>((cats, p) => cats.includes(p.category) ? cats : [...cats, p.category], [])
+                  .map((category) => {
+                    const catPolicies = policies.filter((p) => p.category === category);
+                    return (
+                      <div key={category} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                        <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
+                          <span className="text-sm font-semibold" style={{ color: "#424A54" }}>{category}</span>
+                          <span className="text-xs text-gray-400">({catPolicies.length})</span>
+                        </div>
+                        <div className="p-3 space-y-1.5">
+                          {catPolicies.map((policy) => (
+                            <PolicyRow key={policy.id} policy={policy} />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </>
         )}
       </main>
 
