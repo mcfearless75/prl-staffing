@@ -366,14 +366,9 @@ export default function AuditorDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [auditorName, setAuditorName] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    // Display name stored client-side (non-sensitive, display only)
-    const name = localStorage.getItem("auditor_name");
-    setAuditorName(name || "Auditor");
-
     async function fetchDocuments() {
       try {
         // Cookie is sent automatically — no Authorization header needed
@@ -466,19 +461,6 @@ export default function AuditorDashboard() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        {/* Welcome */}
-        <div className="mb-6">
-          <h2
-            className="text-lg sm:text-xl font-bold"
-            style={{ color: "#424A54" }}
-          >
-            Welcome, {auditorName}
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Read-only access to PRL Site Solutions QMS documentation
-          </p>
-        </div>
-
         {/* Stats */}
         <div className="mb-6 grid grid-cols-3 gap-3 sm:gap-4">
           <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
