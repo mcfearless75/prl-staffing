@@ -352,11 +352,6 @@ export default function AuditorDashboard() {
         style={{ borderBottomColor: "#8EA698" }}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          <img
-            src="/nutral-logo.svg"
-            alt="Nutral"
-            className="h-8 sm:h-10"
-          />
           <div className="hidden sm:block text-center">
             <h1
               className="text-sm sm:text-base font-semibold"
