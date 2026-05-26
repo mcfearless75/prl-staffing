@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { Shield, ClipboardCheck, BarChart3, AlertTriangle, Lightbulb, FileCheck, FolderOpen, FileBarChart } from "lucide-react";
+import { Shield, ClipboardCheck, BarChart3, AlertTriangle, Lightbulb, FileCheck, FolderOpen, FileBarChart, BookOpen } from "lucide-react";
 
 export default async function QMSPage() {
   const [
@@ -10,6 +10,7 @@ export default async function QMSPage() {
     openNCRs, overdueNCRs, highRisks, docCount,
     lastUploadedDoc,
     ncrDocs, auditDocs, reviewDocs, riskDocs, policyDocs, customerSatisfactionDocs,
+    auditPackCount,
   ] = await Promise.all([
     prisma.nonConformance.count(),
     prisma.internalAudit.count(),
@@ -27,6 +28,7 @@ export default async function QMSPage() {
     prisma.qmsDocument.count({ where: { folder: "Core Procedures", subfolder: "Risks & Opportunities" } }),
     prisma.qmsDocument.count({ where: { folder: "Quality Manual & Policy" } }),
     prisma.qmsDocument.count({ where: { folder: "Core Procedures", subfolder: "Customer Satisfaction" } }),
+    prisma.policy.count(),
   ]);
 
   const folderCoverage = [
@@ -111,6 +113,15 @@ export default async function QMSPage() {
       color: "bg-indigo-50 text-indigo-600 border-indigo-200",
       iconBg: "bg-indigo-100",
       stats: "5 report types",
+    },
+    {
+      title: "Audit Pack",
+      description: "Company policies and compliance documents — anti-bribery, modern slavery, data protection, H&S, accreditations, and worker docs",
+      href: "/policies",
+      icon: BookOpen,
+      color: "bg-teal-50 text-teal-600 border-teal-200",
+      iconBg: "bg-teal-100",
+      stats: `${auditPackCount} document${auditPackCount !== 1 ? "s" : ""}`,
     },
   ];
 
