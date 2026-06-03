@@ -28,7 +28,6 @@ import {
   FileText,
   UserCheck,
   Send,
-  Zap,
   Bot,
 } from "lucide-react";
 
@@ -42,18 +41,15 @@ const navigation = [
   { name: "Contractors", href: "/contractors", icon: Users, badgeKey: null },
   { name: "Companies", href: "/companies", icon: Building2, badgeKey: null },
   // { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
-  // { name: "Timesheets", href: "/timesheets", icon: Clock, badgeKey: "pendingTimesheets" as const },
+  { name: "Timesheets", href: "/timesheets", icon: Clock, badgeKey: null },
   // { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
   { name: "Compliance", href: "/compliance", icon: ShieldCheck, badgeKey: "complianceAlerts" as const },
   // { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
   // { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
   { name: "Pay Queries", href: "/payment-queries", icon: MessageSquare, badgeKey: "openQueries" as const },
   { name: "Grievances", href: "/grievances", icon: AlertCircle, badgeKey: "openGrievances" as const },
-  { name: "Policies", href: "/policies", icon: FileText, badgeKey: null },
-  { name: "Workflows", href: "/workflows", icon: Zap, badgeKey: null },
+  { name: "Compliance Hub", href: "/qms", icon: Shield, badgeKey: null },
   { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
-  { name: "GDPR", href: "/gdpr", icon: Lock, badgeKey: null },
-  { name: "QMS", href: "/qms", icon: Shield, badgeKey: null },
 ];
 
 type Counts = {
