@@ -5,6 +5,7 @@ import Link from "next/link";
 import { deleteContractor } from "../actions";
 import { maskNI, maskUTR } from "@/lib/utils";
 import { ContractorPortalStatus } from "@/components/contractor-portal-status";
+import { ContractorQuickAssign } from "./contractor-quick-assign";
 
 export default async function ContractorDetailPage({
   params,
@@ -13,12 +14,12 @@ export default async function ContractorDetailPage({
 }) {
   const { id } = await params;
 
-  const [contractor, activityLogs, documents, complianceRecords] = await Promise.all([
+  const [contractor, activityLogs, documents, complianceRecords, companies] = await Promise.all([
     prisma.contractor.findUnique({
       where: { id },
       include: {
         supplier: true,
-        assignments: { include: { company: true } },
+        assignments: { include: { company: true, site: true, department: true } },
         compliances: true,
       },
     }),
@@ -34,6 +35,17 @@ export default async function ContractorDetailPage({
     prisma.complianceRecord.findMany({
       where: { contractorId: id },
       orderBy: { createdAt: "desc" },
+    }),
+    prisma.company.findMany({
+      orderBy: { name: "asc" },
+      include: {
+        sites: {
+          orderBy: { name: "asc" },
+          include: {
+            departments: { orderBy: { name: "asc" } },
+          },
+        },
+      },
     }),
   ]);
 
@@ -306,6 +318,7 @@ export default async function ContractorDetailPage({
         <h2 className="mb-4 text-lg font-semibold text-gray-900">
           Assignments
         </h2>
+        <ContractorQuickAssign contractorId={contractor.id} companies={companies} />
         {contractor.assignments.length === 0 ? (
           <p className="text-sm text-gray-500">No assignments found.</p>
         ) : (
@@ -313,44 +326,30 @@ export default async function ContractorDetailPage({
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Company
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Role
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Start Date
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    End Date
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Status
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Company</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Site</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Department</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Start Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {contractor.assignments.map((assignment: any) => (
                   <tr key={assignment.id}>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{assignment.company?.name || "-"}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">{assignment.site?.name || "-"}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">{assignment.department?.name || "-"}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">{assignment.role || "-"}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                      {assignment.company?.name || "-"}
+                      {assignment.startDate ? new Date(assignment.startDate).toLocaleDateString("en-GB") : "-"}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                      {assignment.role || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                      {assignment.startDate
-                        ? new Date(assignment.startDate).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                      {assignment.endDate
-                        ? new Date(assignment.endDate).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                      {assignment.status || "-"}
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                        assignment.status === "Active" ? "bg-green-100 text-green-700" :
+                        assignment.status === "Completed" ? "bg-gray-100 text-gray-600" :
+                        "bg-yellow-100 text-yellow-700"
+                      }`}>{assignment.status || "-"}</span>
                     </td>
                   </tr>
                 ))}

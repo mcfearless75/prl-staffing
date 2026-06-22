@@ -6,6 +6,39 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
+export async function quickAssignContractorFromProfile(
+  contractorId: string,
+  formData: FormData
+) {
+  const companyId = formData.get("companyId") as string;
+  const siteId = (formData.get("siteId") as string) || null;
+  const departmentId = (formData.get("departmentId") as string) || null;
+
+  if (!companyId) return;
+
+  const existing = await prisma.assignment.findFirst({
+    where: {
+      contractorId,
+      companyId,
+      status: "Active",
+    },
+  });
+  if (existing) return;
+
+  await prisma.assignment.create({
+    data: {
+      contractorId,
+      companyId,
+      siteId: siteId || null,
+      departmentId: departmentId || null,
+      status: "Active",
+      startDate: new Date(),
+    },
+  });
+
+  revalidatePath(`/contractors/${contractorId}`);
+}
+
 function extractContractorData(formData: FormData) {
   const dobRaw = formData.get("dateOfBirth") as string;
   return {
