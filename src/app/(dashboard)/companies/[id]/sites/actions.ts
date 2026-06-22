@@ -75,18 +75,21 @@ export async function endAssignment(
 
 // ── Quick-assign contractor to a department ────────────────────────────────────
 
+type AssignResult = { type: "ok" | "moved" | "error"; message: string } | null;
+
 export async function quickAssignContractor(
-  companyId: string,
-  siteId: string,
-  deptId: string,
+  _prevState: AssignResult,
   formData: FormData
-) {
+): Promise<AssignResult> {
+  const companyId = formData.get("companyId") as string;
+  const siteId = formData.get("siteId") as string;
+  const deptId = formData.get("deptId") as string;
   const contractorId = formData.get("contractorId") as string;
   const role = formData.get("role") as string;
   const startDateRaw = formData.get("startDate") as string;
 
   if (!contractorId || !role?.trim() || !startDateRaw) {
-    throw new Error("Contractor, role and start date are required");
+    return { type: "error", message: "Contractor, role and start date are required." };
   }
 
   const existing = await prisma.assignment.findFirst({
@@ -103,19 +106,22 @@ export async function quickAssignContractor(
         startDate: new Date(startDateRaw),
       },
     });
-  } else {
-    await prisma.assignment.create({
-      data: {
-        contractorId,
-        companyId,
-        siteId,
-        departmentId: deptId,
-        role: role.trim(),
-        startDate: new Date(startDateRaw),
-        status: "Active",
-      },
-    });
+    revalidatePath(`/companies/${companyId}/sites/${siteId}`);
+    return { type: "moved", message: "Existing assignment updated to this site and department." };
   }
 
+  await prisma.assignment.create({
+    data: {
+      contractorId,
+      companyId,
+      siteId,
+      departmentId: deptId,
+      role: role.trim(),
+      startDate: new Date(startDateRaw),
+      status: "Active",
+    },
+  });
+
   revalidatePath(`/companies/${companyId}/sites/${siteId}`);
+  return { type: "ok", message: "Assigned successfully." };
 }

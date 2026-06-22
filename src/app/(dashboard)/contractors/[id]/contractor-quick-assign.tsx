@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 import { quickAssignContractorFromProfile } from "../actions";
 
 interface Department {
@@ -30,87 +30,97 @@ export function ContractorQuickAssign({
   const [companyId, setCompanyId] = useState("");
   const [siteId, setSiteId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  const [state, formAction, pending] = useActionState(quickAssignContractorFromProfile, null);
 
   const selectedCompany = companies.find((c) => c.id === companyId);
   const selectedSite = selectedCompany?.sites.find((s) => s.id === siteId);
 
-  const action = quickAssignContractorFromProfile.bind(null, contractorId);
+  useEffect(() => {
+    if (state?.type === "ok" || state?.type === "moved") {
+      setCompanyId("");
+      setSiteId("");
+      setDepartmentId("");
+    }
+  }, [state]);
 
-  async function handleSubmit(formData: FormData) {
-    setLoading(true);
-    await action(formData);
-    setCompanyId("");
-    setSiteId("");
-    setDepartmentId("");
-    setLoading(false);
-  }
+  const bannerStyle =
+    state?.type === "duplicate" || state?.type === "error"
+      ? "bg-amber-50 border border-amber-300 text-amber-800"
+      : state?.type === "moved"
+        ? "bg-blue-50 border border-blue-300 text-blue-800"
+        : "bg-green-50 border border-green-300 text-green-800";
 
   return (
-    <form action={handleSubmit} className="mt-4 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-        Quick Assign
-      </p>
-      <div className="flex flex-wrap gap-3 items-end">
-        {/* Company */}
-        <div className="flex-1 min-w-[160px]">
-          <label className="block text-xs font-medium text-gray-600 mb-1">Company</label>
-          <select
-            name="companyId"
-            value={companyId}
-            onChange={(e) => { setCompanyId(e.target.value); setSiteId(""); setDepartmentId(""); }}
-            required
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          >
-            <option value="">Select company...</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+    <div className="mt-4">
+      {state?.message && (
+        <div className={`mb-2 rounded-lg px-3 py-2 text-xs font-medium ${bannerStyle}`}>
+          {state.message}
         </div>
+      )}
+      <form action={formAction} className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
+        <input type="hidden" name="contractorId" value={contractorId} />
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          Quick Assign
+        </p>
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-[160px]">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Company</label>
+            <select
+              name="companyId"
+              value={companyId}
+              onChange={(e) => { setCompanyId(e.target.value); setSiteId(""); setDepartmentId(""); }}
+              required
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            >
+              <option value="">Select company...</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* Site */}
-        <div className="flex-1 min-w-[140px]">
-          <label className="block text-xs font-medium text-gray-600 mb-1">Site</label>
-          <select
-            name="siteId"
-            value={siteId}
-            onChange={(e) => { setSiteId(e.target.value); setDepartmentId(""); }}
-            disabled={!selectedCompany || selectedCompany.sites.length === 0}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+          <div className="flex-1 min-w-[140px]">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Site</label>
+            <select
+              name="siteId"
+              value={siteId}
+              onChange={(e) => { setSiteId(e.target.value); setDepartmentId(""); }}
+              disabled={!selectedCompany || selectedCompany.sites.length === 0}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              <option value="">Any site</option>
+              {selectedCompany?.sites.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex-1 min-w-[140px]">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Department</label>
+            <select
+              name="departmentId"
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+              disabled={!selectedSite || selectedSite.departments.length === 0}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              <option value="">Any dept</option>
+              {selectedSite?.departments.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={!companyId || pending}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
-            <option value="">Any site</option>
-            {selectedCompany?.sites.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+            {pending ? "Assigning..." : "Assign"}
+          </button>
         </div>
-
-        {/* Department */}
-        <div className="flex-1 min-w-[140px]">
-          <label className="block text-xs font-medium text-gray-600 mb-1">Department</label>
-          <select
-            name="departmentId"
-            value={departmentId}
-            onChange={(e) => setDepartmentId(e.target.value)}
-            disabled={!selectedSite || selectedSite.departments.length === 0}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
-          >
-            <option value="">Any dept</option>
-            {selectedSite?.departments.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          type="submit"
-          disabled={!companyId || loading}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-        >
-          {loading ? "Assigning..." : "Assign"}
-        </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }

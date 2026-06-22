@@ -6,43 +6,55 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
+type AssignResult = { type: "ok" | "moved" | "duplicate" | "error"; message: string } | null;
+
 export async function quickAssignContractorFromProfile(
-  contractorId: string,
+  _prevState: AssignResult,
   formData: FormData
-) {
+): Promise<AssignResult> {
+  const contractorId = formData.get("contractorId") as string;
   const companyId = formData.get("companyId") as string;
   const siteId = (formData.get("siteId") as string) || null;
   const departmentId = (formData.get("departmentId") as string) || null;
 
-  if (!companyId) return;
+  if (!companyId || !contractorId) return null;
 
   const existing = await prisma.assignment.findFirst({
     where: { contractorId, companyId, status: "Active" },
   });
 
   if (existing) {
-    await prisma.assignment.update({
-      where: { id: existing.id },
-      data: {
-        siteId: siteId || existing.siteId,
-        departmentId: departmentId || existing.departmentId,
-      },
-    });
-  } else {
-    await prisma.assignment.create({
-      data: {
-        contractorId,
-        companyId,
-        siteId: siteId || null,
-        departmentId: departmentId || null,
-        role: "",
-        status: "Active",
-        startDate: new Date(),
-      },
-    });
+    if (siteId || departmentId) {
+      await prisma.assignment.update({
+        where: { id: existing.id },
+        data: {
+          siteId: siteId || existing.siteId,
+          departmentId: departmentId || existing.departmentId,
+        },
+      });
+      revalidatePath(`/contractors/${contractorId}`);
+      return { type: "moved", message: "Assignment updated with new site/department." };
+    }
+    return {
+      type: "duplicate",
+      message: "This contractor is already assigned to that company.",
+    };
   }
 
+  await prisma.assignment.create({
+    data: {
+      contractorId,
+      companyId,
+      siteId: siteId || null,
+      departmentId: departmentId || null,
+      role: "",
+      status: "Active",
+      startDate: new Date(),
+    },
+  });
+
   revalidatePath(`/contractors/${contractorId}`);
+  return { type: "ok", message: "Assigned successfully." };
 }
 
 function extractContractorData(formData: FormData) {
