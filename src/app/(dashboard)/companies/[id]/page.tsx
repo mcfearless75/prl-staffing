@@ -5,7 +5,8 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { deleteCompany } from "../actions";
-import { createSite, deleteSite } from "./sites/actions";
+import { createSite, deleteSite, endAssignmentById } from "./sites/actions";
+import { AssignmentSitePicker } from "./assignment-site-picker";
 import { formatDate } from "@/lib/utils";
 
 export default async function CompanyDetailPage({
@@ -25,9 +26,13 @@ export default async function CompanyDetailPage({
         },
       },
       contractors: {
+        where: { status: "Active" },
         include: {
           contractor: true,
+          site: { select: { id: true, name: true } },
+          department: { select: { id: true, name: true } },
         },
+        orderBy: { startDate: "desc" },
       },
     },
   });
@@ -219,58 +224,72 @@ export default async function CompanyDetailPage({
           Assigned Contractors
         </h2>
         {company.contractors.length > 0 ? (
-          <div className="overflow-hidden rounded-lg border border-gray-200">
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Contractor
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Start Date
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Contractor</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Site / Dept</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Start</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {company.contractors.map((assignment) => (
-                  <tr
-                    key={assignment.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                      {assignment.contractor.firstName}{" "}
-                      {assignment.contractor.lastName}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {assignment.role}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <Badge variant={assignment.status}>
-                        {assignment.status}
-                      </Badge>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {formatDate(assignment.startDate)}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right">
-                      <Link
-                        href={`/contractors/${assignment.contractor.id}`}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {company.contractors.map((assignment) => {
+                  const removeAction = endAssignmentById.bind(null, assignment.id, company.id);
+                  return (
+                    <tr key={assignment.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                        {assignment.contractor.firstName} {assignment.contractor.lastName}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                        {assignment.role || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {assignment.site ? (
+                          <span>
+                            {assignment.site.name}
+                            {assignment.department && (
+                              <span className="text-gray-400"> / {assignment.department.name}</span>
+                            )}
+                          </span>
+                        ) : (
+                          <AssignmentSitePicker
+                            assignmentId={assignment.id}
+                            companyId={company.id}
+                            sites={company.sites.map((s) => ({
+                              id: s.id,
+                              name: s.name,
+                              departments: s.departments,
+                            }))}
+                          />
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                        {formatDate(assignment.startDate)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <Link
+                            href={`/contractors/${assignment.contractor.id}`}
+                            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                          >
+                            View
+                          </Link>
+                          <form action={removeAction} className="inline">
+                            <button
+                              type="submit"
+                              className="text-xs text-red-500 hover:text-red-700"
+                            >
+                              Remove
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

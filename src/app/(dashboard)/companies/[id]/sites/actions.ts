@@ -73,6 +73,38 @@ export async function endAssignment(
   revalidatePath(`/companies/${companyId}/sites/${siteId}`);
 }
 
+export async function endAssignmentById(assignmentId: string, companyId: string) {
+  await prisma.assignment.update({
+    where: { id: assignmentId },
+    data: { status: "Completed", endDate: new Date() },
+  });
+  revalidatePath(`/companies/${companyId}`);
+}
+
+type MoveResult = { type: "ok" | "error"; message: string } | null;
+
+export async function updateAssignmentSiteDept(
+  _prevState: MoveResult,
+  formData: FormData
+): Promise<MoveResult> {
+  const assignmentId = formData.get("assignmentId") as string;
+  const siteId = (formData.get("siteId") as string) || null;
+  const departmentId = (formData.get("departmentId") as string) || null;
+  const companyId = formData.get("companyId") as string;
+
+  if (!assignmentId || !siteId) {
+    return { type: "error", message: "Please select a site." };
+  }
+
+  await prisma.assignment.update({
+    where: { id: assignmentId },
+    data: { siteId, departmentId: departmentId || null },
+  });
+
+  revalidatePath(`/companies/${companyId}`);
+  return { type: "ok", message: "Moved." };
+}
+
 // ── Quick-assign contractor to a department ────────────────────────────────────
 
 type AssignResult = { type: "ok" | "moved" | "error"; message: string } | null;
