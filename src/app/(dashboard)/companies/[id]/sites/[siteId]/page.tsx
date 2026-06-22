@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
-import { createDepartment, deleteDepartment, endAssignment } from "../actions";
+import { createDepartment, deleteDepartment, endAssignment, assignToDepartment } from "../actions";
 import { DeptAssignForm } from "./dept-assign-form";
 
 export default async function SiteDetailPage({
@@ -19,6 +19,10 @@ export default async function SiteDetailPage({
     where: { id: siteId },
     include: {
       company: { select: { id: true, name: true } },
+      assignments: {
+        where: { status: "Active", departmentId: null },
+        include: { contractor: { select: { id: true, firstName: true, lastName: true, jobTitle: true } } },
+      },
       departments: {
         orderBy: { name: "asc" },
         include: {
@@ -93,6 +97,49 @@ export default async function SiteDetailPage({
           </button>
         </form>
       </div>
+
+      {/* Contractors on site but not yet in a department */}
+      {site.assignments.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6">
+          <h2 className="text-base font-semibold text-amber-800 mb-3">
+            Not assigned to a department ({site.assignments.length})
+          </h2>
+          <div className="space-y-2">
+            {site.assignments.map((a) => {
+              const action = assignToDepartment.bind(null, a.id, siteId, companyId);
+              return (
+                <div key={a.id} className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm font-medium text-gray-900 w-40">
+                    {a.contractor.firstName} {a.contractor.lastName}
+                  </span>
+                  {site.departments.length > 0 ? (
+                    <form action={action} className="flex items-center gap-2">
+                      <select
+                        name="deptId"
+                        required
+                        className="rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                      >
+                        <option value="">Select department...</option>
+                        {site.departments.map((d) => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+                      >
+                        Assign
+                      </button>
+                    </form>
+                  ) : (
+                    <span className="text-xs text-amber-700">Add a department first to assign this contractor</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Departments */}
       {site.departments.length === 0 ? (

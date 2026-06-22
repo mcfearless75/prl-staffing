@@ -81,6 +81,21 @@ export async function endAssignmentById(assignmentId: string, companyId: string)
   revalidatePath(`/companies/${companyId}`);
 }
 
+export async function assignToDepartment(
+  assignmentId: string,
+  siteId: string,
+  companyId: string,
+  formData: FormData
+) {
+  const deptId = formData.get("deptId") as string;
+  if (!deptId) return;
+  await prisma.assignment.update({
+    where: { id: assignmentId },
+    data: { departmentId: deptId },
+  });
+  revalidatePath(`/companies/${companyId}/sites/${siteId}`);
+}
+
 type MoveResult = { type: "ok" | "error"; message: string } | null;
 
 export async function updateAssignmentSiteDept(
