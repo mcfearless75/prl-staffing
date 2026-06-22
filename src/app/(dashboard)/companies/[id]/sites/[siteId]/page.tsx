@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
-import { createDepartment, deleteDepartment } from "../actions";
+import { createDepartment, deleteDepartment, quickAssignContractor } from "../actions";
 
 export default async function SiteDetailPage({
   params,
@@ -13,7 +13,8 @@ export default async function SiteDetailPage({
 }) {
   const { id: companyId, siteId } = await params;
 
-  const site = await prisma.site.findUnique({
+  const [site, allContractors] = await Promise.all([
+  prisma.site.findUnique({
     where: { id: siteId },
     include: {
       company: { select: { id: true, name: true } },
@@ -27,7 +28,12 @@ export default async function SiteDetailPage({
         },
       },
     },
-  });
+  }),
+  prisma.contractor.findMany({
+    select: { id: true, firstName: true, lastName: true },
+    orderBy: { lastName: "asc" },
+  }),
+]);
 
   if (!site || site.companyId !== companyId) notFound();
 
@@ -96,6 +102,7 @@ export default async function SiteDetailPage({
         <div className="space-y-4">
           {site.departments.map((dept) => {
             const deleteAction = deleteDepartment.bind(null, dept.id, siteId, companyId);
+            const assignAction = quickAssignContractor.bind(null, companyId, siteId, dept.id);
             return (
               <div key={dept.id} className="rounded-xl border border-gray-200 bg-white p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -109,6 +116,38 @@ export default async function SiteDetailPage({
                     </button>
                   </form>
                 </div>
+
+                {/* Quick-assign form */}
+                <form action={assignAction} className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-4">
+                  <select
+                    name="contractorId"
+                    required
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Select contractor</option>
+                    {allContractors.map((c) => (
+                      <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
+                    ))}
+                  </select>
+                  <input
+                    name="role"
+                    required
+                    placeholder="Role (e.g. Rigger)"
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <input
+                    name="startDate"
+                    type="date"
+                    required
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                  >
+                    Assign
+                  </button>
+                </form>
 
                 {dept.assignments.length === 0 ? (
                   <p className="text-sm text-gray-400">No contractors assigned to this department.</p>

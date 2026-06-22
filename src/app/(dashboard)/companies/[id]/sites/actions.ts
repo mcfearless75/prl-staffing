@@ -58,3 +58,34 @@ export async function deleteDepartment(
   await prisma.department.delete({ where: { id: deptId } });
   revalidatePath(`/companies/${companyId}/sites/${siteId}`);
 }
+
+// ── Quick-assign contractor to a department ────────────────────────────────────
+
+export async function quickAssignContractor(
+  companyId: string,
+  siteId: string,
+  deptId: string,
+  formData: FormData
+) {
+  const contractorId = formData.get("contractorId") as string;
+  const role = formData.get("role") as string;
+  const startDateRaw = formData.get("startDate") as string;
+
+  if (!contractorId || !role?.trim() || !startDateRaw) {
+    throw new Error("Contractor, role and start date are required");
+  }
+
+  await prisma.assignment.create({
+    data: {
+      contractorId,
+      companyId,
+      siteId,
+      departmentId: deptId,
+      role: role.trim(),
+      startDate: new Date(startDateRaw),
+      status: "Active",
+    },
+  });
+
+  revalidatePath(`/companies/${companyId}/sites/${siteId}`);
+}
