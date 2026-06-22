@@ -59,6 +59,20 @@ export async function deleteDepartment(
   revalidatePath(`/companies/${companyId}/sites/${siteId}`);
 }
 
+// ── End an assignment (mark Completed, set end date to today) ─────────────────
+
+export async function endAssignment(
+  assignmentId: string,
+  companyId: string,
+  siteId: string
+) {
+  await prisma.assignment.update({
+    where: { id: assignmentId },
+    data: { status: "Completed", endDate: new Date() },
+  });
+  revalidatePath(`/companies/${companyId}/sites/${siteId}`);
+}
+
 // ── Quick-assign contractor to a department ────────────────────────────────────
 
 export async function quickAssignContractor(

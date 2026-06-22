@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
-import { createDepartment, deleteDepartment } from "../actions";
+import { createDepartment, deleteDepartment, endAssignment } from "../actions";
 import { DeptAssignForm } from "./dept-assign-form";
 
 export default async function SiteDetailPage({
@@ -138,7 +138,9 @@ export default async function SiteDetailPage({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {dept.assignments.map((a) => (
+                        {dept.assignments.map((a) => {
+                          const endAction = endAssignment.bind(null, a.id, companyId, siteId);
+                          return (
                           <tr key={a.id} className="hover:bg-gray-50">
                             <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
                               {a.contractor.firstName} {a.contractor.lastName}
@@ -149,16 +151,25 @@ export default async function SiteDetailPage({
                             <td className="whitespace-nowrap px-4 py-3">
                               <Badge variant={a.status}>{a.status}</Badge>
                             </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-right">
+                            <td className="whitespace-nowrap px-4 py-3 text-right flex items-center justify-end gap-3">
                               <Link
                                 href={`/contractors/${a.contractor.id}`}
                                 className="text-sm font-medium text-blue-600 hover:text-blue-800"
                               >
                                 View
                               </Link>
+                              <form action={endAction} className="inline">
+                                <button
+                                  type="submit"
+                                  className="text-sm text-orange-500 hover:text-orange-700"
+                                >
+                                  End
+                                </button>
+                              </form>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

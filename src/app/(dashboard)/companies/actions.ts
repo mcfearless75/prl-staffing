@@ -78,8 +78,28 @@ export async function deleteCompany(id: string) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
-    await prisma.company.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      const sites = await tx.site.findMany({
+        where: { companyId: id },
+        select: { id: true },
+      });
+      const siteIds = sites.map((s) => s.id);
+
+      // Delete timesheets linked to this company's assignments
+      await tx.timesheet.deleteMany({
+        where: { assignment: { companyId: id } },
+      });
+
+      // Delete assignments — contractors themselves are NOT deleted
+      await tx.assignment.deleteMany({ where: { companyId: id } });
+
+      // Delete departments and sites
+      if (siteIds.length > 0) {
+        await tx.department.deleteMany({ where: { siteId: { in: siteIds } } });
+      }
+      await tx.site.deleteMany({ where: { companyId: id } });
+
+      await tx.company.delete({ where: { id } });
     });
 
     revalidatePath("/companies");
