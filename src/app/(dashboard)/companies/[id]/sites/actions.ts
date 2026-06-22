@@ -89,17 +89,33 @@ export async function quickAssignContractor(
     throw new Error("Contractor, role and start date are required");
   }
 
-  await prisma.assignment.create({
-    data: {
-      contractorId,
-      companyId,
-      siteId,
-      departmentId: deptId,
-      role: role.trim(),
-      startDate: new Date(startDateRaw),
-      status: "Active",
-    },
+  const existing = await prisma.assignment.findFirst({
+    where: { contractorId, companyId, status: "Active" },
   });
+
+  if (existing) {
+    await prisma.assignment.update({
+      where: { id: existing.id },
+      data: {
+        siteId,
+        departmentId: deptId,
+        role: role.trim() || existing.role,
+        startDate: new Date(startDateRaw),
+      },
+    });
+  } else {
+    await prisma.assignment.create({
+      data: {
+        contractorId,
+        companyId,
+        siteId,
+        departmentId: deptId,
+        role: role.trim(),
+        startDate: new Date(startDateRaw),
+        status: "Active",
+      },
+    });
+  }
 
   revalidatePath(`/companies/${companyId}/sites/${siteId}`);
 }

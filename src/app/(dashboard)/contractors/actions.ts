@@ -17,25 +17,30 @@ export async function quickAssignContractorFromProfile(
   if (!companyId) return;
 
   const existing = await prisma.assignment.findFirst({
-    where: {
-      contractorId,
-      companyId,
-      status: "Active",
-    },
+    where: { contractorId, companyId, status: "Active" },
   });
-  if (existing) return;
 
-  await prisma.assignment.create({
-    data: {
-      contractorId,
-      companyId,
-      siteId: siteId || null,
-      departmentId: departmentId || null,
-      role: "",
-      status: "Active",
-      startDate: new Date(),
-    },
-  });
+  if (existing) {
+    await prisma.assignment.update({
+      where: { id: existing.id },
+      data: {
+        siteId: siteId || existing.siteId,
+        departmentId: departmentId || existing.departmentId,
+      },
+    });
+  } else {
+    await prisma.assignment.create({
+      data: {
+        contractorId,
+        companyId,
+        siteId: siteId || null,
+        departmentId: departmentId || null,
+        role: "",
+        status: "Active",
+        startDate: new Date(),
+      },
+    });
+  }
 
   revalidatePath(`/contractors/${contractorId}`);
 }
