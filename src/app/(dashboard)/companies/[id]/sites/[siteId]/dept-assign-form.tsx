@@ -50,7 +50,7 @@ export function DeptAssignForm({ companyId, siteId, deptId, contractors }: Props
   }
 
   const bannerStyle =
-    state?.type === "duplicate" || state?.type === "error"
+    state?.type === "error"
       ? "bg-amber-50 border border-amber-300 text-amber-800"
       : state?.type === "moved"
         ? "bg-blue-50 border border-blue-300 text-blue-800"
