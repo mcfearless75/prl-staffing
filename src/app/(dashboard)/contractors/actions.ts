@@ -31,6 +31,7 @@ export async function quickAssignContractorFromProfile(
       companyId,
       siteId: siteId || null,
       departmentId: departmentId || null,
+      role: "",
       status: "Active",
       startDate: new Date(),
     },
