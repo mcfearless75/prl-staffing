@@ -35,6 +35,7 @@ model Company {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   contractors   Assignment[]
+  sites         Site[]
   requirements  ComplianceRequirement[]
   approvalChain ApprovalChain?
   invoices      Invoice[]
@@ -95,23 +96,55 @@ model Contractor {
   documents        Document[]
 }
 
+// ─── Sites (physical locations under a Company) ───
+model Site {
+  id          String       @id @default(cuid())
+  name        String
+  address     String?
+  city        String?
+  postcode    String?
+  isActive    Boolean      @default(true)
+  companyId   String
+  company     Company      @relation(fields: [companyId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  departments Department[]
+  assignments Assignment[]
+}
+
+// ─── Departments (trade/function groupings under a Site) ───
+model Department {
+  id          String       @id @default(cuid())
+  name        String
+  isActive    Boolean      @default(true)
+  siteId      String
+  site        Site         @relation(fields: [siteId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  assignments Assignment[]
+}
+
 // ─── Assignments (contractor <-> company placement) ───
 model Assignment {
-  id           String      @id @default(cuid())
-  contractorId String
-  contractor   Contractor  @relation(fields: [contractorId], references: [id])
-  companyId    String
-  company      Company     @relation(fields: [companyId], references: [id])
-  role         String
-  location     String?
-  startDate    DateTime
-  endDate      DateTime?
-  status       String      @default("Active") // Placed, Active, Ending, Completed
-  poNumber     String?
-  notes        String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  timesheets   Timesheet[]
+  id             String      @id @default(cuid())
+  contractorId   String
+  contractor     Contractor  @relation(fields: [contractorId], references: [id])
+  companyId      String
+  company        Company     @relation(fields: [companyId], references: [id])
+  siteId         String?
+  site           Site?       @relation(fields: [siteId], references: [id])
+  departmentId   String?
+  department     Department? @relation(fields: [departmentId], references: [id])
+  role           String
+  location       String?
+  startDate      DateTime
+  endDate        DateTime?
+  status         String      @default("Active") // Placed, Active, Ending, Completed
+  poNumber       String?
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  timesheets     Timesheet[]
 }
 
 // ─── Timesheets ───

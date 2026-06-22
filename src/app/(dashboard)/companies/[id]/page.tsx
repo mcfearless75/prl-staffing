@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { deleteCompany } from "../actions";
+import { createSite, deleteSite } from "./sites/actions";
 import { formatDate } from "@/lib/utils";
 
 export default async function CompanyDetailPage({
@@ -16,6 +17,13 @@ export default async function CompanyDetailPage({
   const company = await prisma.company.findUnique({
     where: { id },
     include: {
+      sites: {
+        orderBy: { name: "asc" },
+        include: {
+          departments: { select: { id: true, name: true } },
+          assignments: { where: { status: "Active" }, select: { id: true } },
+        },
+      },
       contractors: {
         include: {
           contractor: true,
@@ -29,6 +37,7 @@ export default async function CompanyDetailPage({
   }
 
   const deleteAction = deleteCompany.bind(null, company.id);
+  const createSiteAction = createSite.bind(null, company.id);
 
   return (
     <div className="space-y-6">
@@ -115,6 +124,93 @@ export default async function CompanyDetailPage({
             </dd>
           </div>
         </dl>
+      </div>
+
+      {/* Sites */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Sites</h2>
+        </div>
+
+        {/* Add Site inline form */}
+        <form action={createSiteAction} className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <input
+            name="name"
+            required
+            placeholder="Site name (e.g. Protos)"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <input
+            name="address"
+            placeholder="Address (optional)"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <input
+            name="city"
+            placeholder="City (optional)"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          >
+            Add Site
+          </button>
+        </form>
+
+        {company.sites.length === 0 ? (
+          <p className="text-sm text-gray-500">No sites added yet.</p>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-gray-200">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Site</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Location</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Departments</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Active Contractors</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {company.sites.map((site) => {
+                  const deleteSiteAction = deleteSite.bind(null, site.id, company.id);
+                  return (
+                    <tr key={site.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                        {site.name}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                        {[site.city, site.postcode].filter(Boolean).join(", ") || "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                        {site.departments.length > 0
+                          ? site.departments.map((d) => d.name).join(", ")
+                          : "None"}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                        {site.assignments.length}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-right flex items-center justify-end gap-4">
+                        <Link
+                          href={`/companies/${company.id}/sites/${site.id}`}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                        >
+                          Manage
+                        </Link>
+                        <form action={deleteSiteAction} className="inline">
+                          <button type="submit" className="text-sm text-red-500 hover:text-red-700">
+                            Delete
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Assigned Contractors */}
