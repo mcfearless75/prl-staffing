@@ -16,6 +16,7 @@ export async function quickAssignContractorFromProfile(
   const companyId = formData.get("companyId") as string;
   const siteId = (formData.get("siteId") as string) || null;
   const departmentId = (formData.get("departmentId") as string) || null;
+  const status = (formData.get("status") as string) || "Active";
 
   if (!companyId || !contractorId) return null;
 
@@ -38,6 +39,7 @@ export async function quickAssignContractorFromProfile(
         data: {
           siteId: siteId || existing.siteId,
           departmentId: departmentId || existing.departmentId,
+          status,
         },
       });
       revalidatePath(`/contractors/${contractorId}`);
@@ -56,7 +58,7 @@ export async function quickAssignContractorFromProfile(
       siteId: siteId || null,
       departmentId: departmentId || null,
       role: "",
-      status: "Active",
+      status,
       startDate: new Date(),
     },
   });
@@ -71,6 +73,7 @@ function extractContractorData(formData: FormData) {
     firstName: formData.get("firstName") as string,
     lastName: formData.get("lastName") as string,
     email: formData.get("email") as string,
+    personalEmail: formData.get("personalEmail") as string || null,
     phone: formData.get("phone") as string,
     jobTitle: formData.get("jobTitle") as string,
     dayRate: parseFloat(formData.get("dayRate") as string) || null,

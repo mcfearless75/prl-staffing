@@ -134,6 +134,7 @@ export async function quickAssignContractor(
   const contractorId = formData.get("contractorId") as string;
   const role = formData.get("role") as string;
   const startDateRaw = formData.get("startDate") as string;
+  const status = (formData.get("status") as string) || "Active";
 
   if (!contractorId || !role?.trim() || !startDateRaw) {
     return { type: "error", message: "Contractor, role and start date are required." };
@@ -159,6 +160,7 @@ export async function quickAssignContractor(
         departmentId: deptId ?? existing.departmentId,
         role: role.trim() || existing.role,
         startDate: new Date(startDateRaw),
+        status,
       },
     });
     revalidatePath(`/companies/${companyId}/sites/${siteId ?? ""}`);
@@ -174,7 +176,7 @@ export async function quickAssignContractor(
       departmentId: deptId,
       role: role.trim(),
       startDate: new Date(startDateRaw),
-      status: "Active",
+      status,
     },
   });
 

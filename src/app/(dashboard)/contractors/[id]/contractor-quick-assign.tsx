@@ -112,6 +112,20 @@ export function ContractorQuickAssign({
             </select>
           </div>
 
+          <div className="flex-1 min-w-[120px]">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+            <select
+              name="status"
+              defaultValue="Active"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            >
+              <option value="Placed">Placed</option>
+              <option value="Active">Active</option>
+              <option value="Ending">Ending</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+
           <button
             type="submit"
             disabled={!companyId || pending}

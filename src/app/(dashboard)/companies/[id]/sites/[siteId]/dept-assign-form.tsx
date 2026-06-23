@@ -118,6 +118,16 @@ export function DeptAssignForm({ companyId, siteId, deptId = "", contractors }: 
           required
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
+        <select
+          name="status"
+          defaultValue="Active"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="Placed">Placed</option>
+          <option value="Active">Active</option>
+          <option value="Ending">Ending</option>
+          <option value="Completed">Completed</option>
+        </select>
         <button
           type="submit"
           disabled={!selectedId || pending}
