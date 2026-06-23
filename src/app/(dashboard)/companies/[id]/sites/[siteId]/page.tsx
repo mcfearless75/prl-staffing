@@ -106,20 +106,24 @@ export default async function SiteDetailPage({
           </h2>
           <div className="space-y-2">
             {site.assignments.map((a) => {
-              const action = assignToDepartment.bind(null, a.id, siteId, companyId);
+              const assignAction = assignToDepartment.bind(null, a.id, siteId, companyId);
+              const removeAction = endAssignment.bind(null, a.id, companyId, siteId);
               return (
-                <div key={a.id} className="flex items-center gap-3 flex-wrap">
-                  <span className="text-sm font-medium text-gray-900 w-40">
+                <div key={a.id} className="flex items-center gap-3 flex-wrap py-1">
+                  <Link
+                    href={`/contractors/${a.contractor.id}`}
+                    className="text-sm font-medium text-gray-900 hover:text-blue-600 w-40"
+                  >
                     {a.contractor.firstName} {a.contractor.lastName}
-                  </span>
+                  </Link>
                   {site.departments.length > 0 ? (
-                    <form action={action} className="flex items-center gap-2">
+                    <form action={assignAction} className="flex items-center gap-2">
                       <select
                         name="deptId"
                         required
                         className="rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
                       >
-                        <option value="">Select department...</option>
+                        <option value="">Move to dept...</option>
                         {site.departments.map((d) => (
                           <option key={d.id} value={d.id}>{d.name}</option>
                         ))}
@@ -128,12 +132,20 @@ export default async function SiteDetailPage({
                         type="submit"
                         className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
                       >
-                        Assign
+                        Move
                       </button>
                     </form>
                   ) : (
-                    <span className="text-xs text-amber-700">Add a department first to assign this contractor</span>
+                    <span className="text-xs text-amber-700">Add a department above to place this contractor</span>
                   )}
+                  <form action={removeAction} className="inline">
+                    <button
+                      type="submit"
+                      className="text-xs text-red-500 hover:text-red-700 font-medium"
+                    >
+                      Remove
+                    </button>
+                  </form>
                 </div>
               );
             })}
