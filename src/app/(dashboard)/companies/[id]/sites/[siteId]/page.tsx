@@ -72,6 +72,17 @@ export default async function SiteDetailPage({
         </dl>
       </div>
 
+      {/* Assign to site (no department required) */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">Assign Contractor to Site</h2>
+        <p className="text-xs text-gray-500 mb-4">No department needed — contractor will appear in the unassigned list below and can be moved to a department later.</p>
+        <DeptAssignForm
+          companyId={companyId}
+          siteId={siteId}
+          contractors={allContractors}
+        />
+      </div>
+
       {/* Add Department */}
       <div className="rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Add Department</h2>

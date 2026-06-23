@@ -19,6 +19,14 @@ export async function quickAssignContractorFromProfile(
 
   if (!companyId || !contractorId) return null;
 
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { isActive: true },
+  });
+  if (!company?.isActive) {
+    return { type: "error", message: "Cannot assign to an inactive company. Reactivate it first." };
+  }
+
   const existing = await prisma.assignment.findFirst({
     where: { contractorId, companyId, status: "Active" },
   });

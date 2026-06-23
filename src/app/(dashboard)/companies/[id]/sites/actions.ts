@@ -129,14 +129,22 @@ export async function quickAssignContractor(
   formData: FormData
 ): Promise<AssignResult> {
   const companyId = formData.get("companyId") as string;
-  const siteId = formData.get("siteId") as string;
-  const deptId = formData.get("deptId") as string;
+  const siteId = (formData.get("siteId") as string) || null;
+  const deptId = (formData.get("deptId") as string) || null;
   const contractorId = formData.get("contractorId") as string;
   const role = formData.get("role") as string;
   const startDateRaw = formData.get("startDate") as string;
 
   if (!contractorId || !role?.trim() || !startDateRaw) {
     return { type: "error", message: "Contractor, role and start date are required." };
+  }
+
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { isActive: true },
+  });
+  if (!company?.isActive) {
+    return { type: "error", message: "Cannot assign to an inactive company. Reactivate it first." };
   }
 
   const existing = await prisma.assignment.findFirst({
@@ -147,13 +155,14 @@ export async function quickAssignContractor(
     await prisma.assignment.update({
       where: { id: existing.id },
       data: {
-        siteId,
-        departmentId: deptId,
+        siteId: siteId ?? existing.siteId,
+        departmentId: deptId ?? existing.departmentId,
         role: role.trim() || existing.role,
         startDate: new Date(startDateRaw),
       },
     });
-    revalidatePath(`/companies/${companyId}/sites/${siteId}`);
+    revalidatePath(`/companies/${companyId}/sites/${siteId ?? ""}`);
+    revalidatePath(`/companies/${companyId}`);
     return { type: "moved", message: "Existing assignment updated to this site and department." };
   }
 
@@ -169,6 +178,7 @@ export async function quickAssignContractor(
     },
   });
 
-  revalidatePath(`/companies/${companyId}/sites/${siteId}`);
+  revalidatePath(`/companies/${companyId}/sites/${siteId ?? ""}`);
+  revalidatePath(`/companies/${companyId}`);
   return { type: "ok", message: "Assigned successfully." };
 }

@@ -8,11 +8,11 @@ type Contractor = { id: string; firstName: string; lastName: string };
 interface Props {
   companyId: string;
   siteId: string;
-  deptId: string;
+  deptId?: string;
   contractors: Contractor[];
 }
 
-export function DeptAssignForm({ companyId, siteId, deptId, contractors }: Props) {
+export function DeptAssignForm({ companyId, siteId, deptId = "", contractors }: Props) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [open, setOpen] = useState(false);
