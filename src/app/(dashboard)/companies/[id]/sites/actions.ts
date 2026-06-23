@@ -3,10 +3,13 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 // ── Sites ─────────────────────────────────────────────────────────────────────
 
 export async function createSite(companyId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   const name = formData.get("name") as string;
   const address = formData.get("address") as string | null;
   const city = formData.get("city") as string | null;
@@ -28,6 +31,8 @@ export async function createSite(companyId: string, formData: FormData) {
 }
 
 export async function deleteSite(siteId: string, companyId: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   await prisma.site.delete({ where: { id: siteId } });
   revalidatePath(`/companies/${companyId}`);
 }
@@ -39,6 +44,8 @@ export async function createDepartment(
   companyId: string,
   formData: FormData
 ) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   const name = formData.get("name") as string;
 
   if (!name?.trim()) throw new Error("Department name is required");
@@ -55,6 +62,8 @@ export async function deleteDepartment(
   siteId: string,
   companyId: string
 ) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   await prisma.department.delete({ where: { id: deptId } });
   revalidatePath(`/companies/${companyId}/sites/${siteId}`);
 }
@@ -66,6 +75,8 @@ export async function endAssignment(
   companyId: string,
   siteId: string
 ) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   await prisma.assignment.update({
     where: { id: assignmentId },
     data: { status: "Completed", endDate: new Date() },
@@ -74,6 +85,8 @@ export async function endAssignment(
 }
 
 export async function endAssignmentById(assignmentId: string, companyId: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   await prisma.assignment.update({
     where: { id: assignmentId },
     data: { status: "Completed", endDate: new Date() },
@@ -87,6 +100,8 @@ export async function assignToDepartment(
   companyId: string,
   formData: FormData
 ) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   const deptId = formData.get("deptId") as string;
   if (!deptId) return;
   await prisma.assignment.update({
@@ -102,6 +117,8 @@ export async function updateAssignmentSiteDept(
   _prevState: MoveResult,
   formData: FormData
 ): Promise<MoveResult> {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
   const assignmentId = formData.get("assignmentId") as string;
   const siteId = (formData.get("siteId") as string) || null;
   const departmentId = (formData.get("departmentId") as string) || null;
@@ -149,7 +166,7 @@ export async function quickAssignContractor(
   }
 
   const existing = await prisma.assignment.findFirst({
-    where: { contractorId, companyId, status: "Active" },
+    where: { contractorId, companyId, status: { notIn: ["Completed"] } },
   });
 
   if (existing) {

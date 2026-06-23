@@ -29,7 +29,7 @@ export async function quickAssignContractorFromProfile(
   }
 
   const existing = await prisma.assignment.findFirst({
-    where: { contractorId, companyId, status: "Active" },
+    where: { contractorId, companyId, status: { notIn: ["Completed"] } },
   });
 
   if (existing) {

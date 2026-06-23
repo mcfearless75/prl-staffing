@@ -16,6 +16,7 @@ export function DeptAssignForm({ companyId, siteId, deptId = "", contractors }: 
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [open, setOpen] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [state, formAction, pending] = useActionState(quickAssignContractor, null);
@@ -40,6 +41,7 @@ export function DeptAssignForm({ companyId, siteId, deptId = "", contractors }: 
     if (state?.type === "ok" || state?.type === "moved") {
       setQuery("");
       setSelectedId("");
+      setFormKey((k) => k + 1);
     }
   }, [state]);
 
@@ -63,7 +65,7 @@ export function DeptAssignForm({ companyId, siteId, deptId = "", contractors }: 
           {state.message}
         </div>
       )}
-      <form action={formAction} className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+      <form key={formKey} action={formAction} className="grid grid-cols-1 gap-2 sm:grid-cols-4">
         {/* Hidden routing fields */}
         <input type="hidden" name="companyId" value={companyId} />
         <input type="hidden" name="siteId" value={siteId} />
