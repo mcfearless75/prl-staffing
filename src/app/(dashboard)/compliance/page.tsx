@@ -307,6 +307,12 @@ export default async function CompliancePage({
             <BulkVerifyButton />
             <ExpiryAlertButton />
             <Link
+              href="/compliance/expiry"
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 transition-colors"
+            >
+              Expiry Report
+            </Link>
+            <Link
               href="/compliance/review"
               className="inline-flex items-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-800 hover:bg-purple-100 transition-colors"
             >
