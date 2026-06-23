@@ -62,6 +62,7 @@ model Contractor {
   firstName    String
   lastName     String
   email        String             @unique
+  personalEmail String?
   phone        String?
   jobTitle     String?
   dayRate      Float?

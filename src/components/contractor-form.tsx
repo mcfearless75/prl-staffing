@@ -71,6 +71,23 @@ export function ContractorForm({
             />
           </div>
 
+          {/* Personal / secondary email */}
+          <div>
+            <label
+              htmlFor="personalEmail"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Personal / secondary email
+            </label>
+            <input
+              type="email"
+              id="personalEmail"
+              name="personalEmail"
+              defaultValue={contractor?.personalEmail ?? ""}
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
           {/* Phone */}
           <div>
             <label

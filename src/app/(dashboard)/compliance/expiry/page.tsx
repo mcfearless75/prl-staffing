@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { formatDate, getInitials } from "@/lib/utils";
 import { AlertTriangle, XCircle, Clock, Calendar } from "lucide-react";
 
-function bucket(records: { expiryDate: Date | null }[], now: Date, from: number, to: number) {
+function bucket<T extends { expiryDate: Date | null }>(records: T[], now: Date, from: number, to: number): T[] {
   const fromMs = now.getTime() + from * 24 * 60 * 60 * 1000;
   const toMs   = now.getTime() + to   * 24 * 60 * 60 * 1000;
   return records.filter((r) => {

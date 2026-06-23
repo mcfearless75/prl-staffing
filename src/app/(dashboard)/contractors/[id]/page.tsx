@@ -171,6 +171,12 @@ export default async function ContractorDetailPage({
             <p className="text-sm font-medium text-gray-500">Email</p>
             <p className="text-sm text-gray-900">{contractor.email || "-"}</p>
           </div>
+          {contractor.personalEmail && (
+            <div>
+              <p className="text-sm font-medium text-gray-500">Personal / secondary email</p>
+              <p className="text-sm text-gray-900">{contractor.personalEmail}</p>
+            </div>
+          )}
           <div>
             <p className="text-sm font-medium text-gray-500">Phone</p>
             <p className="text-sm text-gray-900">{contractor.phone || "-"}</p>
