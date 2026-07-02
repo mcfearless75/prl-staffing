@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: msg }, { status: res.status });
     }
     return NextResponse.json(json);
-  } catch {
-    return NextResponse.json({ error: "Upstream fetch failed" }, { status: 500 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Upstream fetch failed: ${msg}` }, { status: 500 });
   }
 }
