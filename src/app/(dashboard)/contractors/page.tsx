@@ -180,9 +180,6 @@ export default async function ContractorsPage({
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Supplier
-                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                   Actions
                 </th>
@@ -199,9 +196,12 @@ export default async function ContractorsPage({
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-medium text-white">
                         {getInitials(contractor.firstName, contractor.lastName)}
                       </div>
-                      <span className="text-sm font-medium text-gray-900">
+                      <Link
+                        href={`/contractors/${contractor.id}`}
+                        className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors"
+                      >
                         {contractor.firstName} {contractor.lastName}
-                      </span>
+                      </Link>
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
@@ -217,9 +217,6 @@ export default async function ContractorsPage({
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <ContractorStatusSelect id={contractor.id} status={contractor.status} />
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {contractor.supplier?.name || "—"}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3">
