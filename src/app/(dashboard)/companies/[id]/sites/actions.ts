@@ -137,6 +137,32 @@ export async function updateAssignmentSiteDept(
   return { type: "ok", message: "Moved." };
 }
 
+export async function updateSite(siteId: string, companyId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const name = formData.get("name") as string;
+  const address = formData.get("address") as string;
+  const city = formData.get("city") as string;
+  const postcode = formData.get("postcode") as string;
+
+  if (!name?.trim()) throw new Error("Site name is required");
+
+  await prisma.site.update({
+    where: { id: siteId },
+    data: {
+      name: name.trim(),
+      address: address?.trim() || null,
+      city: city?.trim() || null,
+      postcode: postcode?.trim() || null,
+    },
+  });
+
+  revalidatePath(`/companies/${companyId}/sites/${siteId}`);
+  revalidatePath(`/companies/${companyId}`);
+  redirect(`/companies/${companyId}/sites/${siteId}`);
+}
+
 // ── Quick-assign contractor to a department ────────────────────────────────────
 
 type AssignResult = { type: "ok" | "moved" | "error"; message: string } | null;

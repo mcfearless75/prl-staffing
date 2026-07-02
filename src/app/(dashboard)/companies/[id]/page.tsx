@@ -188,7 +188,7 @@ export default async function CompanyDetailPage({
                       <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                         {[site.city, site.postcode].filter(Boolean).join(", ") || "—"}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
                         {site.departments.length > 0
                           ? site.departments.map((d) => d.name).join(", ")
                           : "None"}
@@ -202,6 +202,12 @@ export default async function CompanyDetailPage({
                           className="text-sm font-medium text-blue-600 hover:text-blue-800"
                         >
                           Manage
+                        </Link>
+                        <Link
+                          href={`/companies/${company.id}/sites/${site.id}/edit`}
+                          className="text-sm font-medium text-gray-600 hover:text-gray-900"
+                        >
+                          Edit
                         </Link>
                         <form action={deleteSiteAction} className="inline">
                           <button type="submit" className="text-sm text-red-500 hover:text-red-700">

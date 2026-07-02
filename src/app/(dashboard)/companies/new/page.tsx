@@ -18,7 +18,7 @@ export default function NewCompanyPage() {
     setLooking(true);
     setLookupError("");
     try {
-      const res = await fetch(`https://api.postcodes.io/postcodes/${pc}`);
+      const res = await fetch(`/api/postcode?pc=${pc}`);
       const json = await res.json();
       if (json.status === 200 && json.result) {
         const r = json.result;
