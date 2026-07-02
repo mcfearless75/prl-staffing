@@ -8,35 +8,36 @@ export async function GET(request: NextRequest) {
   if (!apiKey) return NextResponse.json({ error: "API key not configured (GETADDRESS_API_KEY missing)" }, { status: 500 });
 
   try {
-    // Use the autocomplete endpoint (current documented API)
     const res = await fetch(
-      `https://api.getAddress.io/autocomplete/${encodeURIComponent(pc)}?api-key=${apiKey}&all=true`,
+      `https://api.getaddress.io/find/${encodeURIComponent(pc)}?api-key=${apiKey}&expand=true`,
       { cache: "no-store" }
     );
-    const json = await res.json();
+
+    // Parse JSON safely — a 401/403 may return plain text, not JSON
+    let json: Record<string, unknown> = {};
+    try {
+      json = await res.json();
+    } catch {
+      // non-JSON body (plain text error from getAddress.io)
+    }
 
     if (!res.ok) {
       const msg = json?.Message || json?.message || `Error ${res.status} from getAddress.io`;
       return NextResponse.json({ error: msg }, { status: res.status });
     }
 
-    const suggestions: Array<{ address: string; url: string; id: string }> = json.suggestions ?? [];
+    // expand=true → addresses is an array of objects with line_1, line_2, etc.
+    const addresses: Array<{
+      line_1: string;
+      line_2: string;
+      locality: string;
+      town_or_city: string;
+      county: string;
+    }> = Array.isArray(json.addresses) ? (json.addresses as never[]) : [];
 
-    if (suggestions.length === 0) {
+    if (addresses.length === 0) {
       return NextResponse.json({ error: "No addresses found for this postcode" }, { status: 404 });
     }
-
-    // Transform suggestion strings into structured address objects the frontend expects.
-    // Suggestions look like: "1 Test Street, Locality, Town, County"
-    const addresses = suggestions.map((s) => {
-      const parts = s.address.split(", ").map((p) => p.trim());
-      const line_1 = parts[0] ?? "";
-      const line_2 = parts.length > 3 ? parts[1] : "";
-      const town_or_city = parts.length > 2 ? parts[parts.length - 2] : parts[1] ?? "";
-      const county = parts[parts.length - 1] ?? "";
-      const locality = parts.length > 3 ? parts[parts.length - 3] : "";
-      return { line_1, line_2, locality, town_or_city, county };
-    });
 
     return NextResponse.json({ addresses });
   } catch (err) {
