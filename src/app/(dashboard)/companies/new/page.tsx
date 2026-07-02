@@ -5,36 +5,57 @@ import { createCompany } from "../actions";
 import Link from "next/link";
 import { useState } from "react";
 
+interface AddressResult {
+  line_1: string;
+  line_2: string;
+  locality: string;
+  town_or_city: string;
+  county: string;
+}
+
 export default function NewCompanyPage() {
   const [postcode, setPostcode] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [looking, setLooking] = useState(false);
   const [lookupError, setLookupError] = useState("");
+  const [addressList, setAddressList] = useState<AddressResult[]>([]);
 
   async function lookupPostcode() {
     const pc = postcode.trim().replace(/\s+/g, "");
     if (!pc) return;
     setLooking(true);
     setLookupError("");
+    setAddressList([]);
     try {
       const res = await fetch(`/api/postcode?pc=${pc}`);
       const json = await res.json();
-      if (json.status === 200 && json.result) {
-        const r = json.result;
-        setCity(r.admin_district || r.parliamentary_constituency || "");
-        // Build a partial address from admin_ward + outcode if nothing better
-        if (!address) {
-          setAddress(r.admin_ward || "");
-        }
-      } else {
-        setLookupError("Postcode not found");
+      if (!res.ok || json.error) {
+        setLookupError(json.error || "Postcode not found");
+        return;
       }
+      const results: AddressResult[] = json.addresses ?? [];
+      if (results.length === 0) {
+        setLookupError("No addresses found for this postcode");
+        return;
+      }
+      setAddressList(results);
+      // Pre-fill city from first result
+      setCity(results[0].town_or_city || results[0].locality || "");
     } catch {
-      setLookupError("Lookup failed — check your connection");
+      setLookupError("Lookup failed — please try again");
     } finally {
       setLooking(false);
     }
+  }
+
+  function handleAddressSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const idx = parseInt(e.target.value, 10);
+    if (isNaN(idx)) return;
+    const a = addressList[idx];
+    const street = [a.line_1, a.line_2].filter(Boolean).join(", ");
+    setAddress(street);
+    setCity(a.town_or_city || a.locality || "");
   }
 
   return (
@@ -73,7 +94,7 @@ export default function NewCompanyPage() {
                   onChange={(e) => setPostcode(e.target.value.toUpperCase())}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); lookupPostcode(); } }}
                   className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="e.g. WA3 6XG"
+                  placeholder="e.g. CH47 0LB"
                 />
                 <button
                   type="button"
@@ -101,6 +122,26 @@ export default function NewCompanyPage() {
                 placeholder="Auto-filled from postcode"
               />
             </div>
+
+            {/* Address picker dropdown — shown after lookup */}
+            {addressList.length > 0 && (
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Select Address
+                </label>
+                <select
+                  onChange={handleAddressSelect}
+                  defaultValue=""
+                  className="mt-1 block w-full rounded-lg border border-blue-400 bg-blue-50 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="" disabled>— pick an address —</option>
+                  {addressList.map((a, i) => {
+                    const label = [a.line_1, a.line_2, a.locality].filter(Boolean).join(", ");
+                    return <option key={i} value={i}>{label}</option>;
+                  })}
+                </select>
+              </div>
+            )}
 
             <div className="sm:col-span-2">
               <label htmlFor="address" className="block text-sm font-medium text-gray-700">
