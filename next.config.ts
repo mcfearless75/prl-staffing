@@ -18,7 +18,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://www.prismworkforce.online https://*.railway.app https://*.supabase.co https://api.resend.com",
+      "connect-src 'self' https://www.prismworkforce.online https://*.railway.app https://*.supabase.co https://api.resend.com https://api.getAddress.io",
       "frame-ancestors 'none'",
       "form-action 'self'",
       "base-uri 'self'",
