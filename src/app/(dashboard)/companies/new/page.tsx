@@ -5,12 +5,17 @@ import { createCompany } from "../actions";
 import Link from "next/link";
 import { useState } from "react";
 
-interface AddressResult {
-  line_1: string;
-  line_2: string;
-  locality: string;
-  town_or_city: string;
-  county: string;
+interface Suggestion {
+  formatted: string; // e.g. "1 Test Street, Locality, Town, County"
+}
+
+function parseSuggestion(formatted: string): { address: string; city: string } {
+  const parts = formatted.split(", ").map((p) => p.trim());
+  // Last part is county, second-to-last is town
+  const city = parts.length >= 2 ? parts[parts.length - 2] : parts[0] ?? "";
+  // Street address = first part(s) up to (but not including) the last two parts
+  const streetParts = parts.length > 2 ? parts.slice(0, parts.length - 2) : parts.slice(0, 1);
+  return { address: streetParts.join(", "), city };
 }
 
 export default function NewCompanyPage() {
@@ -19,29 +24,38 @@ export default function NewCompanyPage() {
   const [city, setCity] = useState("");
   const [looking, setLooking] = useState(false);
   const [lookupError, setLookupError] = useState("");
-  const [addressList, setAddressList] = useState<AddressResult[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 
   async function lookupPostcode() {
-    const pc = postcode.trim().replace(/\s+/g, "");
+    const pc = postcode.trim().toUpperCase();
     if (!pc) return;
+    const token = process.env.NEXT_PUBLIC_GETADDRESS_TOKEN;
+    if (!token) {
+      setLookupError("Address lookup not configured");
+      return;
+    }
     setLooking(true);
     setLookupError("");
-    setAddressList([]);
+    setSuggestions([]);
     try {
-      const res = await fetch(`/api/postcode?pc=${pc}`);
+      const res = await fetch(
+        `https://api.getAddress.io/autocomplete/${encodeURIComponent(pc)}?api-key=${token}&all=true`
+      );
       const json = await res.json();
-      if (!res.ok || json.error) {
-        setLookupError(json.error || "Postcode not found");
+      if (!res.ok) {
+        setLookupError(json?.Message || json?.message || `Lookup failed (${res.status})`);
         return;
       }
-      const results: AddressResult[] = json.addresses ?? [];
+      const results: Suggestion[] = (json.suggestions ?? []).map(
+        (s: { address: string }) => ({ formatted: s.address })
+      );
       if (results.length === 0) {
         setLookupError("No addresses found for this postcode");
         return;
       }
-      setAddressList(results);
+      setSuggestions(results);
       // Pre-fill city from first result
-      setCity(results[0].town_or_city || results[0].locality || "");
+      setCity(parseSuggestion(results[0].formatted).city);
     } catch {
       setLookupError("Lookup failed — please try again");
     } finally {
@@ -52,10 +66,9 @@ export default function NewCompanyPage() {
   function handleAddressSelect(e: React.ChangeEvent<HTMLSelectElement>) {
     const idx = parseInt(e.target.value, 10);
     if (isNaN(idx)) return;
-    const a = addressList[idx];
-    const street = [a.line_1, a.line_2].filter(Boolean).join(", ");
-    setAddress(street);
-    setCity(a.town_or_city || a.locality || "");
+    const parsed = parseSuggestion(suggestions[idx].formatted);
+    setAddress(parsed.address);
+    setCity(parsed.city);
   }
 
   return (
@@ -124,7 +137,7 @@ export default function NewCompanyPage() {
             </div>
 
             {/* Address picker dropdown — shown after lookup */}
-            {addressList.length > 0 && (
+            {suggestions.length > 0 && (
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Select Address
@@ -135,10 +148,9 @@ export default function NewCompanyPage() {
                   className="mt-1 block w-full rounded-lg border border-blue-400 bg-blue-50 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="" disabled>— pick an address —</option>
-                  {addressList.map((a, i) => {
-                    const label = [a.line_1, a.line_2, a.locality].filter(Boolean).join(", ");
-                    return <option key={i} value={i}>{label}</option>;
-                  })}
+                  {suggestions.map((s, i) => (
+                    <option key={i} value={i}>{s.formatted}</option>
+                  ))}
                 </select>
               </div>
             )}
