@@ -5,37 +5,55 @@ import { createCompany } from "../actions";
 import Link from "next/link";
 import { useState } from "react";
 
-interface PostcodesIoResult {
-  admin_district: string | null;
-  admin_ward: string | null;
-  region: string | null;
+interface Address {
+  line_1: string;
+  line_2: string;
+  line_3: string;
+  post_town: string;
+  county: string;
 }
 
 export default function NewCompanyPage() {
   const [postcode, setPostcode] = useState("");
+  const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [looking, setLooking] = useState(false);
   const [lookupError, setLookupError] = useState("");
+  const [suggestions, setSuggestions] = useState<Address[]>([]);
 
   async function lookupPostcode() {
     const pc = postcode.trim().toUpperCase();
     if (!pc) return;
     setLooking(true);
     setLookupError("");
+    setSuggestions([]);
     try {
-      const res = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`);
+      const res = await fetch(`/api/postcode?pc=${encodeURIComponent(pc)}`);
       const json = await res.json();
       if (!res.ok) {
-        setLookupError(res.status === 404 ? "Postcode not found" : `Lookup failed (${res.status})`);
+        setLookupError(json?.error || `Lookup failed (${res.status})`);
         return;
       }
-      const result: PostcodesIoResult = json.result;
-      setCity(result.admin_district || result.admin_ward || result.region || "");
+      const addresses: Address[] = json.addresses ?? [];
+      if (addresses.length === 0) {
+        setLookupError("No addresses found for this postcode");
+        return;
+      }
+      setSuggestions(addresses);
+      setCity(addresses[0].post_town);
     } catch {
       setLookupError("Lookup failed — please try again");
     } finally {
       setLooking(false);
     }
+  }
+
+  function handleAddressSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const idx = parseInt(e.target.value, 10);
+    if (isNaN(idx)) return;
+    const a = suggestions[idx];
+    setAddress([a.line_1, a.line_2, a.line_3].filter(Boolean).join(", "));
+    setCity(a.post_town);
   }
 
   return (
@@ -103,6 +121,26 @@ export default function NewCompanyPage() {
               />
             </div>
 
+            {suggestions.length > 0 && (
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Select Address
+                </label>
+                <select
+                  onChange={handleAddressSelect}
+                  defaultValue=""
+                  className="mt-1 block w-full rounded-lg border border-blue-400 bg-blue-50 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="" disabled>— pick an address —</option>
+                  {suggestions.map((a, i) => (
+                    <option key={i} value={i}>
+                      {[a.line_1, a.line_2, a.line_3].filter(Boolean).join(", ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="sm:col-span-2">
               <label htmlFor="address" className="block text-sm font-medium text-gray-700">
                 Address
@@ -111,6 +149,8 @@ export default function NewCompanyPage() {
                 type="text"
                 id="address"
                 name="address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Street address"
               />
