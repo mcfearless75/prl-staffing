@@ -20,6 +20,7 @@ export default function NewCompanyPage() {
   const [looking, setLooking] = useState(false);
   const [lookupError, setLookupError] = useState("");
   const [suggestions, setSuggestions] = useState<Address[]>([]);
+  const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null);
 
   async function lookupPostcode() {
     const pc = postcode.trim().toUpperCase();
@@ -30,6 +31,7 @@ export default function NewCompanyPage() {
     try {
       const res = await fetch(`/api/postcode?pc=${encodeURIComponent(pc)}`);
       const json = await res.json();
+      if (typeof json.remaining === "number") setCreditsRemaining(json.remaining);
       if (!res.ok) {
         setLookupError(json?.error || `Lookup failed (${res.status})`);
         return;
@@ -104,6 +106,11 @@ export default function NewCompanyPage() {
                 </button>
               </div>
               {lookupError && <p className="mt-1 text-xs text-red-500">{lookupError}</p>}
+              {creditsRemaining !== null && (
+                <p className={`mt-1 text-xs ${creditsRemaining <= 5 ? "text-amber-600" : "text-gray-400"}`}>
+                  ~{creditsRemaining} trial lookup{creditsRemaining === 1 ? "" : "s"} remaining (est.)
+                </p>
+              )}
             </div>
 
             <div>
