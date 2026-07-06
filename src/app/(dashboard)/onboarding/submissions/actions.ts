@@ -19,9 +19,11 @@ export async function approveAndCreateContractor(formData: FormData) {
 
     if (!submission) throw new Error("Submission not found");
 
+    const contactEmail = submission.contactEmail.toLowerCase().trim();
+
     // Check if contractor already exists with this email
     const existing = await prisma.contractor.findFirst({
-      where: { email: submission.contactEmail },
+      where: { email: contactEmail },
     });
 
     if (existing) {
@@ -48,7 +50,7 @@ export async function approveAndCreateContractor(formData: FormData) {
       data: {
         firstName,
         lastName,
-        email: submission.contactEmail,
+        email: contactEmail,
         phone: submission.contactPhone || null,
         status: "Active",
         jobTitle: submission.supplyOf || null,
@@ -72,7 +74,7 @@ export async function approveAndCreateContractor(formData: FormData) {
     await prisma.contractorLogin.create({
       data: {
         contractorId: contractor.id,
-        email: submission.contactEmail,
+        email: contactEmail,
         passwordHash,
       },
     });

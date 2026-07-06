@@ -72,8 +72,8 @@ function extractContractorData(formData: FormData) {
   return {
     firstName: formData.get("firstName") as string,
     lastName: formData.get("lastName") as string,
-    email: formData.get("email") as string,
-    personalEmail: formData.get("personalEmail") as string || null,
+    email: (formData.get("email") as string).toLowerCase().trim(),
+    personalEmail: (formData.get("personalEmail") as string || "").toLowerCase().trim() || null,
     phone: formData.get("phone") as string,
     jobTitle: formData.get("jobTitle") as string,
     dayRate: parseFloat(formData.get("dayRate") as string) || null,

@@ -16,8 +16,9 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const {
-      firstName, lastName, email, phone,
+      firstName, lastName, phone,
     } = body;
+    const email = typeof body.email === "string" ? body.email.toLowerCase().trim() : body.email;
 
     if (!firstName || !lastName || !email || !phone) {
       return NextResponse.json(

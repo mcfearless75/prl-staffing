@@ -135,7 +135,7 @@ export async function POST(request: Request) {
       return {
         firstName: parts[0],
         lastName: parts.length > 1 ? parts.slice(1).join(" ") : parts[0],
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         status: "Active",
       };
     });
