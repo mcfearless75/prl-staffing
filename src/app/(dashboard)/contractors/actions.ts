@@ -98,7 +98,21 @@ function extractContractorData(formData: FormData) {
   };
 }
 
-export async function createContractor(formData: FormData) {
+export type ContractorFormState = { error?: string };
+
+function isUniqueEmailError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: string }).code === "P2002" &&
+    !!(error as { meta?: { target?: string[] } }).meta?.target?.includes("email")
+  );
+}
+
+export async function createContractor(
+  _prevState: ContractorFormState,
+  formData: FormData
+): Promise<ContractorFormState> {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
@@ -130,12 +144,19 @@ export async function createContractor(formData: FormData) {
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    if (isUniqueEmailError(error)) {
+      return { error: "A contractor with this email address already exists." };
+    }
     console.error("Failed to create contractor:", error);
-    throw new Error("Failed to create contractor. Please try again.");
+    return { error: "Failed to create contractor. Please try again." };
   }
 }
 
-export async function updateContractor(id: string, formData: FormData) {
+export async function updateContractor(
+  id: string,
+  _prevState: ContractorFormState,
+  formData: FormData
+): Promise<ContractorFormState> {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
@@ -154,8 +175,11 @@ export async function updateContractor(id: string, formData: FormData) {
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    if (isUniqueEmailError(error)) {
+      return { error: "A contractor with this email address already exists." };
+    }
     console.error("Failed to update contractor:", error);
-    throw new Error("Failed to update contractor. Please try again.");
+    return { error: "Failed to update contractor. Please try again." };
   }
 }
 

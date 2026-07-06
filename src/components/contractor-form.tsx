@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useActionState } from "react";
+
+type ContractorFormState = { error?: string };
 
 interface ContractorFormProps {
   contractor?: any;
   suppliers: Array<{ id: string; name: string }>;
-  action: (formData: FormData) => Promise<void>;
+  action: (prevState: ContractorFormState, formData: FormData) => Promise<ContractorFormState>;
 }
 
 export function ContractorForm({
@@ -13,9 +16,16 @@ export function ContractorForm({
   suppliers,
   action,
 }: ContractorFormProps) {
+  const [state, formAction, pending] = useActionState(action, {});
+
   return (
-    <form action={action}>
+    <form action={formAction}>
       <div className="rounded-xl border bg-white p-6">
+        {state?.error && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {state.error}
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {/* First Name */}
           <div>
@@ -399,9 +409,10 @@ export function ContractorForm({
           </Link>
           <button
             type="submit"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            disabled={pending}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Save Contractor
+            {pending ? "Saving..." : "Save Contractor"}
           </button>
         </div>
       </div>
