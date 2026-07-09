@@ -1,9 +1,13 @@
 import { prisma } from "@/lib/db";
 import { getFromR2 } from "@/lib/r2";
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAuditor } from "@/lib/auditor-auth";
 
 export async function GET(request: NextRequest) {
   try {
+    const auditor = await verifyAuditor();
+    if (!auditor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const documentId = searchParams.get("id");
 

@@ -8,9 +8,17 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { sendPasswordResetEmail } from "@/lib/email";
 
+async function requireStaffSession() {
+  const session = await auth();
+  if (!session?.user || (session.user as { userType?: string }).userType !== "staff") {
+    redirect("/login");
+  }
+  return session;
+}
+
 export async function approveAndCreateContractor(formData: FormData) {
   try {
-    const session = await auth();
+    const session = await requireStaffSession();
     const submissionId = formData.get("submissionId") as string;
 
     const submission = await prisma.supplyAgreement.findUnique({
@@ -119,7 +127,7 @@ export async function approveAndCreateContractor(formData: FormData) {
 
 export async function updateSubmissionStatus(formData: FormData) {
   try {
-    const session = await auth();
+    const session = await requireStaffSession();
     const submissionId = formData.get("submissionId") as string;
     const status = formData.get("status") as string;
 
@@ -144,9 +152,11 @@ export async function updateSubmissionStatus(formData: FormData) {
 
 export async function sendAppInvite(formData: FormData) {
   try {
-    const email = formData.get("email") as string;
-    const name = formData.get("name") as string;
-    const contractorId = formData.get("contractorId") as string;
+    await requireStaffSession();
+    const email = ((formData.get("email") as string) || "").toLowerCase().trim();
+    const name = (formData.get("name") as string) || "";
+
+    if (!email) throw new Error("Email is required");
 
     // Generate password reset token
     const token = crypto.randomBytes(32).toString("hex");
@@ -164,7 +174,7 @@ export async function sendAppInvite(formData: FormData) {
     const resetUrl = `${baseUrl}/set-password?token=${token}`;
 
     // Send welcome email
-    const result = await sendPasswordResetEmail(email, name.split(" ")[0], resetUrl, true);
+    const result = await sendPasswordResetEmail(email, name.split(" ")[0] || "there", resetUrl, true);
 
     if (!result.success) {
       console.error("Failed to send app invite:", result.error);

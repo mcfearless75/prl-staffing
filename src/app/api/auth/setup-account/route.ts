@@ -36,56 +36,48 @@ export async function POST(request: Request) {
       );
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // Upsert the ContractorLogin — create if not exists, update if it does
+    // SECURITY: this endpoint is unauthenticated (email + password only), so it
+    // may only ACTIVATE an account that has no login yet. If a login already
+    // exists, overwriting the password here would be an account-takeover vector
+    // for anyone who knows the email — send them through the token-verified
+    // "forgot password" flow instead.
     const existingLogin = await prisma.contractorLogin.findUnique({
       where: { contractorId: contractor.id },
     });
 
     if (existingLogin) {
-      // Already has a login record — update the password
-      await prisma.contractorLogin.update({
-        where: { id: existingLogin.id },
-        data: {
-          passwordHash,
-          tokenVersion: { increment: 1 },
-          failedAttempts: 0,
-          lockedUntil: null,
+      return NextResponse.json(
+        {
+          error:
+            "This account is already set up. To change your password, use “Forgot your password?” on the login page.",
+          alreadyActivated: true,
         },
-      });
-      await prisma.activityLog.create({
-        data: {
-          action: "Contractor Password Reset",
-          entityType: "Contractor",
-          entityId: contractor.id,
-          details: `${contractor.firstName} ${contractor.lastName} reset their portal password`,
-          userEmail: normalised,
-          userName: `${contractor.firstName} ${contractor.lastName}`,
-        },
-      }).catch(() => {/* non-critical */});
-    } else {
-      // First time setup — create login record
-      await prisma.contractorLogin.create({
-        data: {
-          contractorId: contractor.id,
-          email: normalised,
-          passwordHash,
-          tokenVersion: 0,
-          failedAttempts: 0,
-        },
-      });
-      await prisma.activityLog.create({
-        data: {
-          action: "Contractor Account Activated",
-          entityType: "Contractor",
-          entityId: contractor.id,
-          details: `${contractor.firstName} ${contractor.lastName} activated their portal account`,
-          userEmail: normalised,
-          userName: `${contractor.firstName} ${contractor.lastName}`,
-        },
-      }).catch(() => {/* non-critical */});
+        { status: 409 }
+      );
     }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // First time setup — create login record
+    await prisma.contractorLogin.create({
+      data: {
+        contractorId: contractor.id,
+        email: normalised,
+        passwordHash,
+        tokenVersion: 0,
+        failedAttempts: 0,
+      },
+    });
+    await prisma.activityLog.create({
+      data: {
+        action: "Contractor Account Activated",
+        entityType: "Contractor",
+        entityId: contractor.id,
+        details: `${contractor.firstName} ${contractor.lastName} activated their portal account`,
+        userEmail: normalised,
+        userName: `${contractor.firstName} ${contractor.lastName}`,
+      },
+    }).catch(() => {/* non-critical */});
 
     return NextResponse.json({ success: true, firstName: contractor.firstName });
   } catch (err) {

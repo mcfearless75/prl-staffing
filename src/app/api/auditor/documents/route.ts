@@ -1,7 +1,12 @@
 import { prisma } from "@/lib/db";
+import { NextResponse } from "next/server";
+import { verifyAuditor } from "@/lib/auditor-auth";
 
 export async function GET() {
   try {
+    const auditor = await verifyAuditor();
+    if (!auditor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const documents = await prisma.qmsDocument.findMany({
       orderBy: [{ folder: "asc" }, { subfolder: "asc" }, { fileName: "asc" }],
     });

@@ -53,7 +53,9 @@ export default auth((req) => {
   if (isAuditorPage) return; // Auditor portal has its own auth
   if (isSetPasswordPage) return;
   if (req.nextUrl.pathname.startsWith("/setup-account")) return;
-  if (req.nextUrl.pathname.startsWith("/onboarding")) return;
+  // Only the public supplier onboarding form is exempt — NOT the staff
+  // /onboarding/submissions review pages, which must require a staff session.
+  if (req.nextUrl.pathname === "/onboarding") return;
   if (req.nextUrl.pathname.startsWith("/survey")) return;
   if (req.nextUrl.pathname.startsWith("/supplier-questionnaire")) return;
   if (req.nextUrl.pathname.startsWith("/apply")) return;
