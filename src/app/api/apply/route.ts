@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { maskNI, maskPassportNumber, maskBankAccount, maskSortCode } from "@/lib/utils";
 
 function escapeHtml(str: string): string {
   return str
@@ -101,7 +102,13 @@ export async function POST(request: Request) {
           entityId: contractorId || null,
           userName: `${firstName} ${lastName}`,
           userEmail: email,
-          details: JSON.stringify(body),
+          details: JSON.stringify({
+            ...body,
+            niNumber: maskNI(body.niNumber),
+            passportNumber: maskPassportNumber(body.passportNumber),
+            accountNumber: maskBankAccount(body.accountNumber),
+            sortCode: maskSortCode(body.sortCode),
+          }),
           ipAddress,
         },
       });

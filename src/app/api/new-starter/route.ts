@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { maskNI } from "@/lib/utils";
 
 function escapeHtml(str: string): string {
   return str
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
         entityType: "NewStarter",
         userName: `${firstName} ${lastName}`,
         userEmail: email,
-        details: JSON.stringify(body),
+        details: JSON.stringify({ ...body, niNumber: maskNI(body.niNumber) }),
         ipAddress,
       },
     });

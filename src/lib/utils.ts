@@ -29,6 +29,27 @@ export function maskUTR(value: string | null | undefined): string {
   return maskSensitive(value, 3);
 }
 
+/**
+ * Mask passport number - "123456789" → "••••••789"
+ */
+export function maskPassportNumber(value: string | null | undefined): string {
+  return maskSensitive(value, 3);
+}
+
+/**
+ * Mask bank account number - "12345678" → "••••5678"
+ */
+export function maskBankAccount(value: string | null | undefined): string {
+  return maskSensitive(value, 4);
+}
+
+/**
+ * Mask sort code - "123456" → "••••56"
+ */
+export function maskSortCode(value: string | null | undefined): string {
+  return maskSensitive(value, 2);
+}
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
