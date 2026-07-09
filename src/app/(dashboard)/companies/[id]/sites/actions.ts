@@ -30,11 +30,48 @@ export async function createSite(companyId: string, formData: FormData) {
   revalidatePath(`/companies/${companyId}`);
 }
 
-export async function deleteSite(siteId: string, companyId: string) {
+export type DeleteResult = { type: "ok" | "error"; message: string } | null;
+
+export async function deleteSite(
+  siteId: string,
+  companyId: string,
+  _prevState: DeleteResult,
+  _formData: FormData
+): Promise<DeleteResult> {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  await prisma.site.delete({ where: { id: siteId } });
+
+  // Safety: refuse the delete outright if departments or assignments still
+  // reference this site — neither is cascade-deleted here, so attempting
+  // the delete would just throw a raw FK constraint error (P2003). Returned
+  // (not thrown) so the specific reason reaches the user.
+  const [departmentCount, assignmentCount] = await Promise.all([
+    prisma.department.count({ where: { siteId } }),
+    prisma.assignment.count({ where: { siteId } }),
+  ]);
+
+  if (departmentCount > 0) {
+    return {
+      type: "error",
+      message: `Cannot delete — ${departmentCount} department${departmentCount === 1 ? "" : "s"} exist for this site. Remove them first.`,
+    };
+  }
+  if (assignmentCount > 0) {
+    return {
+      type: "error",
+      message: `Cannot delete — ${assignmentCount} assignment${assignmentCount === 1 ? "" : "s"} are linked to this site. Reassign or remove them first.`,
+    };
+  }
+
+  try {
+    await prisma.site.delete({ where: { id: siteId } });
+  } catch (error) {
+    console.error("Failed to delete site:", error);
+    return { type: "error", message: "Failed to delete site. Please try again." };
+  }
+
   revalidatePath(`/companies/${companyId}`);
+  return { type: "ok", message: "Site deleted." };
 }
 
 // ── Departments ───────────────────────────────────────────────────────────────

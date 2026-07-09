@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireStaff } from "@/lib/require-staff";
 
 interface IdealPostcodesAddress {
   line_1: string;
@@ -15,6 +16,14 @@ interface IdealPostcodesAddress {
 const TRIAL_CREDIT_LIMIT = 50;
 
 export async function GET(request: NextRequest) {
+  // Not covered by middleware (matcher excludes /api/*) — this proxies to a
+  // paid third-party API, so anonymous callers could burn trial credit.
+  // Only the staff "add company" address lookup uses this route today.
+  const staffCheck = await requireStaff();
+  if (!staffCheck.ok) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const pc = request.nextUrl.searchParams.get("pc")?.replace(/\s+/g, "").toUpperCase();
   if (!pc) return NextResponse.json({ error: "Postcode required" }, { status: 400 });
 

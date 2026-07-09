@@ -74,9 +74,46 @@ export async function updateCompany(id: string, formData: FormData) {
   }
 }
 
-export async function deleteCompany(id: string) {
+export type DeleteResult = { type: "ok" | "error"; message: string } | null;
+
+export async function deleteCompany(
+  id: string,
+  _prevState: DeleteResult,
+  _formData: FormData
+): Promise<DeleteResult> {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  // Safety: refuse the delete outright if records outside the owned
+  // company/site/department tree still reference this company — these are
+  // never cascade-deleted, so attempting the delete would just throw a raw
+  // FK constraint error (P2003). Returned (not thrown) so the specific
+  // reason reaches the user instead of the generic error boundary.
+  const [invoiceCount, requirementCount, approvalChain] = await Promise.all([
+    prisma.invoice.count({ where: { companyId: id } }),
+    prisma.complianceRequirement.count({ where: { companyId: id } }),
+    prisma.approvalChain.findUnique({ where: { companyId: id } }),
+  ]);
+
+  if (invoiceCount > 0) {
+    return {
+      type: "error",
+      message: `Cannot delete — ${invoiceCount} invoice${invoiceCount === 1 ? "" : "s"} exist for this company. Remove or reassign them first.`,
+    };
+  }
+  if (requirementCount > 0) {
+    return {
+      type: "error",
+      message: `Cannot delete — ${requirementCount} compliance requirement${requirementCount === 1 ? "" : "s"} exist for this company. Remove them first.`,
+    };
+  }
+  if (approvalChain) {
+    return {
+      type: "error",
+      message: "Cannot delete — this company has a custom approval chain. Remove it first.",
+    };
+  }
+
   try {
     await prisma.$transaction(async (tx) => {
       const sites = await tx.site.findMany({
@@ -108,6 +145,6 @@ export async function deleteCompany(id: string) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error("Failed to delete company:", error);
-    throw new Error("Failed to delete company. Please try again.");
+    return { type: "error", message: "Failed to delete company. Please try again." };
   }
 }

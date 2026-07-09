@@ -85,7 +85,7 @@ export default async function ComplianceReviewPage() {
                     </p>
                     {record.filePath && (
                       <a
-                        href={`/api/documents/view/${record.filePath}`}
+                        href={`/api/documents/download?key=${encodeURIComponent(record.filePath)}&view=true`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"

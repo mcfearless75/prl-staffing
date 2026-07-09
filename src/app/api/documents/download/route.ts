@@ -12,38 +12,70 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const documentId = searchParams.get("id");
+    const rawKey = searchParams.get("key");
 
-    if (!documentId) {
+    if (!documentId && !rawKey) {
       return NextResponse.json({ error: "Missing document ID" }, { status: 400 });
-    }
-
-    const document = await prisma.document.findUnique({
-      where: { id: documentId },
-    });
-
-    if (!document) {
-      return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
     // Security: contractors can only download their own documents
     const contractorId = (session.user as { contractorId?: string })?.contractorId;
     const isStaff = !contractorId;
 
-    if (!isStaff && document.contractorId !== contractorId) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    let storageKey: string;
+    let fileName: string;
+    let mimeType: string;
+
+    if (documentId) {
+      const document = await prisma.document.findUnique({
+        where: { id: documentId },
+      });
+
+      if (!document) {
+        return NextResponse.json({ error: "Document not found" }, { status: 404 });
+      }
+
+      if (!isStaff && document.contractorId !== contractorId) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      }
+
+      storageKey = document.storageKey;
+      fileName = document.fileName || "download";
+      mimeType = document.mimeType;
+    } else {
+      // Raw R2 key lookup — used by ComplianceRecord.filePath, which stores
+      // the storage key directly rather than a Document row. Staff-only:
+      // this page has no per-contractor ownership check available.
+      if (!isStaff) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      }
+      if (!rawKey!.startsWith("contractors/")) {
+        return NextResponse.json({ error: "Invalid document key" }, { status: 400 });
+      }
+
+      storageKey = rawKey!;
+      fileName = rawKey!.split("/").pop() || "document";
+      const ext = fileName.split(".").pop()?.toLowerCase();
+      const EXT_MIME: Record<string, string> = {
+        pdf: "application/pdf",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+      };
+      mimeType = (ext && EXT_MIME[ext]) || "application/octet-stream";
     }
 
     // Fetch from R2
-    const buffer = await getFromR2(document.storageKey);
+    const buffer = await getFromR2(storageKey);
 
     // If view=true, serve inline (for viewing in browser) instead of download
     const viewMode = searchParams.get("view") === "true";
-    const safeName = (document.fileName || "download").replace(/[^\w.\-]/g, "_");
+    const safeName = fileName.replace(/[^\w.\-]/g, "_");
     const disposition = viewMode ? "inline" : `attachment; filename="${safeName}"`;
 
     const ALLOWED_INLINE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp"];
-    const safeMime = viewMode && ALLOWED_INLINE_TYPES.includes(document.mimeType)
-      ? document.mimeType
+    const safeMime = viewMode && ALLOWED_INLINE_TYPES.includes(mimeType)
+      ? mimeType
       : "application/octet-stream";
 
     return new NextResponse(buffer as unknown as BodyInit, {

@@ -4,9 +4,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
-import { deleteCompany } from "../actions";
-import { createSite, deleteSite, endAssignmentById } from "./sites/actions";
+import { createSite, endAssignmentById } from "./sites/actions";
 import { AssignmentSitePicker } from "./assignment-site-picker";
+import { DeleteCompanyButton } from "./delete-company-button";
+import { DeleteSiteButton } from "./delete-site-button";
 import { formatDate } from "@/lib/utils";
 
 export default async function CompanyDetailPage({
@@ -41,7 +42,6 @@ export default async function CompanyDetailPage({
     notFound();
   }
 
-  const deleteAction = deleteCompany.bind(null, company.id);
   const createSiteAction = createSite.bind(null, company.id);
 
   return (
@@ -56,14 +56,7 @@ export default async function CompanyDetailPage({
             >
               Edit
             </Link>
-            <form action={deleteAction}>
-              <button
-                type="submit"
-                className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-              >
-                Delete
-              </button>
-            </form>
+            <DeleteCompanyButton companyId={company.id} />
           </div>
         }
       />
@@ -179,7 +172,6 @@ export default async function CompanyDetailPage({
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {company.sites.map((site) => {
-                  const deleteSiteAction = deleteSite.bind(null, site.id, company.id);
                   return (
                     <tr key={site.id} className="hover:bg-gray-50 transition-colors">
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
@@ -209,11 +201,7 @@ export default async function CompanyDetailPage({
                         >
                           Edit
                         </Link>
-                        <form action={deleteSiteAction} className="inline">
-                          <button type="submit" className="text-sm text-red-500 hover:text-red-700">
-                            Delete
-                          </button>
-                        </form>
+                        <DeleteSiteButton siteId={site.id} companyId={company.id} />
                       </td>
                     </tr>
                   );
