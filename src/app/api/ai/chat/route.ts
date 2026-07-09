@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
 import Anthropic from "@anthropic-ai/sdk";
 
 const SONNET_MODEL = "claude-sonnet-4-6";
@@ -46,10 +46,8 @@ type ApiMessage = {
 };
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const guard = await requireStaff();
+  if (!guard.ok) return new Response("Unauthorized", { status: guard.reason === "forbidden" ? 403 : 401 });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {

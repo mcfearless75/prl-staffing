@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
 import mammoth from "mammoth";
 
 function extractRating(text: string, label: string): number {
@@ -118,10 +118,8 @@ function parseDocument(raw: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireStaff();
+  if (!guard.ok) return NextResponse.json({ error: "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
 
   try {
     const formData = await req.formData();

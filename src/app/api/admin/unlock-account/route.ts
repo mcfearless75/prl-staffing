@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 
 // GET /api/admin/unlock-account?email=xxx  — check login status
 // POST /api/admin/unlock-account            — unlock { email }
 
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = await requireStaff();
+  if (!guard.ok) return NextResponse.json({ error: "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
 
   const { searchParams } = new URL(request.url);
   const email = searchParams.get("email")?.trim().toLowerCase();
@@ -42,8 +42,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = await requireStaff();
+  if (!guard.ok) return NextResponse.json({ error: "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
 
   const { email } = await request.json();
   const normalised = email?.trim().toLowerCase();

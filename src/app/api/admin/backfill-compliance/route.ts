@@ -8,7 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
 
 const TYPE_MAP: Record<string, string> = {
   "Passport": "Right to Work",
@@ -25,9 +25,9 @@ const TYPE_MAP: Record<string, string> = {
 
 export async function GET(req: Request) {
   const autoVerify = new URL(req.url).searchParams.get("autoVerify") === "true";
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = await requireStaff();
+  if (!guard.ok) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
   }
 
   // Fetch all compliance-related documents

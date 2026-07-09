@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
 import { prisma } from "@/lib/db";
 import { Resend } from "resend";
 
@@ -90,10 +90,8 @@ function buildEmailHtml(
 
 export async function POST(req: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
+  const guard = await requireStaff();
+  if (!guard.ok) return NextResponse.json({ error: "Unauthorised" }, { status: guard.reason === "forbidden" ? 403 : 401 });
 
   const body = await req.json().catch(() => ({}));
   const days: number = body.days ?? 30;

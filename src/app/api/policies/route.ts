@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
 import { NextRequest, NextResponse } from "next/server";
 import { uploadToR2 } from "@/lib/r2";
 
@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 // GET /api/policies — public (isPublic only) or all (auth)
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  const isStaff = !!session?.user;
+  const guard = await requireStaff();
+  const isStaff = guard.ok;
 
   const policies = await prisma.policy.findMany({
     where: isStaff ? undefined : { isPublic: true },
@@ -20,10 +20,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/policies — upload new policy (auth required)
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
+  const guard = await requireStaff();
+  if (!guard.ok) return NextResponse.json({ error: "Unauthorised" }, { status: guard.reason === "forbidden" ? 403 : 401 });
+  const { session } = guard;
 
   try {
     const formData = await request.formData();

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 
 // Required docs every active contractor must have
@@ -8,10 +8,8 @@ const REQUIRED_DOCS = ["CV", "CSCS", "CCNSG", "Passport"];
 const OPTIONAL_DOCS = ["NPORS", "Share Code", "DBS", "Insurance", "Right to Work"];
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireStaff();
+  if (!guard.ok) return NextResponse.json({ error: "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
 
   // Get all active contractors with their documents and compliance records
   const contractors = await prisma.contractor.findMany({

@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
 import { prisma } from "@/lib/db";
 
 function escapeCSV(value: string): string {
@@ -9,10 +9,8 @@ function escapeCSV(value: string): string {
 }
 
 export async function GET() {
-  const session = await auth();
-  if (!session) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const guard = await requireStaff();
+  if (!guard.ok) return new Response("Unauthorized", { status: guard.reason === "forbidden" ? 403 : 401 });
 
   const withRecords = await prisma.complianceRecord.findMany({
     select: { contractorId: true },
