@@ -126,7 +126,11 @@ export async function generateInvoices(formData: FormData) {
 
       for (const ts of companyTimesheets) {
         const contractor = ts.contractor;
-        const chargeRate = contractor.chargeRate || contractor.dayRate || 0;
+        // chargeRate is hourly (see schema). dayRate is per-day and must NOT
+        // be used against hours — if no hourly charge rate is set, bill 0 and
+        // flag the line so it gets fixed before the invoice is sent.
+        const chargeRate = contractor.chargeRate || 0;
+        const missingChargeRate = !contractor.chargeRate;
         const overtimeRate = chargeRate * 1.5;
         const regularHours = ts.totalHours - ts.overtimeHours;
         const amount =
@@ -135,7 +139,7 @@ export async function generateInvoices(formData: FormData) {
         lines.push({
           contractorId: contractor.id,
           timesheetId: ts.id,
-          description: `${contractor.firstName.charAt(0)}. ${contractor.lastName} - ${ts.assignment?.role || contractor.jobTitle || "Contractor"}`,
+          description: `${contractor.firstName.charAt(0)}. ${contractor.lastName} - ${ts.assignment?.role || contractor.jobTitle || "Contractor"}${missingChargeRate ? " [NO CHARGE RATE SET]" : ""}`,
           hours: regularHours,
           overtimeHours: ts.overtimeHours,
           rate: chargeRate,

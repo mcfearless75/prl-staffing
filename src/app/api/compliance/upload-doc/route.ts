@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { uploadToR2 } from "@/lib/r2";
+import { auth } from "@/lib/auth";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME_TYPES = [
@@ -13,6 +14,12 @@ const ALLOWED_COMPLIANCE_TYPES = ["Right to Work", "CSCS", "Insurance"];
 
 export async function POST(request: NextRequest) {
   try {
+    // Middleware does not run on /api/* — the route must enforce auth itself
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const formData = await request.formData();
 
     const contractorId = formData.get("contractorId") as string | null;
@@ -23,6 +30,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Missing contractorId or document type" },
         { status: 400 }
+      );
+    }
+
+    // Security: Contractors can only upload to their own profile
+    const sessionUser = session.user as { contractorId?: string; userType?: string };
+    if (sessionUser.userType === "contractor" && sessionUser.contractorId !== contractorId) {
+      return NextResponse.json(
+        { error: "Unauthorized — you can only upload to your own profile" },
+        { status: 403 }
       );
     }
 
@@ -77,7 +93,10 @@ export async function POST(request: NextRequest) {
     await uploadToR2(storageKey, buffer, file.type);
 
     const today = new Date().toISOString().split("T")[0];
-    const uploadNote = `Uploaded by contractor via self-service link on ${today}. Awaiting verification.`;
+    const uploadNote =
+      sessionUser.userType === "contractor"
+        ? `Uploaded by contractor via self-service link on ${today}. Awaiting verification.`
+        : `Uploaded by staff via compliance upload page on ${today}. Awaiting verification.`;
 
     // Upsert compliance record — update if exists, create if not
     const existingRecord = await prisma.complianceRecord.findFirst({

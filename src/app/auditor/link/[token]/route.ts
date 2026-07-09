@@ -5,12 +5,9 @@
  */
 
 import { prisma } from "@/lib/db";
+import { getAuditorLinkSecret, verifyAuditorLinkToken } from "@/lib/auditor-link";
 import { SignJWT } from "jose";
 import { NextRequest, NextResponse } from "next/server";
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.AUDITOR_JWT_SECRET ?? process.env.AUTH_SECRET ?? "fallback-secret"
-);
 
 const SITE_URL = "https://www.prismworkforce.online";
 
@@ -38,8 +35,28 @@ export async function GET(
     return NextResponse.redirect(new URL("/auditor/login", base));
   }
 
+  // Fail closed when no signing secret is configured
+  let jwtSecret: Uint8Array;
+  try {
+    jwtSecret = new TextEncoder().encode(getAuditorLinkSecret());
+  } catch {
+    return NextResponse.json(
+      { error: "Auditor access is not configured" },
+      { status: 500 }
+    );
+  }
+
+  // Verify HMAC signature and expiry before touching the database
+  const result = verifyAuditorLinkToken(decodeURIComponent(token));
+  if (!result.ok) {
+    const error = result.reason === "expired" ? "expired-link" : "invalid-link";
+    return NextResponse.redirect(
+      new URL(`/auditor/login?error=${error}`, base)
+    );
+  }
+
   const auditor = await prisma.auditorUser.findUnique({
-    where: { loginToken: token },
+    where: { loginToken: result.loginToken },
   });
 
   if (!auditor) {
@@ -60,7 +77,7 @@ export async function GET(
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("8h")
-    .sign(JWT_SECRET);
+    .sign(jwtSecret);
 
   // Update last login
   await prisma.auditorUser.update({
