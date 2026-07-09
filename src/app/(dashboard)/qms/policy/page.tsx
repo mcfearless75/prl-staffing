@@ -103,9 +103,6 @@ export default async function QualityPolicyPage() {
             comply with the PRL Site Solutions Quality Policy.
           </p>
           <AcknowledgeButton
-            userId={user.id}
-            userEmail={user.email || ""}
-            userName={user.name || ""}
             hasAcknowledged={hasAcknowledged}
           />
         </div>

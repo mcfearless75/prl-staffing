@@ -62,7 +62,9 @@ export default auth((req) => {
   if (req.nextUrl.pathname.startsWith("/new-starter")) return;
 
   if (req.nextUrl.pathname.startsWith("/payment-query")) return;
-  if (req.nextUrl.pathname.startsWith("/grievance")) return;
+  // Exact match only — the public form is /grievance (singular); the
+  // staff /grievances (plural) list and detail pages must stay guarded.
+  if (req.nextUrl.pathname === "/grievance") return;
   if (req.nextUrl.pathname.startsWith("/policy-documents")) return;
   if (req.nextUrl.pathname === "/privacy") return;
   if (req.nextUrl.pathname === "/contract") return;

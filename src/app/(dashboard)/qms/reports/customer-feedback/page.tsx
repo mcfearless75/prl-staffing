@@ -95,6 +95,7 @@ export default function CustomerFeedbackPage() {
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
   const [rawPreview, setRawPreview] = useState("");
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -120,9 +121,18 @@ export default function CustomerFeedbackPage() {
 
   function loadResponses() {
     fetch("/api/qms-reports/customer-feedback")
-      .then((res) => res.json())
-      .then((data) => { setResponses(data); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setFetchError(data.error || `Server error ${res.status}`);
+          return;
+        }
+        const data = await res.json();
+        setResponses(data);
+        setFetchError(null);
+      })
+      .catch((err) => setFetchError(err instanceof Error ? err.message : "Failed to load responses"))
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => { loadResponses(); }, []);
@@ -197,6 +207,13 @@ export default function CustomerFeedbackPage() {
           </div>
         }
       />
+
+      {/* Error banner */}
+      {fetchError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          ⚠️ Could not load responses: {fetchError}
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

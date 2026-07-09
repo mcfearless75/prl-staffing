@@ -2,10 +2,10 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { deleteContractor } from "../actions";
 import { maskNI, maskUTR } from "@/lib/utils";
 import { ContractorPortalStatus } from "@/components/contractor-portal-status";
 import { ContractorQuickAssign } from "./contractor-quick-assign";
+import { DeleteContractorButton } from "./delete-contractor-button";
 
 export default async function ContractorDetailPage({
   params,
@@ -62,8 +62,6 @@ export default async function ContractorDetailPage({
       : contractor.status === "Inactive"
         ? "bg-gray-100 text-gray-800"
         : "bg-yellow-100 text-yellow-800";
-
-  const deleteAction = deleteContractor.bind(null, contractor.id);
 
   function worstStatus(statuses: string[]): string {
     if (statuses.length === 0) return "No Records";
@@ -150,15 +148,7 @@ export default async function ContractorDetailPage({
             >
               Edit
             </Link>
-            <form action={deleteAction}>
-              <input type="hidden" name="id" value={contractor.id} />
-              <button
-                type="submit"
-                className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50"
-              >
-                Delete
-              </button>
-            </form>
+            <DeleteContractorButton contractorId={contractor.id} />
           </div>
         </div>
       </div>

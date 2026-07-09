@@ -19,8 +19,19 @@ export default async function SubmissionDetailPage({
 
   if (!submission) notFound();
 
-  const rates = submission.rates ? JSON.parse(submission.rates) : [];
-  const breakdown = submission.breakdown ? JSON.parse(submission.breakdown) : [];
+  let rates: { description: string; rate: string; basis: string }[] = [];
+  try {
+    rates = submission.rates ? JSON.parse(submission.rates) : [];
+  } catch {
+    rates = [];
+  }
+
+  let breakdown: unknown[] = [];
+  try {
+    breakdown = submission.breakdown ? JSON.parse(submission.breakdown) : [];
+  } catch {
+    breakdown = [];
+  }
 
   // Check if contractor already created from this submission
   const existingContractor = submission.contactEmail

@@ -4,13 +4,10 @@ import { useState } from "react";
 import { acknowledgePolicy } from "./actions";
 
 interface AcknowledgeButtonProps {
-  userId: string;
-  userEmail: string;
-  userName: string;
   hasAcknowledged: boolean;
 }
 
-export function AcknowledgeButton({ userId, userEmail, userName, hasAcknowledged }: AcknowledgeButtonProps) {
+export function AcknowledgeButton({ hasAcknowledged }: AcknowledgeButtonProps) {
   const [loading, setLoading] = useState(false);
   const [acknowledged, setAcknowledged] = useState(hasAcknowledged);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +16,7 @@ export function AcknowledgeButton({ userId, userEmail, userName, hasAcknowledged
     setLoading(true);
     setError(null);
     try {
-      const result = await acknowledgePolicy(userId, userEmail, userName);
+      const result = await acknowledgePolicy();
       if (result.error) {
         setError(result.error);
       } else {

@@ -12,14 +12,33 @@ function calculateRiskLevel(score: number): string {
   return "Low";
 }
 
+function isUniqueConstraintError(error: unknown, field: string): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: string }).code === "P2002" &&
+    !!(error as { meta?: { target?: string[] } }).meta?.target?.includes(field)
+  );
+}
+
+// Resilient to deletions: looks at the highest existing risk number rather than
+// counting rows, so a deleted mid-sequence record can never cause a collision.
+async function nextRiskNumber(): Promise<string> {
+  const existing = await prisma.risk.findMany({
+    select: { riskNumber: true },
+  });
+  const maxNum = existing.reduce((max, r) => {
+    const match = r.riskNumber.match(/^RISK-(\d+)$/);
+    const n = match ? parseInt(match[1], 10) : 0;
+    return n > max ? n : max;
+  }, 0);
+  return `RISK-${String(maxNum + 1).padStart(3, "0")}`;
+}
+
 export async function createRisk(formData: FormData) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
-    // Auto-generate risk number: RISK-NNN
-    const count = await prisma.risk.count();
-    const riskNumber = `RISK-${String(count + 1).padStart(3, "0")}`;
-
     const likelihood = parseInt(formData.get("likelihood") as string) || 3;
     const impact = parseInt(formData.get("impact") as string) || 3;
     const riskScore = likelihood * impact;
@@ -27,25 +46,36 @@ export async function createRisk(formData: FormData) {
 
     const targetDateRaw = formData.get("targetDate") as string;
     const reviewDateRaw = formData.get("reviewDate") as string;
+    const data = {
+      title: formData.get("title") as string,
+      description: formData.get("description") as string,
+      category: formData.get("category") as string,
+      likelihood,
+      impact,
+      riskScore,
+      riskLevel,
+      owner: formData.get("owner") as string,
+      existingControls: (formData.get("existingControls") as string) || null,
+      additionalActions: (formData.get("additionalActions") as string) || null,
+      targetDate: targetDateRaw ? new Date(targetDateRaw) : null,
+      reviewDate: reviewDateRaw ? new Date(reviewDateRaw) : null,
+      status: (formData.get("status") as string) || "Active",
+    };
 
-    await prisma.risk.create({
-      data: {
-        riskNumber,
-        title: formData.get("title") as string,
-        description: formData.get("description") as string,
-        category: formData.get("category") as string,
-        likelihood,
-        impact,
-        riskScore,
-        riskLevel,
-        owner: formData.get("owner") as string,
-        existingControls: (formData.get("existingControls") as string) || null,
-        additionalActions: (formData.get("additionalActions") as string) || null,
-        targetDate: targetDateRaw ? new Date(targetDateRaw) : null,
-        reviewDate: reviewDateRaw ? new Date(reviewDateRaw) : null,
-        status: (formData.get("status") as string) || "Active",
-      },
-    });
+    // Two attempts: if a concurrent create takes the computed number first,
+    // re-fetch the max and retry once rather than failing outright.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const riskNumber = await nextRiskNumber();
+      try {
+        await prisma.risk.create({ data: { riskNumber, ...data } });
+        break;
+      } catch (createError) {
+        if (attempt === 0 && isUniqueConstraintError(createError, "riskNumber")) {
+          continue;
+        }
+        throw createError;
+      }
+    }
 
     revalidatePath("/qms/risk-register");
     redirect("/qms/risk-register");

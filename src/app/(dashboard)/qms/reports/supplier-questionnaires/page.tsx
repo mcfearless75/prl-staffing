@@ -47,15 +47,22 @@ export default function SupplierQuestionnairesPage() {
   const [responses, setResponses] = useState<SupplierResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/qms-reports/supplier-questionnaires")
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setFetchError(data.error || `Server error ${res.status}`);
+          return;
+        }
+        const data = await res.json();
         setResponses(data);
-        setLoading(false);
+        setFetchError(null);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => setFetchError(err instanceof Error ? err.message : "Failed to load questionnaires"))
+      .finally(() => setLoading(false));
   }, []);
 
   const hasInsurance = (r: SupplierResponse) => {
@@ -89,6 +96,13 @@ export default function SupplierQuestionnairesPage() {
           </Link>
         }
       />
+
+      {/* Error banner */}
+      {fetchError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          ⚠️ Could not load questionnaires: {fetchError}
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

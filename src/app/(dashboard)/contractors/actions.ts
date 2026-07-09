@@ -183,29 +183,60 @@ export async function updateContractor(
   }
 }
 
-export async function deleteContractor(id: string) {
+export type ContractorDeleteResult = { type: "ok" | "error"; message: string } | null;
+
+export async function deleteContractor(
+  id: string,
+  _prevState: ContractorDeleteResult,
+  _formData: FormData
+): Promise<ContractorDeleteResult> {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  try {
-    // Delete related records first (foreign key constraints)
-    await prisma.timesheetEntry.deleteMany({
-      where: { timesheet: { contractorId: id } },
-    });
-    await prisma.timesheetAuditLog.deleteMany({
-      where: { timesheet: { contractorId: id } },
-    });
-    await prisma.timesheetApproval.deleteMany({
-      where: { timesheet: { contractorId: id } },
-    });
-    await prisma.timesheet.deleteMany({ where: { contractorId: id } });
-    await prisma.complianceRecord.deleteMany({ where: { contractorId: id } });
-    await prisma.document.deleteMany({ where: { contractorId: id } });
-    await prisma.invoiceLine.deleteMany({ where: { contractorId: id } });
-    await prisma.assignment.deleteMany({ where: { contractorId: id } });
-    await prisma.contractorLogin.deleteMany({ where: { contractorId: id } });
 
-    await prisma.contractor.delete({
-      where: { id },
+  // Safety: refuse the delete outright if this contractor has invoice lines
+  // on an invoice that has already left Draft (Reconciling, Approved, Sent,
+  // Paid, Disputed). Those lines are part of a billing record that has been
+  // reconciled or sent to the client — silently cascading the delete would
+  // corrupt the line-item total on an invoice that may already be with the
+  // customer. Returned (not thrown) so the reason reaches the user instead
+  // of a generic error boundary or a raw FK constraint error.
+  const issuedInvoiceLineCount = await prisma.invoiceLine.count({
+    where: { contractorId: id, invoice: { status: { not: "Draft" } } },
+  });
+
+  if (issuedInvoiceLineCount > 0) {
+    return {
+      type: "error",
+      message: `Cannot delete — this contractor has ${issuedInvoiceLineCount} invoice line${issuedInvoiceLineCount === 1 ? "" : "s"} on invoice(s) that have already left Draft status. Resolve or credit those invoices first.`,
+    };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Timesheet children (TimesheetEntry, TimesheetAuditLog,
+      // TimesheetApproval) all declare onDelete: Cascade back to Timesheet
+      // in the schema, so deleting the Timesheet rows below removes them
+      // automatically at the DB level — no explicit deletes needed.
+      await tx.timesheet.deleteMany({ where: { contractorId: id } });
+
+      // Contractor-owned data with no significance once the contractor is
+      // gone — safe to cascade.
+      await tx.complianceRecord.deleteMany({ where: { contractorId: id } });
+      await tx.document.deleteMany({ where: { contractorId: id } });
+      await tx.contractorLogin.deleteMany({ where: { contractorId: id } });
+
+      // Ending an assignment and later deleting the contractor is normal
+      // lifecycle — assignment status (including Completed) never blocks.
+      await tx.assignment.deleteMany({ where: { contractorId: id } });
+
+      // Only Draft-invoice lines can reach here — the pre-flight check above
+      // already refused the delete if any non-Draft lines exist. Re-scoping
+      // to Draft here guards against a status change racing the check.
+      await tx.invoiceLine.deleteMany({
+        where: { contractorId: id, invoice: { status: "Draft" } },
+      });
+
+      await tx.contractor.delete({ where: { id } });
     });
 
     revalidatePath("/contractors");
@@ -214,6 +245,6 @@ export async function deleteContractor(id: string) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error("Failed to delete contractor:", error);
-    throw new Error("Failed to delete contractor. Please try again.");
+    return { type: "error", message: "Failed to delete contractor. Please try again." };
   }
 }

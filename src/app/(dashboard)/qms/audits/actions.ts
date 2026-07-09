@@ -5,29 +5,61 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
+function isUniqueConstraintError(error: unknown, field: string): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: string }).code === "P2002" &&
+    !!(error as { meta?: { target?: string[] } }).meta?.target?.includes(field)
+  );
+}
+
+// Resilient to deletions: looks at the highest existing audit number for the
+// year rather than counting rows, so a deleted mid-sequence record can never
+// cause a collision.
+async function nextAuditNumber(year: number): Promise<string> {
+  const prefix = `IA-${year}-`;
+  const existing = await prisma.internalAudit.findMany({
+    where: { auditNumber: { startsWith: prefix } },
+    select: { auditNumber: true },
+  });
+  const maxNum = existing.reduce((max, r) => {
+    const match = r.auditNumber.match(/^IA-\d{4}-(\d+)$/);
+    const n = match ? parseInt(match[1], 10) : 0;
+    return n > max ? n : max;
+  }, 0);
+  return `${prefix}${String(maxNum + 1).padStart(3, "0")}`;
+}
+
 export async function createAudit(formData: FormData) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
-    // Auto-generate audit number: IA-YYYY-NNN
     const year = new Date().getFullYear();
-    const count = await prisma.internalAudit.count({
-      where: { auditNumber: { startsWith: `IA-${year}-` } },
-    });
-    const auditNumber = `IA-${year}-${String(count + 1).padStart(3, "0")}`;
+    const data = {
+      title: formData.get("title") as string,
+      scope: (formData.get("scope") as string) || null,
+      auditDate: new Date(formData.get("auditDate") as string),
+      leadAuditor: formData.get("leadAuditor") as string,
+      auditTeam: (formData.get("auditTeam") as string) || null,
+      isoClause: (formData.get("isoClause") as string) || null,
+      status: (formData.get("status") as string) || "Planned",
+    };
 
-    await prisma.internalAudit.create({
-      data: {
-        auditNumber,
-        title: formData.get("title") as string,
-        scope: (formData.get("scope") as string) || null,
-        auditDate: new Date(formData.get("auditDate") as string),
-        leadAuditor: formData.get("leadAuditor") as string,
-        auditTeam: (formData.get("auditTeam") as string) || null,
-        isoClause: (formData.get("isoClause") as string) || null,
-        status: (formData.get("status") as string) || "Planned",
-      },
-    });
+    // Two attempts: if a concurrent create takes the computed number first,
+    // re-fetch the max and retry once rather than failing outright.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const auditNumber = await nextAuditNumber(year);
+      try {
+        await prisma.internalAudit.create({ data: { auditNumber, ...data } });
+        break;
+      } catch (createError) {
+        if (attempt === 0 && isUniqueConstraintError(createError, "auditNumber")) {
+          continue;
+        }
+        throw createError;
+      }
+    }
 
     revalidatePath("/qms/audits");
     redirect("/qms/audits");

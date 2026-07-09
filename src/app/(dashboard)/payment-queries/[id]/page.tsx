@@ -11,7 +11,12 @@ export default async function PaymentQueryDetailPage({ params }: { params: Promi
   const query = await prisma.paymentQuery.findUnique({ where: { id } });
   if (!query) notFound();
 
-  const hours = query.hours ? JSON.parse(query.hours) : [];
+  let hours: any[] = [];
+  try {
+    hours = query.hours ? JSON.parse(query.hours) : [];
+  } catch {
+    hours = [];
+  }
   const assignJenni = assignQuery.bind(null, id, "Jenni Connors");
   const close = closeQuery.bind(null, id);
 

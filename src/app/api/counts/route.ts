@@ -23,7 +23,7 @@ export async function GET() {
         where: { status: "Pending" },
       }),
       prisma.contractor.count({
-        where: { status: "Pending" },
+        where: { status: "Applied" },
       }),
       prisma.paymentQuery.count({
         where: { status: { in: ["Open", "Assigned"] } },

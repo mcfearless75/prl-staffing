@@ -5,9 +5,17 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-export async function acknowledgePolicy(userId: string, userEmail: string, userName: string) {
+export async function acknowledgePolicy() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  const user = session.user as { id?: string; email?: string; name?: string };
+  const userId = user.id;
+  const userEmail = user.email || "";
+  const userName = user.name || "";
+
+  if (!userId) redirect("/login");
+
   // Check if already acknowledged current version
   const existing = await prisma.policyAcknowledgement.findFirst({
     where: { userId, policyVersion: "1.0" },
