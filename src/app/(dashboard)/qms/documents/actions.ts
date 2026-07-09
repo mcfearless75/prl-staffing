@@ -55,7 +55,7 @@ export async function uploadQmsDocument(formData: FormData) {
         fileType,
         fileSize,
         r2Key,
-        uploadedBy: "System",
+        uploadedBy: session.user.email || "staff",
         version: 1,
       },
     });

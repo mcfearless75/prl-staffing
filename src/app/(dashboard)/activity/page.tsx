@@ -27,6 +27,18 @@ function getIcon(action: string) {
   return "📋";
 }
 
+function buildPageHref(
+  page: number,
+  params: { user?: string; entity?: string; filter?: string },
+) {
+  const sp = new URLSearchParams();
+  if (params.user) sp.set("user", params.user);
+  if (params.entity) sp.set("entity", params.entity);
+  if (params.filter) sp.set("filter", params.filter);
+  sp.set("page", String(page));
+  return `/activity?${sp.toString()}`;
+}
+
 export default async function ActivityLogPage({
   searchParams,
 }: {
@@ -185,10 +197,12 @@ export default async function ActivityLogPage({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2">
-          {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1).map((p) => (
+          {/* Sane ceiling to avoid rendering an unbounded number of links; raised from the
+              previous hard cap of 10 which made activity beyond page 10 unreachable. */}
+          {Array.from({ length: Math.min(totalPages, 100) }, (_, i) => i + 1).map((p) => (
             <a
               key={p}
-              href={`/activity?page=${p}${userFilter ? `&user=${userFilter}` : ""}${entityFilter ? `&entity=${entityFilter}` : ""}`}
+              href={buildPageHref(p, { user: userFilter, entity: entityFilter, filter: quickFilter })}
               className={`rounded px-3 py-1 text-sm ${
                 p === page ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}

@@ -7,73 +7,105 @@ function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
 }
 
+const TREND_MONTHS = 6;
+
 export default async function SpendDashboardPage() {
-  // Get all invoices
-  const invoices = await prisma.invoice.findMany({
-    include: {
-      company: true,
-      lines: {
-        include: { contractor: true },
-      },
-    },
-    orderBy: { periodEnd: "desc" },
-  });
+  // Bound the trend window at the DB level instead of scanning every invoice ever created
+  const trendWindowStart = new Date();
+  trendWindowStart.setMonth(trendWindowStart.getMonth() - (TREND_MONTHS - 1));
+  trendWindowStart.setDate(1);
+  trendWindowStart.setHours(0, 0, 0, 0);
 
-  // Total spend
-  const totalSpend = invoices.reduce((sum, i) => sum + i.total, 0);
-  const totalPaid = invoices
-    .filter((i) => i.status === "Paid")
-    .reduce((sum, i) => sum + i.total, 0);
-  const totalOutstanding = invoices
-    .filter((i) => ["Approved", "Sent"].includes(i.status))
-    .reduce((sum, i) => sum + i.total, 0);
-  const totalOverdue = invoices
-    .filter(
-      (i) =>
-        i.dueDate &&
-        new Date(i.dueDate) < new Date() &&
-        ["Approved", "Sent"].includes(i.status)
-    )
-    .reduce((sum, i) => sum + i.total, 0);
+  // Push all aggregation into the DB (counts/sums/group-bys) instead of pulling every
+  // invoice + line + contractor into memory, which grows unbounded with the table.
+  const [
+    invoiceCount,
+    totalSpendAgg,
+    totalPaidAgg,
+    totalOutstandingAgg,
+    totalOverdueAgg,
+    companyGroups,
+    contractorGroups,
+    trendInvoices,
+    lineHoursAgg,
+    latestInvoice,
+  ] = await Promise.all([
+    prisma.invoice.count(),
+    prisma.invoice.aggregate({ _sum: { total: true } }),
+    prisma.invoice.aggregate({ _sum: { total: true }, where: { status: "Paid" } }),
+    prisma.invoice.aggregate({
+      _sum: { total: true },
+      where: { status: { in: ["Approved", "Sent"] } },
+    }),
+    prisma.invoice.aggregate({
+      _sum: { total: true },
+      where: { status: { in: ["Approved", "Sent"] }, dueDate: { lt: new Date() } },
+    }),
+    prisma.invoice.groupBy({
+      by: ["companyId"],
+      _sum: { total: true },
+      _count: { _all: true },
+      orderBy: { _sum: { total: "desc" } },
+      take: 8,
+    }),
+    prisma.invoiceLine.groupBy({
+      by: ["contractorId"],
+      _sum: { amount: true, hours: true, overtimeHours: true },
+      orderBy: { _sum: { amount: "desc" } },
+      take: 10,
+    }),
+    prisma.invoice.findMany({
+      where: { periodEnd: { gte: trendWindowStart } },
+      select: { periodEnd: true, total: true },
+    }),
+    prisma.invoiceLine.aggregate({ _sum: { hours: true, overtimeHours: true } }),
+    prisma.invoice.findFirst({ orderBy: { periodEnd: "desc" } }),
+  ]);
 
-  // Spend by company
-  const spendByCompany = new Map<string, { name: string; total: number; invoiceCount: number }>();
-  for (const inv of invoices) {
-    const existing = spendByCompany.get(inv.companyId) || {
-      name: inv.company.name,
-      total: 0,
-      invoiceCount: 0,
-    };
-    existing.total += inv.total;
-    existing.invoiceCount += 1;
-    spendByCompany.set(inv.companyId, existing);
-  }
-  const companySpend = [...spendByCompany.values()].sort((a, b) => b.total - a.total);
+  const totalSpend = totalSpendAgg._sum.total || 0;
+  const totalPaid = totalPaidAgg._sum.total || 0;
+  const totalOutstanding = totalOutstandingAgg._sum.total || 0;
+  const totalOverdue = totalOverdueAgg._sum.total || 0;
 
-  // Spend by contractor (from invoice lines)
-  const spendByContractor = new Map<string, { name: string; total: number; hours: number }>();
-  for (const inv of invoices) {
-    for (const line of inv.lines) {
-      const key = line.contractorId;
-      const existing = spendByContractor.get(key) || {
-        name: `${line.contractor.firstName} ${line.contractor.lastName}`,
-        total: 0,
-        hours: 0,
-      };
-      existing.total += line.amount;
-      existing.hours += line.hours + line.overtimeHours;
-      spendByContractor.set(key, existing);
-    }
-  }
-  const contractorSpend = [...spendByContractor.values()].sort((a, b) => b.total - a.total).slice(0, 10);
+  // Spend by company (names looked up only for the top 8 companies returned by the group-by)
+  const companyIds = companyGroups.map((g) => g.companyId);
+  const companies = companyIds.length
+    ? await prisma.company.findMany({
+        where: { id: { in: companyIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const companyNameById = new Map(companies.map((c) => [c.id, c.name]));
+  const companySpend = companyGroups.map((g) => ({
+    name: companyNameById.get(g.companyId) || "Unknown",
+    total: g._sum.total || 0,
+    invoiceCount: g._count._all,
+  }));
 
-  // Monthly spend trend (last 6 months)
+  // Spend by contractor (from invoice lines) — top 10 by spend
+  const contractorIds = contractorGroups.map((g) => g.contractorId);
+  const contractors = contractorIds.length
+    ? await prisma.contractor.findMany({
+        where: { id: { in: contractorIds } },
+        select: { id: true, firstName: true, lastName: true },
+      })
+    : [];
+  const contractorNameById = new Map(
+    contractors.map((c) => [c.id, `${c.firstName} ${c.lastName}`])
+  );
+  const contractorSpend = contractorGroups.map((g) => ({
+    name: contractorNameById.get(g.contractorId) || "Unknown",
+    total: g._sum.amount || 0,
+    hours: (g._sum.hours || 0) + (g._sum.overtimeHours || 0),
+  }));
+
+  // Monthly spend trend (last 6 months) — only fetched invoices within the trend window
   const monthlySpend = new Map<string, number>();
-  for (const inv of invoices) {
+  for (const inv of trendInvoices) {
     const key = `${inv.periodEnd.getFullYear()}-${String(inv.periodEnd.getMonth() + 1).padStart(2, "0")}`;
     monthlySpend.set(key, (monthlySpend.get(key) || 0) + inv.total);
   }
-  const months = [...monthlySpend.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-6);
+  const months = [...monthlySpend.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-TREND_MONTHS);
   const maxMonthly = Math.max(...months.map((m) => m[1]), 1);
 
   // Variance alerts
@@ -86,8 +118,8 @@ export default async function SpendDashboardPage() {
     });
   }
   // Check for high overtime spend
-  const totalOvertimeHours = invoices.flatMap((i) => i.lines).reduce((sum, l) => sum + l.overtimeHours, 0);
-  const totalRegularHours = invoices.flatMap((i) => i.lines).reduce((sum, l) => sum + l.hours, 0);
+  const totalOvertimeHours = lineHoursAgg._sum.overtimeHours || 0;
+  const totalRegularHours = lineHoursAgg._sum.hours || 0;
   if (totalRegularHours > 0 && totalOvertimeHours / (totalRegularHours + totalOvertimeHours) > 0.15) {
     alerts.push({
       type: "High Overtime",
@@ -96,9 +128,8 @@ export default async function SpendDashboardPage() {
     });
   }
   // Average invoice value variance
-  if (invoices.length >= 2) {
-    const avgTotal = totalSpend / invoices.length;
-    const latestInvoice = invoices[0];
+  if (invoiceCount >= 2) {
+    const avgTotal = totalSpend / invoiceCount;
     if (latestInvoice && latestInvoice.total > avgTotal * 1.5) {
       alerts.push({
         type: "Variance",

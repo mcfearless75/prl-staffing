@@ -13,7 +13,9 @@ export async function createRateCard(formData: FormData) {
     const location = formData.get("location") as string;
     const payRate = parseFloat(formData.get("payRate") as string);
     const chargeRate = parseFloat(formData.get("chargeRate") as string);
-    const margin = parseFloat(((chargeRate - payRate) / chargeRate * 100).toFixed(1));
+    const margin = chargeRate > 0
+      ? parseFloat(((chargeRate - payRate) / chargeRate * 100).toFixed(1))
+      : null;
     const effectiveFrom = new Date(formData.get("effectiveFrom") as string);
     const effectiveToRaw = formData.get("effectiveTo") as string;
     const effectiveTo = effectiveToRaw ? new Date(effectiveToRaw) : null;
@@ -48,7 +50,9 @@ export async function updateRateCard(id: string, formData: FormData) {
     const location = formData.get("location") as string;
     const payRate = parseFloat(formData.get("payRate") as string);
     const chargeRate = parseFloat(formData.get("chargeRate") as string);
-    const margin = parseFloat(((chargeRate - payRate) / chargeRate * 100).toFixed(1));
+    const margin = chargeRate > 0
+      ? parseFloat(((chargeRate - payRate) / chargeRate * 100).toFixed(1))
+      : null;
     const effectiveFrom = new Date(formData.get("effectiveFrom") as string);
     const effectiveToRaw = formData.get("effectiveTo") as string;
     const effectiveTo = effectiveToRaw ? new Date(effectiveToRaw) : null;

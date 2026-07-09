@@ -13,13 +13,25 @@ import {
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// The rest of the app (overtime calculation, weekly grouping/reporting) assumes
+// weekStarting always falls on a Monday. The "Week Starting" date picker doesn't
+// tell the user to pick a Monday, so snap whatever date they choose to that
+// week's Monday instead of rejecting the submission.
+function toMonday(date: Date): Date {
+  const monday = new Date(date);
+  const day = monday.getDay();
+  const diff = monday.getDate() - day + (day === 0 ? -6 : 1);
+  monday.setDate(diff);
+  return monday;
+}
+
 export async function createTimesheet(formData: FormData) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
     const contractorId = formData.get("contractorId") as string;
     const assignmentId = (formData.get("assignmentId") as string) || null;
-    const weekStarting = new Date(formData.get("weekStarting") as string);
+    const weekStarting = toMonday(new Date(formData.get("weekStarting") as string));
     const notes = (formData.get("notes") as string) || null;
 
     const timesheet = await prisma.timesheet.create({
@@ -296,6 +308,7 @@ export async function approveTimesheetStep(id: string, stepId?: string, notes?: 
         data: {
           status: "Approved",
           approvedAt: new Date(),
+          approvedBy: session.user.email || "staff",
           notes,
         },
       });
@@ -320,6 +333,7 @@ export async function approveTimesheetStep(id: string, stepId?: string, notes?: 
           data: {
             status: "Approved",
             approvedAt: new Date(),
+            approvedBy: session.user.email || "staff",
           },
         });
 
@@ -338,6 +352,7 @@ export async function approveTimesheetStep(id: string, stepId?: string, notes?: 
         data: {
           status: "Approved",
           approvedAt: new Date(),
+          approvedBy: session.user.email || "staff",
         },
       });
 

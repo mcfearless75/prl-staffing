@@ -64,7 +64,8 @@ export default async function RatesPage() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {rateCards.map((rate) => {
-                const marginValue = rate.margin ?? 0;
+                const marginValue = rate.margin;
+                const hasMargin = marginValue !== null && Number.isFinite(marginValue);
 
                 return (
                   <tr
@@ -84,11 +85,17 @@ export default async function RatesPage() {
                       {formatCurrency(Number(rate.chargeRate))}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${getMarginColor(marginValue)}`}
-                      >
-                        {marginValue.toFixed(1)}%
-                      </span>
+                      {hasMargin ? (
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${getMarginColor(marginValue)}`}
+                        >
+                          {marginValue.toFixed(1)}%
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-500">
+                          —
+                        </span>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                       {formatDate(rate.effectiveFrom)}

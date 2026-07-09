@@ -7,34 +7,46 @@ import { Plus, Settings } from "lucide-react";
 import { WeeklyTimesheetGroup } from "./weekly-group";
 
 const statuses = ["All", "Draft", "Submitted", "Approved", "Rejected"];
+const PAGE_SIZE = 50;
 
 export default async function TimesheetsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ status?: string }>;
+  searchParams?: Promise<{ status?: string; page?: string }>;
 }) {
   const params = searchParams ? await searchParams : {};
   const statusFilter = params?.status || "";
+  const currentPage = Math.max(1, parseInt(params?.page || "1", 10) || 1);
 
   const where: Record<string, unknown> = {};
   if (statusFilter && statusFilter !== "All") {
     where.status = statusFilter;
   }
 
-  const timesheets = await prisma.timesheet.findMany({
-    where,
-    include: {
-      contractor: true,
-      assignment: { include: { company: true } },
-    },
-    orderBy: { weekStarting: "desc" },
-  });
+  const [timesheets, totalCount, statusCounts] = await Promise.all([
+    prisma.timesheet.findMany({
+      where,
+      include: {
+        contractor: true,
+        assignment: { include: { company: true } },
+      },
+      orderBy: { weekStarting: "desc" },
+      skip: (currentPage - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.timesheet.count({ where }),
+    prisma.timesheet.groupBy({ by: ["status"], where, _count: { status: true } }),
+  ]);
 
-  // Stats
-  const totalCount = timesheets.length;
-  const submittedCount = timesheets.filter((t) => t.status === "Submitted").length;
-  const draftCount = timesheets.filter((t) => t.status === "Draft").length;
-  const approvedCount = timesheets.filter((t) => t.status === "Approved").length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  // Stats (respect the active status filter, matching prior behaviour)
+  const countByStatus = Object.fromEntries(
+    statusCounts.map((s) => [s.status, s._count.status])
+  );
+  const submittedCount = countByStatus["Submitted"] || 0;
+  const draftCount = countByStatus["Draft"] || 0;
+  const approvedCount = countByStatus["Approved"] || 0;
 
   // Group by week
   const grouped: Record<string, typeof timesheets> = {};
@@ -159,6 +171,39 @@ export default async function TimesheetsPage({
               </Link>
             )}
           </p>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalCount > PAGE_SIZE && (
+        <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+          <p className="text-sm text-gray-500">
+            Page {currentPage} of {totalPages} ({totalCount} timesheets)
+          </p>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/timesheets?status=${statusFilter || "All"}&page=${currentPage - 1}`}
+              aria-disabled={currentPage <= 1}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                currentPage <= 1
+                  ? "pointer-events-none bg-gray-50 text-gray-300"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Previous
+            </Link>
+            <Link
+              href={`/timesheets?status=${statusFilter || "All"}&page=${currentPage + 1}`}
+              aria-disabled={currentPage >= totalPages}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                currentPage >= totalPages
+                  ? "pointer-events-none bg-gray-50 text-gray-300"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Next
+            </Link>
+          </div>
         </div>
       )}
     </div>
