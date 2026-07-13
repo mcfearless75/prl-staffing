@@ -19,7 +19,11 @@ export default async function EditTimesheetPage({
   const timesheet = await prisma.timesheet.findUnique({
     where: { id },
     include: {
-      contractor: true,
+      contractor: {
+        include: {
+          assignments: { include: { company: true } },
+        },
+      },
       entries: { orderBy: { dayOfWeek: "asc" } },
     },
   });
@@ -28,12 +32,19 @@ export default async function EditTimesheetPage({
     notFound();
   }
 
-  if (timesheet.status !== "Draft") {
+  const hasRejectedEntry = timesheet.entries.some((e) => e.status === "Rejected");
+  if (timesheet.status !== "Draft" && !hasRejectedEntry) {
     redirect(`/timesheets/${timesheet.id}`);
   }
 
   const bankHolidays = getBankHolidaysInWeek(timesheet.weekStarting);
   const updateAction = updateTimesheetEntries.bind(null, timesheet.id);
+  const assignmentOptions = timesheet.contractor.assignments
+    .filter((a) => a.status !== "Completed")
+    .map((a) => ({
+      id: a.id,
+      label: `${a.role} - ${a.company.name}`,
+    }));
 
   return (
     <div className="space-y-6">
@@ -90,6 +101,9 @@ export default async function EditTimesheetPage({
                     Hours Worked
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Site / Department
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Type
                   </th>
                 </tr>
@@ -98,12 +112,15 @@ export default async function EditTimesheetPage({
                 {timesheet.entries.map((entry) => {
                   const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
                   const isWeekend = entry.dayOfWeek >= 5;
+                  const isRejected = entry.status === "Rejected";
 
                   return (
                     <tr
                       key={entry.id}
                       className={
-                        bankHol
+                        isRejected
+                          ? "bg-red-50/50"
+                          : bankHol
                           ? "bg-purple-50/50"
                           : isWeekend
                           ? "bg-orange-50/30"
@@ -115,6 +132,11 @@ export default async function EditTimesheetPage({
                           <span className="text-sm font-medium text-gray-900">
                             {dayNames[entry.dayOfWeek]}
                           </span>
+                          {isRejected && (
+                            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700">
+                              Rejected
+                            </span>
+                          )}
                           {bankHol && (
                             <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700">
                               {bankHol.name}
@@ -126,6 +148,9 @@ export default async function EditTimesheetPage({
                             </span>
                           )}
                         </div>
+                        {isRejected && entry.rejectionReason && (
+                          <p className="mt-1 text-xs text-red-600">{entry.rejectionReason}</p>
+                        )}
                       </td>
                       <td className="px-6 py-3">
                         <input
@@ -135,8 +160,26 @@ export default async function EditTimesheetPage({
                           step={0.5}
                           min={0}
                           max={24}
-                          className="w-28 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className={`w-28 rounded-lg border bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-1 ${
+                            isRejected
+                              ? "border-red-400 focus:border-red-500 focus:ring-red-500"
+                              : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                          }`}
                         />
+                      </td>
+                      <td className="px-6 py-3">
+                        <select
+                          name={`assignment_${entry.dayOfWeek}`}
+                          defaultValue={entry.assignmentId || ""}
+                          className="w-56 rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">None</option>
+                          {assignmentOptions.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.label}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-6 py-3">
                         <span className={`text-xs font-medium ${

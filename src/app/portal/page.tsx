@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
-import { ShieldCheck, FileUp, User, Plus, ChevronRight, Smartphone } from "lucide-react";
+import { ShieldCheck, FileUp, User, Plus, ChevronRight, Smartphone, MessageSquare } from "lucide-react";
 
 export default async function PortalDashboard() {
   const session = await auth();
@@ -143,6 +143,20 @@ export default async function PortalDashboard() {
             <p className="text-[10px] text-gray-500">View your details</p>
           </div>
         </Link>
+        <a
+          href={`mailto:info@prlsitesolutions.co.uk?subject=${encodeURIComponent(
+            `Pay Query — ${contractor.firstName} ${contractor.lastName}`
+          )}`}
+          className="col-span-2 flex items-center gap-3 rounded-xl border-2 border-amber-200 bg-amber-50 p-4 hover:bg-amber-100 transition-colors"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white">
+            <MessageSquare className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-amber-900">Pay Query</p>
+            <p className="text-[10px] text-amber-600">Email payroll about your pay</p>
+          </div>
+        </a>
       </div>
 
       {/* Quick Stats */}

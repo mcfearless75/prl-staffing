@@ -6,6 +6,7 @@ import { maskNI, maskUTR } from "@/lib/utils";
 import { ContractorPortalStatus } from "@/components/contractor-portal-status";
 import { ContractorQuickAssign } from "./contractor-quick-assign";
 import { DeleteContractorButton } from "./delete-contractor-button";
+import { SendAppInviteButton } from "./send-app-invite-button";
 
 export default async function ContractorDetailPage({
   params,
@@ -148,6 +149,7 @@ export default async function ContractorDetailPage({
             >
               Edit
             </Link>
+            <SendAppInviteButton contractorId={contractor.id} />
             <DeleteContractorButton contractorId={contractor.id} />
           </div>
         </div>

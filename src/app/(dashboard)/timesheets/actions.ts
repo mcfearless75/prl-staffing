@@ -4,12 +4,14 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
 import { logTimesheetAudit, logTimesheetAuditBatch } from "@/lib/timesheet-audit";
 import {
   calculateOvertime,
   shouldAutoApprove,
   DEFAULT_OVERTIME_CONFIG,
 } from "@/lib/overtime-calculator";
+import { Prisma } from "@prisma/client";
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -25,6 +27,11 @@ function toMonday(date: Date): Date {
   return monday;
 }
 
+// Replacing a duplicate timesheet is only safe while the original hasn't been
+// paid out yet — once it's Approved, deleting it would destroy an audited
+// payroll record with no way back.
+const REPLACEABLE_STATUSES = ["Draft", "Submitted", "Rejected"];
+
 export async function createTimesheet(formData: FormData) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -33,39 +40,97 @@ export async function createTimesheet(formData: FormData) {
     const assignmentId = (formData.get("assignmentId") as string) || null;
     const weekStarting = toMonday(new Date(formData.get("weekStarting") as string));
     const notes = (formData.get("notes") as string) || null;
+    const confirmReplace = formData.get("confirmReplace") === "true";
 
-    const timesheet = await prisma.timesheet.create({
-      data: {
-        contractorId,
-        assignmentId: assignmentId || undefined,
-        weekStarting,
-        notes,
-      },
+    if (assignmentId) {
+      const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
+      if (!assignment || assignment.contractorId !== contractorId) {
+        throw new Error("Selected assignment does not belong to this contractor.");
+      }
+    }
+
+    const existing = await prisma.timesheet.findFirst({
+      where: { contractorId, weekStarting },
     });
 
-    // Create 7 empty entries for each day of the week (0=Mon ... 6=Sun)
-    await prisma.timesheetEntry.createMany({
-      data: Array.from({ length: 7 }, (_, i) => ({
-        timesheetId: timesheet.id,
-        dayOfWeek: i,
-        hours: 0,
-        overtime: 0,
-      })),
-    });
+    if (existing && !confirmReplace) {
+      redirect(
+        `/timesheets/new?duplicateId=${existing.id}&weekStarting=${weekStarting.toISOString().slice(0, 10)}&contractorId=${contractorId}&assignmentId=${assignmentId || ""}&notes=${encodeURIComponent(notes || "")}`
+      );
+    }
 
-    // Audit log
+    if (existing && confirmReplace && !REPLACEABLE_STATUSES.includes(existing.status)) {
+      throw new Error(
+        `Cannot replace an existing timesheet with status "${existing.status}". Approved timesheets must be reopened by an authorised approver first.`
+      );
+    }
+
+    let timesheetId: string;
+    try {
+      const created = await prisma.$transaction(async (tx) => {
+        if (existing && confirmReplace) {
+          await tx.timesheet.delete({ where: { id: existing.id } });
+        }
+
+        const timesheet = await tx.timesheet.create({
+          data: {
+            contractorId,
+            assignmentId: assignmentId || undefined,
+            weekStarting,
+            notes,
+          },
+        });
+
+        await tx.timesheetEntry.createMany({
+          data: Array.from({ length: 7 }, (_, i) => ({
+            timesheetId: timesheet.id,
+            dayOfWeek: i,
+            hours: 0,
+            overtime: 0,
+            assignmentId: assignmentId || undefined,
+          })),
+        });
+
+        return timesheet;
+      });
+      timesheetId = created.id;
+    } catch (txError) {
+      // Unique constraint on (contractorId, weekStarting) — another submission
+      // won the race between our findFirst check and this create.
+      if (txError instanceof Prisma.PrismaClientKnownRequestError && txError.code === "P2002") {
+        redirect(
+          `/timesheets/new?weekStarting=${weekStarting.toISOString().slice(0, 10)}&contractorId=${contractorId}&assignmentId=${assignmentId || ""}&notes=${encodeURIComponent(notes || "")}`
+        );
+      }
+      throw txError;
+    }
+
+    if (existing && confirmReplace) {
+      await logTimesheetAudit({
+        timesheetId,
+        action: "Replaced",
+        field: "replacedTimesheetId",
+        oldValue: existing.id,
+        newValue: timesheetId,
+      });
+    }
+
     await logTimesheetAudit({
-      timesheetId: timesheet.id,
+      timesheetId,
       action: "Created",
       field: "status",
       newValue: "Draft",
     });
 
     revalidatePath("/timesheets");
-    redirect(`/timesheets/${timesheet.id}/edit`);
+    redirect(`/timesheets/${timesheetId}/edit`);
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    if (error instanceof Error && (
+      error.message.startsWith("Cannot replace") ||
+      error.message.startsWith("Selected assignment")
+    )) throw error;
     console.error("Failed to create timesheet:", error);
     throw new Error("Failed to create timesheet. Please try again.");
   }
@@ -85,6 +150,18 @@ export async function updateTimesheetEntries(
 
     if (!timesheet) throw new Error("Timesheet not found");
 
+    const hasRejectedEntry = timesheet.entries.some((e) => e.status === "Rejected");
+    const editable = timesheet.status === "Draft" || (timesheet.status === "Submitted" && hasRejectedEntry);
+    if (!editable) {
+      throw new Error(`Timesheet with status "${timesheet.status}" cannot be edited.`);
+    }
+
+    const contractorAssignments = await prisma.assignment.findMany({
+      where: { contractorId: timesheet.contractorId },
+      select: { id: true },
+    });
+    const validAssignmentIds = new Set(contractorAssignments.map((a) => a.id));
+
     const auditEntries: {
       timesheetId: string;
       action: string;
@@ -93,12 +170,17 @@ export async function updateTimesheetEntries(
       newValue?: string;
     }[] = [];
 
-    // Collect new hours from form
-    const newEntries: { dayOfWeek: number; hours: number }[] = [];
+    // Collect new hours and per-day assignment from form
+    const newEntries: { dayOfWeek: number; hours: number; assignmentId: string | null }[] = [];
 
     for (let day = 0; day < 7; day++) {
       const hours = parseFloat((formData.get(`hours_${day}`) as string) || "0");
-      newEntries.push({ dayOfWeek: day, hours });
+      const rawAssignmentId = (formData.get(`assignment_${day}`) as string) || null;
+      if (rawAssignmentId && !validAssignmentIds.has(rawAssignmentId)) {
+        throw new Error("Selected assignment does not belong to this contractor.");
+      }
+      const assignmentId = rawAssignmentId;
+      newEntries.push({ dayOfWeek: day, hours, assignmentId });
 
       const entry = timesheet.entries.find((e) => e.dayOfWeek === day);
       if (entry && entry.hours !== hours) {
@@ -108,6 +190,15 @@ export async function updateTimesheetEntries(
           field: `hours_${dayNames[day]}`,
           oldValue: String(entry.hours),
           newValue: String(hours),
+        });
+      }
+      if (entry && entry.assignmentId !== assignmentId) {
+        auditEntries.push({
+          timesheetId,
+          action: "Edited",
+          field: `assignment_${dayNames[day]}`,
+          oldValue: entry.assignmentId || "",
+          newValue: assignmentId || "",
         });
       }
     }
@@ -132,13 +223,26 @@ export async function updateTimesheetEntries(
         (b) => b.dayOfWeek === day
       );
       const hours = newEntries[day].hours;
+      const assignmentId = newEntries[day].assignmentId;
       const overtime = dayBreakdown?.overtimeHours || 0;
 
       if (entry) {
         const oldOvertime = entry.overtime;
+        const hoursChanged = entry.hours !== hours;
+        const assignmentChanged = (entry.assignmentId || null) !== assignmentId;
+        const isRejected = entry.status === "Rejected";
+        const dayAmended = isRejected && (hoursChanged || assignmentChanged);
+
         await prisma.timesheetEntry.update({
           where: { id: entry.id },
-          data: { hours, overtime },
+          data: {
+            hours,
+            overtime,
+            assignmentId: assignmentId || null,
+            ...(dayAmended
+              ? { status: "Pending", rejectionReason: null }
+              : {}),
+          },
         });
         if (oldOvertime !== overtime) {
           auditEntries.push({
@@ -147,6 +251,15 @@ export async function updateTimesheetEntries(
             field: `overtime_${dayNames[day]}`,
             oldValue: String(oldOvertime),
             newValue: String(overtime),
+          });
+        }
+        if (dayAmended) {
+          auditEntries.push({
+            timesheetId,
+            action: "DayAmended",
+            field: dayNames[day],
+            oldValue: "Rejected",
+            newValue: "Pending",
           });
         }
       }
@@ -180,7 +293,11 @@ export async function updateTimesheetEntries(
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    if (error instanceof Error && error.message === "Timesheet not found") throw error;
+    if (error instanceof Error && (
+      error.message === "Timesheet not found" ||
+      error.message.endsWith("cannot be edited.") ||
+      error.message.startsWith("Selected assignment")
+    )) throw error;
     console.error("Failed to update timesheet entries:", error);
     throw new Error("Failed to update timesheet entries. Please try again.");
   }
@@ -290,10 +407,15 @@ export async function approveTimesheetStep(id: string, stepId?: string, notes?: 
       where: { id },
       include: {
         approvals: { orderBy: { stepOrder: "asc" } },
+        entries: true,
       },
     });
 
     if (!timesheet) throw new Error("Timesheet not found");
+
+    if (timesheet.entries.some((e) => e.status === "Rejected")) {
+      throw new Error("Cannot approve a timesheet with a rejected day still outstanding.");
+    }
 
     if (timesheet.approvals.length > 0) {
       // Multi-step approval chain
@@ -368,7 +490,11 @@ export async function approveTimesheetStep(id: string, stepId?: string, notes?: 
     revalidatePath(`/timesheets/${id}`);
     revalidatePath("/timesheets");
   } catch (error) {
-    if (error instanceof Error && (error.message === "Timesheet not found" || error.message === "No pending approval step found")) throw error;
+    if (error instanceof Error && (
+      error.message === "Timesheet not found" ||
+      error.message === "No pending approval step found" ||
+      error.message.startsWith("Cannot approve")
+    )) throw error;
     console.error("Failed to approve timesheet step:", error);
     throw new Error("Failed to approve timesheet. Please try again.");
   }
@@ -409,6 +535,43 @@ export async function rejectTimesheet(id: string) {
   } catch (error) {
     console.error("Failed to reject timesheet:", error);
     throw new Error("Failed to reject timesheet. Please try again.");
+  }
+}
+
+export async function rejectTimesheetEntry(entryId: string, reason: string) {
+  const guard = await requireStaff();
+  if (!guard.ok) redirect(guard.reason === "forbidden" ? "/" : "/login");
+  try {
+    const entry = await prisma.timesheetEntry.findUnique({
+      where: { id: entryId },
+      include: { timesheet: true },
+    });
+    if (!entry) throw new Error("Timesheet entry not found");
+    if (entry.timesheet.status !== "Submitted") {
+      throw new Error(`Cannot reject a day on a timesheet with status "${entry.timesheet.status}".`);
+    }
+
+    await prisma.timesheetEntry.update({
+      where: { id: entryId },
+      data: { status: "Rejected", rejectionReason: reason },
+    });
+
+    await logTimesheetAudit({
+      timesheetId: entry.timesheetId,
+      action: "DayRejected",
+      field: dayNames[entry.dayOfWeek],
+      newValue: reason,
+    });
+
+    revalidatePath(`/timesheets/${entry.timesheetId}`);
+    revalidatePath(`/timesheets/${entry.timesheetId}/edit`);
+  } catch (error) {
+    if (error instanceof Error && (
+      error.message === "Timesheet entry not found" ||
+      error.message.startsWith("Cannot reject")
+    )) throw error;
+    console.error("Failed to reject timesheet entry:", error);
+    throw new Error("Failed to reject timesheet entry. Please try again.");
   }
 }
 

@@ -71,7 +71,6 @@ export async function POST(request: Request) {
             dayOfWeek: d.dayOfWeek,
             hours: d.regularHours + d.overtimeHours,
             overtime: d.overtimeHours,
-            isBankHoliday: d.isBankHoliday,
           })),
         },
       },

@@ -4,7 +4,24 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { createTimesheet } from "../actions";
 
-export default async function NewTimesheetPage() {
+interface NewTimesheetPageProps {
+  searchParams: Promise<{
+    duplicateId?: string;
+    weekStarting?: string;
+    contractorId?: string;
+    assignmentId?: string;
+    notes?: string;
+  }>;
+}
+
+export default async function NewTimesheetPage({
+  searchParams,
+}: NewTimesheetPageProps) {
+  const params = await searchParams;
+  const duplicate = params.duplicateId
+    ? await prisma.timesheet.findUnique({ where: { id: params.duplicateId } })
+    : null;
+
   const contractors = await prisma.contractor.findMany({
     where: { status: "Active" },
     include: {
@@ -28,6 +45,54 @@ export default async function NewTimesheetPage() {
     <div className="space-y-6">
       <PageHeader title="New Timesheet" />
 
+      {duplicate && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <p className="text-sm text-amber-800">
+            You already have a timesheet for this week (status:{" "}
+            {duplicate.status}).
+          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <Link
+              href={`/timesheets/${duplicate.id}`}
+              className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors"
+            >
+              View existing timesheet
+            </Link>
+            {duplicate.status === "Approved" ? (
+              <p className="text-xs text-amber-700">
+                This timesheet is already approved and can&apos;t be replaced here — it must be reopened by an authorised approver first.
+              </p>
+            ) : (
+              <form action={createTimesheet}>
+                <input type="hidden" name="confirmReplace" value="true" />
+                <input
+                  type="hidden"
+                  name="contractorId"
+                  value={params.contractorId || ""}
+                />
+                <input
+                  type="hidden"
+                  name="assignmentId"
+                  value={params.assignmentId || ""}
+                />
+                <input
+                  type="hidden"
+                  name="weekStarting"
+                  value={params.weekStarting || ""}
+                />
+                <input type="hidden" name="notes" value={params.notes || ""} />
+                <button
+                  type="submit"
+                  className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 transition-colors"
+                >
+                  Replace existing timesheet
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="rounded-xl border border-gray-200 bg-white p-6">
         <form action={createTimesheet} className="space-y-6">
           {/* Contractor */}
@@ -42,6 +107,7 @@ export default async function NewTimesheetPage() {
               id="contractorId"
               name="contractorId"
               required
+              defaultValue={params.contractorId || ""}
               className="mt-1 block w-full rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Select a contractor</option>
@@ -64,6 +130,7 @@ export default async function NewTimesheetPage() {
             <select
               id="assignmentId"
               name="assignmentId"
+              defaultValue={params.assignmentId || ""}
               className="mt-1 block w-full rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">None</option>
@@ -88,6 +155,7 @@ export default async function NewTimesheetPage() {
               id="weekStarting"
               name="weekStarting"
               required
+              defaultValue={params.weekStarting || ""}
               className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
@@ -104,6 +172,7 @@ export default async function NewTimesheetPage() {
               id="notes"
               name="notes"
               rows={3}
+              defaultValue={params.notes || ""}
               className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Optional notes..."
             />

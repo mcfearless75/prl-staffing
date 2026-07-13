@@ -146,6 +146,7 @@ model Assignment {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   timesheets     Timesheet[]
+  timesheetEntries TimesheetEntry[]
 }
 
 // ─── Timesheets ───
@@ -170,16 +171,22 @@ model Timesheet {
   entries         TimesheetEntry[]
   auditLogs       TimesheetAuditLog[]
   approvals       TimesheetApproval[]
+
+  @@unique([contractorId, weekStarting])
 }
 
 model TimesheetEntry {
-  id          String    @id @default(cuid())
-  timesheetId String
-  timesheet   Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
-  dayOfWeek   Int       // 0=Mon, 1=Tue, ... 6=Sun
-  hours       Float     @default(0)
-  overtime    Float     @default(0)
-  notes       String?
+  id              String      @id @default(cuid())
+  timesheetId     String
+  timesheet       Timesheet   @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+  dayOfWeek       Int         // 0=Mon, 1=Tue, ... 6=Sun
+  hours           Float       @default(0)
+  overtime        Float       @default(0)
+  notes           String?
+  status          String      @default("Pending") // Pending, Approved, Rejected
+  rejectionReason String?
+  assignmentId    String?
+  assignment      Assignment? @relation(fields: [assignmentId], references: [id])
 }
 
 // ─── Compliance Records ───

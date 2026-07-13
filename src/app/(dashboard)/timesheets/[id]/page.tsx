@@ -9,6 +9,7 @@ import { submitTimesheet, approveTimesheet, reopenTimesheet } from "../actions";
 import { rejectTimesheet } from "../actions";
 import { getTimesheetAuditTrail } from "@/lib/timesheet-audit";
 import { getBankHolidaysInWeek } from "@/lib/uk-bank-holidays";
+import { RejectDayControl } from "./reject-day-control";
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -133,6 +134,7 @@ export default async function TimesheetDetailPage({
               const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
               const isWeekend = entry.dayOfWeek >= 5;
               const hasOvertime = entry.overtime > 0;
+              const isRejected = entry.status === "Rejected";
 
               return (
                 <div key={entry.id} className="text-center">
@@ -141,7 +143,9 @@ export default async function TimesheetDetailPage({
                   </p>
                   <div
                     className={`rounded-xl py-4 px-2 text-xl font-bold transition-colors ${
-                      bankHol
+                      isRejected
+                        ? "bg-red-100 text-red-700 border-2 border-red-300"
+                        : bankHol
                         ? "bg-purple-100 text-purple-700 border-2 border-purple-300"
                         : isWeekend && entry.hours > 0
                         ? "bg-orange-100 text-orange-700 border-2 border-orange-300"
@@ -161,6 +165,14 @@ export default async function TimesheetDetailPage({
                     <p className="text-[10px] text-purple-600 font-medium mt-1 leading-tight">
                       {bankHol.name}
                     </p>
+                  )}
+                  {isRejected && (
+                    <p className="text-[10px] text-red-600 font-medium mt-1 leading-tight">
+                      {entry.rejectionReason}
+                    </p>
+                  )}
+                  {timesheet.status === "Submitted" && !isRejected && (
+                    <RejectDayControl entryId={entry.id} dayLabel={dayNames[entry.dayOfWeek]} />
                   )}
                 </div>
               );

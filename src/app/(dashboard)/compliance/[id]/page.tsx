@@ -7,7 +7,7 @@ import { Badge } from "@/components/badge";
 import { formatDate, getInitials } from "@/lib/utils";
 import { deleteComplianceRecord } from "../actions";
 import { StaffDocUploader } from "./edit/staff-doc-uploader";
-import { QuickVerifyButton } from "./quick-verify";
+import { ReviewActions } from "../review/review-actions";
 
 export default async function ComplianceRecordPage({
   params,
@@ -158,7 +158,7 @@ export default async function ComplianceRecordPage({
             <div className="mt-1 flex items-center gap-3">
               <Badge variant={record.status}>{record.status}</Badge>
               {record.status !== "Verified" && (
-                <QuickVerifyButton recordId={record.id} />
+                <ReviewActions recordId={record.id} />
               )}
             </div>
           </div>

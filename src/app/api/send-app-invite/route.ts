@@ -3,6 +3,15 @@ import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export async function POST(request: Request) {
   try {
     const guard = await requireStaff();
@@ -24,7 +33,10 @@ export async function POST(request: Request) {
     }
 
     const email = contractor.contractorLogin?.email || contractor.email;
-    const name = contractor.firstName;
+    if (!email) {
+      return NextResponse.json({ error: "This contractor has no email address on file" }, { status: 400 });
+    }
+    const name = escapeHtml(contractor.firstName);
     const appUrl = process.env.NEXTAUTH_URL || "https://www.prismworkforce.online";
     const installUrl = `${appUrl}/install`;
     const loginUrl = `${appUrl}/login`;
