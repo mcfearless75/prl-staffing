@@ -11,7 +11,6 @@ import {
   shouldAutoApprove,
   DEFAULT_OVERTIME_CONFIG,
 } from "@/lib/overtime-calculator";
-import { Prisma } from "@prisma/client";
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -65,45 +64,33 @@ export async function createTimesheet(formData: FormData) {
       );
     }
 
-    let timesheetId: string;
-    try {
-      const created = await prisma.$transaction(async (tx) => {
-        if (existing && confirmReplace) {
-          await tx.timesheet.delete({ where: { id: existing.id } });
-        }
-
-        const timesheet = await tx.timesheet.create({
-          data: {
-            contractorId,
-            assignmentId: assignmentId || undefined,
-            weekStarting,
-            notes,
-          },
-        });
-
-        await tx.timesheetEntry.createMany({
-          data: Array.from({ length: 7 }, (_, i) => ({
-            timesheetId: timesheet.id,
-            dayOfWeek: i,
-            hours: 0,
-            overtime: 0,
-            assignmentId: assignmentId || undefined,
-          })),
-        });
-
-        return timesheet;
-      });
-      timesheetId = created.id;
-    } catch (txError) {
-      // Unique constraint on (contractorId, weekStarting) — another submission
-      // won the race between our findFirst check and this create.
-      if (txError instanceof Prisma.PrismaClientKnownRequestError && txError.code === "P2002") {
-        redirect(
-          `/timesheets/new?weekStarting=${weekStarting.toISOString().slice(0, 10)}&contractorId=${contractorId}&assignmentId=${assignmentId || ""}&notes=${encodeURIComponent(notes || "")}`
-        );
+    const created = await prisma.$transaction(async (tx) => {
+      if (existing && confirmReplace) {
+        await tx.timesheet.delete({ where: { id: existing.id } });
       }
-      throw txError;
-    }
+
+      const timesheet = await tx.timesheet.create({
+        data: {
+          contractorId,
+          assignmentId: assignmentId || undefined,
+          weekStarting,
+          notes,
+        },
+      });
+
+      await tx.timesheetEntry.createMany({
+        data: Array.from({ length: 7 }, (_, i) => ({
+          timesheetId: timesheet.id,
+          dayOfWeek: i,
+          hours: 0,
+          overtime: 0,
+          assignmentId: assignmentId || undefined,
+        })),
+      });
+
+      return timesheet;
+    });
+    const timesheetId = created.id;
 
     if (existing && confirmReplace) {
       await logTimesheetAudit({

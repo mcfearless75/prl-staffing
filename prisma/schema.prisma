@@ -171,8 +171,6 @@ model Timesheet {
   entries         TimesheetEntry[]
   auditLogs       TimesheetAuditLog[]
   approvals       TimesheetApproval[]
-
-  @@unique([contractorId, weekStarting])
 }
 
 model TimesheetEntry {
