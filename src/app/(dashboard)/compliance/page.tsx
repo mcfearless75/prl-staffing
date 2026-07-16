@@ -10,9 +10,6 @@ import {
   AlertTriangle,
   XCircle,
   Search,
-  Clock,
-  CheckCircle2,
-  AlertOctagon,
 } from "lucide-react";
 import { ComplianceScoreRing } from "./compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
@@ -23,6 +20,7 @@ import BulkVerifyButton from "./bulk-verify-button";
 import { ChaseExportButton } from "./chase-export-button";
 import { ChaseEmailButton } from "./chase-email-button";
 import { ExpiryAlertButton } from "./expiry-alert-button";
+import { ComplianceTypeRows } from "./compliance-type-rows";
 
 const COMPLIANCE_TYPES = [
   "CV",
@@ -210,6 +208,32 @@ export default async function CompliancePage({
     else if (verified > 0) displayStatus = "Verified";
     else displayStatus = "None";
 
+    // Everyone in this type who isn't Verified — the actual chase list.
+    const severityRank: Record<string, number> = {
+      "Non-Compliant": 0,
+      Expired: 0,
+      Expiring: 1,
+      Pending: 2,
+    };
+    const chase = ofType
+      .filter((r) => r.status !== "Verified")
+      .map((r) => ({
+        recordId: r.id,
+        contractorId: r.contractorId,
+        contractorName: `${r.contractor.firstName} ${r.contractor.lastName}`,
+        status: r.status,
+        expiryDate: r.expiryDate ? r.expiryDate.toISOString() : null,
+      }))
+      .sort((a, b) => {
+        const ra = severityRank[a.status] ?? 3;
+        const rb = severityRank[b.status] ?? 3;
+        if (ra !== rb) return ra - rb;
+        if (a.expiryDate && b.expiryDate) return a.expiryDate.localeCompare(b.expiryDate);
+        if (a.expiryDate) return -1;
+        if (b.expiryDate) return 1;
+        return a.contractorName.localeCompare(b.contractorName);
+      });
+
     return {
       type: displayName as DisplayTypeName,
       total,
@@ -219,6 +243,7 @@ export default async function CompliancePage({
       pending,
       percentage,
       displayStatus,
+      chase,
     };
   }).filter((t): t is NonNullable<typeof t> => t !== null);
 
@@ -231,50 +256,6 @@ export default async function CompliancePage({
         return "border-l-4 border-l-red-400";
       default:
         return "";
-    }
-  }
-
-  function getStatusIcon(displayStatus: string) {
-    switch (displayStatus) {
-      case "Verified":
-        return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
-      case "Expiring":
-        return <AlertTriangle className="h-5 w-5 text-amber-500" />;
-      case "Non-Compliant":
-      case "Expired":
-        return <AlertOctagon className="h-5 w-5 text-red-500" />;
-      case "Pending":
-        return <Clock className="h-5 w-5 text-gray-400" />;
-      default:
-        return <Clock className="h-5 w-5 text-gray-300" />;
-    }
-  }
-
-  function getProgressBarColor(displayStatus: string) {
-    switch (displayStatus) {
-      case "Verified":
-        return "bg-emerald-500";
-      case "Expiring":
-        return "bg-amber-500";
-      case "Non-Compliant":
-      case "Expired":
-        return "bg-red-500";
-      default:
-        return "bg-gray-300";
-    }
-  }
-
-  function getProgressTrackColor(displayStatus: string) {
-    switch (displayStatus) {
-      case "Verified":
-        return "bg-emerald-100";
-      case "Expiring":
-        return "bg-amber-100";
-      case "Non-Compliant":
-      case "Expired":
-        return "bg-red-100";
-      default:
-        return "bg-gray-100";
     }
   }
 
@@ -387,53 +368,17 @@ export default async function CompliancePage({
           <p className="text-xs text-gray-400">{contractorsWithRecords} contractors have at least one record</p>
         </div>
 
-        {/* Per-Type Progress Bars — Requidex Style */}
-        <div className="space-y-4">
-          {typeBreakdown.map((item) => (
-            <div
-              key={item.type}
-              className="flex items-center gap-4 rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-gray-200">
-                {getStatusIcon(item.displayStatus)}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-semibold text-gray-900">
-                    {item.type}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {item.total} contractor{item.total !== 1 ? "s" : ""} /{" "}
-                    {item.verified} verified
-                  </span>
-                </div>
-                <div
-                  className={`h-2.5 w-full rounded-full ${getProgressTrackColor(item.displayStatus)}`}
-                >
-                  <div
-                    className={`h-2.5 rounded-full transition-all ${getProgressBarColor(item.displayStatus)}`}
-                    style={{ width: `${item.percentage}%` }}
-                  />
-                </div>
-              </div>
-              <Badge variant={item.displayStatus} className="ml-2 shrink-0">
-                {item.displayStatus}
-              </Badge>
-            </div>
-          ))}
-
-          {typeBreakdown.length === 0 && (
-            <div className="py-8 text-center text-sm text-gray-400">
-              No compliance records yet.{" "}
-              <Link
-                href="/compliance/new"
-                className="text-blue-600 hover:underline"
-              >
-                Add your first record
-              </Link>
-            </div>
-          )}
-        </div>
+        {/* Per-Type Progress Bars — rows with chase lists expand to show who to chase */}
+        {typeBreakdown.length > 0 ? (
+          <ComplianceTypeRows rows={typeBreakdown} />
+        ) : (
+          <div className="py-8 text-center text-sm text-gray-400">
+            No compliance records yet.{" "}
+            <Link href="/compliance/new" className="text-blue-600 hover:underline">
+              Add your first record
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Charts */}
