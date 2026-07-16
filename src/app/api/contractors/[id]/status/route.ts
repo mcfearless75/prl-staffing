@@ -2,9 +2,11 @@ import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { NextRequest, NextResponse } from "next/server";
 
+// Standard workforce statuses, plus applicant-pipeline values (Applied, Looking)
+// that other flows may set. Legacy On Site / Benched / Pending Docs retired.
 const VALID_STATUSES = [
-  "Applied", "New", "Active", "On Site",
-  "Benched", "Pending Docs", "Suspended", "Inactive", "Left",
+  "New", "Active", "Suspended", "Inactive", "Left",
+  "Applied", "Looking",
 ];
 
 export async function PATCH(
