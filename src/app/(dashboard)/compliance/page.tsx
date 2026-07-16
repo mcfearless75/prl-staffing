@@ -60,8 +60,15 @@ export default async function CompliancePage({
     };
   }
 
-  if (status) {
+  // The table is a work list: by default show only records that need an action
+  // (Verified ones are done and just add noise). "all" reveals everything; a
+  // specific status filters to exactly that.
+  if (status === "all") {
+    // no status filter — show everything including Verified
+  } else if (status) {
     where.status = status;
+  } else {
+    where.status = { notIn: ["Verified"] };
   }
 
   if (type) {
@@ -474,7 +481,8 @@ export default async function CompliancePage({
           defaultValue={status}
           className="rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
-          <option value="">All Statuses</option>
+          <option value="">Needs Action</option>
+          <option value="all">All (incl. Verified)</option>
           <option value="Verified">Verified</option>
           <option value="Pending">Pending</option>
           <option value="Expiring">Expiring</option>
@@ -502,6 +510,19 @@ export default async function CompliancePage({
       </form>
 
       {/* Compliance Table */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-gray-900">
+          {status === "all"
+            ? "All Records"
+            : status
+              ? `${status} Records`
+              : "Records Needing Action"}{" "}
+          <span className="font-normal text-gray-400">({records.length})</span>
+        </h2>
+        {!status && records.length > 0 && (
+          <p className="text-xs text-gray-400">Verified records hidden — choose “All” to show them</p>
+        )}
+      </div>
       {records.length > 0 ? (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <table className="min-w-full divide-y divide-gray-200">
@@ -603,19 +624,22 @@ export default async function CompliancePage({
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center">
           <p className="text-sm text-gray-500">
-            No compliance records found.{" "}
             {search || status || type ? (
-              <Link
-                href="/compliance"
-                className="text-blue-600 hover:underline"
-              >
-                Clear filters
-              </Link>
+              <>
+                No records match.{" "}
+                <Link href="/compliance" className="text-blue-600 hover:underline">
+                  Clear filters
+                </Link>
+              </>
+            ) : allRecords.length > 0 ? (
+              <>
+                Nothing needs action right now — every record is verified.{" "}
+                <Link href="/compliance?status=all" className="text-blue-600 hover:underline">
+                  View all records
+                </Link>
+              </>
             ) : (
-              <Link
-                href="/compliance/new"
-                className="text-blue-600 hover:underline"
-              >
+              <Link href="/compliance/new" className="text-blue-600 hover:underline">
                 Add your first compliance record
               </Link>
             )}
