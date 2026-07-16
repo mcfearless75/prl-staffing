@@ -11,6 +11,7 @@ import {
   shouldAutoApprove,
   DEFAULT_OVERTIME_CONFIG,
 } from "@/lib/overtime-calculator";
+import { calculateProfessionalHours } from "@/lib/professional-hours";
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -158,16 +159,28 @@ export async function updateTimesheetEntries(
     }[] = [];
 
     // Collect new hours and per-day assignment from form
-    const newEntries: { dayOfWeek: number; hours: number; assignmentId: string | null }[] = [];
+    const newEntries: {
+      dayOfWeek: number;
+      hours: number;
+      assignmentId: string | null;
+      startTime: string | null;
+      finishTime: string | null;
+    }[] = [];
 
     for (let day = 0; day < 7; day++) {
-      const hours = parseFloat((formData.get(`hours_${day}`) as string) || "0");
+      const startTime = (formData.get(`start_${day}`) as string) || null;
+      const finishTime = (formData.get(`finish_${day}`) as string) || null;
+      // Derive hours from clock times when both are set (authoritative — never
+      // trust the client-submitted hours field over the times), else use the
+      // manually entered hours value.
+      const derived = calculateProfessionalHours(startTime, finishTime);
+      const hours = derived !== null ? derived : parseFloat((formData.get(`hours_${day}`) as string) || "0");
       const rawAssignmentId = (formData.get(`assignment_${day}`) as string) || null;
       if (rawAssignmentId && !validAssignmentIds.has(rawAssignmentId)) {
         throw new Error("Selected assignment does not belong to this contractor.");
       }
       const assignmentId = rawAssignmentId;
-      newEntries.push({ dayOfWeek: day, hours, assignmentId });
+      newEntries.push({ dayOfWeek: day, hours, assignmentId, startTime, finishTime });
 
       const entry = timesheet.entries.find((e) => e.dayOfWeek === day);
       if (entry && entry.hours !== hours) {
@@ -211,14 +224,18 @@ export async function updateTimesheetEntries(
       );
       const hours = newEntries[day].hours;
       const assignmentId = newEntries[day].assignmentId;
+      const startTime = newEntries[day].startTime;
+      const finishTime = newEntries[day].finishTime;
       const overtime = dayBreakdown?.overtimeHours || 0;
 
       if (entry) {
         const oldOvertime = entry.overtime;
         const hoursChanged = entry.hours !== hours;
         const assignmentChanged = (entry.assignmentId || null) !== assignmentId;
+        const timesChanged =
+          (entry.startTime || null) !== startTime || (entry.finishTime || null) !== finishTime;
         const isRejected = entry.status === "Rejected";
-        const dayAmended = isRejected && (hoursChanged || assignmentChanged);
+        const dayAmended = isRejected && (hoursChanged || assignmentChanged || timesChanged);
 
         await prisma.timesheetEntry.update({
           where: { id: entry.id },
@@ -226,6 +243,8 @@ export async function updateTimesheetEntries(
             hours,
             overtime,
             assignmentId: assignmentId || null,
+            startTime,
+            finishTime,
             ...(dayAmended
               ? { status: "Pending", rejectionReason: null }
               : {}),

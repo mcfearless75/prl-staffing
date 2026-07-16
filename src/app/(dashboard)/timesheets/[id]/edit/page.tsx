@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { formatDate } from "@/lib/utils";
 import { updateTimesheetEntries } from "../../actions";
 import { getBankHolidaysInWeek } from "@/lib/uk-bank-holidays";
+import { HoursInput } from "./hours-input";
 
 const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const dayShort = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -98,7 +99,7 @@ export default async function EditTimesheetPage({
                     Day
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Hours Worked
+                    Start / Finish → Hours
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Site / Department
@@ -153,18 +154,12 @@ export default async function EditTimesheetPage({
                         )}
                       </td>
                       <td className="px-6 py-3">
-                        <input
-                          type="number"
-                          name={`hours_${entry.dayOfWeek}`}
-                          defaultValue={entry.hours}
-                          step={0.5}
-                          min={0}
-                          max={24}
-                          className={`w-28 rounded-lg border bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-1 ${
-                            isRejected
-                              ? "border-red-400 focus:border-red-500 focus:ring-red-500"
-                              : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                          }`}
+                        <HoursInput
+                          dayOfWeek={entry.dayOfWeek}
+                          defaultHours={entry.hours}
+                          defaultStart={entry.startTime}
+                          defaultFinish={entry.finishTime}
+                          isRejected={isRejected}
                         />
                       </td>
                       <td className="px-6 py-3">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Clock, ShieldCheck, FileUp, LogOut, User } from "lucide-react";
+import { LayoutDashboard, Clock, ShieldCheck, FileUp, LogOut, User, MessageSquare } from "lucide-react";
 import { useEffect } from "react";
 
 const portalNav = [
@@ -79,6 +79,15 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
               </Link>
             );
           })}
+          <a
+            href={`mailto:info@prlsitesolutions.co.uk?subject=${encodeURIComponent(
+              `Pay Query — ${session?.user?.name || ""}`
+            )}`}
+            className="flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium text-gray-500 transition-colors"
+          >
+            <MessageSquare className="h-5 w-5 text-gray-400" />
+            Pay Query
+          </a>
         </div>
       </nav>
     </div>

@@ -180,6 +180,8 @@ model TimesheetEntry {
   dayOfWeek       Int         // 0=Mon, 1=Tue, ... 6=Sun
   hours           Float       @default(0)
   overtime        Float       @default(0)
+  startTime       String?     // "HH:MM" — when set with finishTime, hours are derived from these
+  finishTime      String?     // "HH:MM"
   notes           String?
   status          String      @default("Pending") // Pending, Approved, Rejected
   rejectionReason String?
@@ -498,16 +500,22 @@ model Notification {
 
 // ─── Rate Cards ───
 model RateCard {
-  id         String   @id @default(cuid())
-  role       String
-  location   String?
-  payRate    Float    // per hour
-  chargeRate Float    // per hour
-  margin     Float?   // percentage
-  effectiveFrom DateTime
-  effectiveTo   DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String    @id @default(cuid())
+  trade          String    // was "role" — e.g. "Banksman", "Slinger", "Quantity Surveyor"
+  region         String?   // was "location" — e.g. "London & SE", "Midlands", "Ireland"
+  sector         String?   // e.g. "Civils/Infra"
+  project        String?   // optional project scoping
+  employmentType String    @default("PAYE") // CIS, PAYE, PSC
+  rateType       String    @default("Time")  // Time, Piece
+  rateBasis      String    @default("Hourly") // Hourly, Daily
+  pay            Float     // was payRate — per hour or per day depending on rateBasis
+  agencyMarkup   Float?    // markup added to pay to reach charge
+  charge         Float     // was chargeRate
+  margin         Float?    // percentage
+  effectiveFrom  DateTime  @default(now())
+  effectiveTo    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 // ─── QMS: Non-Conformance / CAPA ───

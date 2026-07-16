@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { calculateProfessionalHours } from "@/lib/professional-hours";
 
 type Assignment = {
   id: string;
@@ -10,7 +11,17 @@ type Assignment = {
   location: string | null;
 };
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+type DayEntry = {
+  assignmentId: string;
+  startTime: string;
+  finishTime: string;
+};
+
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function emptyDay(assignmentId: string): DayEntry {
+  return { assignmentId, startTime: "", finishTime: "" };
+}
 
 export function PortalTimesheetForm({
   assignments,
@@ -20,27 +31,37 @@ export function PortalTimesheetForm({
   contractorId: string;
 }) {
   const router = useRouter();
-  const [assignmentId, setAssignmentId] = useState(assignments[0]?.id || "");
+  const defaultAssignmentId = assignments[0]?.id || "";
   const [weekStarting, setWeekStarting] = useState(() => {
-    // Default to this Monday
     const now = new Date();
     const day = now.getDay();
     const diff = now.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(now.setDate(diff));
     return monday.toISOString().split("T")[0];
   });
-  const [hours, setHours] = useState<number[]>([8, 8, 8, 8, 8, 0, 0]);
+  const [days, setDays] = useState<DayEntry[]>(() =>
+    Array.from({ length: 7 }, () => emptyDay(defaultAssignmentId))
+  );
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const totalHours = hours.reduce((sum, h) => sum + h, 0);
-  const overtimeHours = Math.max(0, totalHours - 40);
-  const selectedAssignment = assignments.find((a) => a.id === assignmentId);
+  const dayHours = days.map((d) => calculateProfessionalHours(d.startTime, d.finishTime) ?? 0);
+  const totalHours = dayHours.reduce((sum, h) => sum + h, 0);
+
+  function updateDay(index: number, patch: Partial<DayEntry>) {
+    setDays((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
+  }
+
+  // Apply one assignment to every day at once — the common case is a single
+  // placement all week; per-day override handles mid-week role/company changes.
+  function applyAssignmentToAll(assignmentId: string) {
+    setDays((prev) => prev.map((d) => ({ ...d, assignmentId })));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!assignmentId || !weekStarting) return;
+    if (!weekStarting) return;
 
     setSubmitting(true);
     setError("");
@@ -51,10 +72,15 @@ export function PortalTimesheetForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contractorId,
-          assignmentId,
           weekStarting,
-          hours,
           notes,
+          days: days.map((d, i) => ({
+            dayOfWeek: i,
+            assignmentId: d.assignmentId || null,
+            startTime: d.startTime || null,
+            finishTime: d.finishTime || null,
+            hours: dayHours[i],
+          })),
         }),
       });
 
@@ -81,22 +107,6 @@ export function PortalTimesheetForm({
         </div>
       )}
 
-      {/* Assignment Selection */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <label className="block text-xs font-medium text-gray-500 mb-2">Assignment</label>
-        <select
-          value={assignmentId}
-          onChange={(e) => setAssignmentId(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          {assignments.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.role} — {a.company.name} {a.location ? `(${a.location})` : ""}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {/* Week Starting */}
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <label className="block text-xs font-medium text-gray-500 mb-2">Week Starting (Monday)</label>
@@ -108,51 +118,98 @@ export function PortalTimesheetForm({
         />
       </div>
 
-      {/* Daily Hours Entry */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <label className="block text-xs font-medium text-gray-500 mb-3">Daily Hours</label>
-        <div className="grid grid-cols-7 gap-2">
-          {DAYS.map((day, i) => (
-            <div key={day} className="text-center">
-              <p className={`text-[10px] font-medium mb-1.5 ${i >= 5 ? "text-orange-600" : "text-gray-500"}`}>
-                {day}
-              </p>
-              <input
-                type="number"
-                min="0"
-                max="24"
-                step="0.5"
-                value={hours[i]}
-                onChange={(e) => {
-                  const newHours = [...hours];
-                  newHours[i] = parseFloat(e.target.value) || 0;
-                  setHours(newHours);
-                }}
-                className={`w-full rounded-lg border px-1 py-2.5 text-center text-sm font-medium focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                  hours[i] > 0
-                    ? i >= 5
-                      ? "border-orange-300 bg-orange-50 text-orange-700"
-                      : "border-blue-300 bg-blue-50 text-blue-700"
-                    : "border-gray-300 text-gray-400"
-                }`}
-              />
-            </div>
-          ))}
+      {/* Default assignment — fills every day in one tap */}
+      {assignments.length > 1 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <label className="block text-xs font-medium text-gray-500 mb-2">
+            Set all days to
+          </label>
+          <select
+            defaultValue={defaultAssignmentId}
+            onChange={(e) => applyAssignmentToAll(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {assignments.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.role} — {a.company.name} {a.location ? `(${a.location})` : ""}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-[11px] text-gray-400">
+            Worked different sites this week? Change the site on any day below.
+          </p>
         </div>
+      )}
 
-        {/* Totals */}
-        <div className="mt-4 flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3">
-          <div>
-            <p className="text-xs text-gray-500">Total Hours</p>
-            <p className="text-xl font-bold text-gray-900">{totalHours}h</p>
-          </div>
-          {overtimeHours > 0 && (
-            <div className="text-right">
-              <p className="text-xs text-orange-600">Overtime</p>
-              <p className="text-xl font-bold text-orange-600">{overtimeHours}h</p>
+      {/* Per-day entry */}
+      <div className="space-y-2">
+        {DAYS.map((day, i) => {
+          const isWeekend = i >= 5;
+          const hrs = dayHours[i];
+          return (
+            <div
+              key={day}
+              className={`rounded-xl border p-4 ${
+                hrs > 0
+                  ? isWeekend
+                    ? "border-orange-200 bg-orange-50/40"
+                    : "border-blue-200 bg-blue-50/40"
+                  : "border-gray-200 bg-white"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2.5">
+                <span className={`text-sm font-semibold ${isWeekend ? "text-orange-700" : "text-gray-900"}`}>
+                  {day}
+                </span>
+                <span className={`text-sm font-bold ${hrs > 0 ? "text-gray-900" : "text-gray-300"}`}>
+                  {hrs > 0 ? `${hrs.toFixed(2)}h` : "—"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <label className="block text-[10px] font-medium text-gray-400 mb-1">Start</label>
+                  <input
+                    type="time"
+                    value={days[i].startTime}
+                    onChange={(e) => updateDay(i, { startTime: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-medium text-gray-400 mb-1">Finish</label>
+                  <input
+                    type="time"
+                    value={days[i].finishTime}
+                    onChange={(e) => updateDay(i, { finishTime: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {assignments.length > 0 && (
+                <select
+                  value={days[i].assignmentId}
+                  onChange={(e) => updateDay(i, { assignmentId: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-2 py-2 text-xs text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">No site</option>
+                  {assignments.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.role} — {a.company.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })}
+      </div>
+
+      {/* Total */}
+      <div className="flex items-center justify-between rounded-xl bg-gray-900 px-4 py-3.5 text-white">
+        <span className="text-sm font-medium text-gray-300">Total this week</span>
+        <span className="text-2xl font-bold">{totalHours.toFixed(2)}h</span>
       </div>
 
       {/* Notes */}
@@ -173,7 +230,7 @@ export function PortalTimesheetForm({
         disabled={submitting || totalHours === 0}
         className="w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 active:bg-blue-800 transition-colors"
       >
-        {submitting ? "Submitting..." : `Submit Timesheet (${totalHours}h)`}
+        {submitting ? "Submitting..." : `Submit Timesheet (${totalHours.toFixed(2)}h)`}
       </button>
     </form>
   );

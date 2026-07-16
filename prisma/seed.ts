@@ -613,74 +613,26 @@ async function main() {
   console.log("\nCreating rate cards...");
   const rateCards = await Promise.all([
     prisma.rateCard.create({
-      data: {
-        role: "Project Manager",
-        location: "London",
-        payRate: 55.0,
-        chargeRate: 85.0,
-        margin: 35.29,
-        effectiveFrom: new Date("2026-01-01"),
-        effectiveTo: null,
-      },
+      data: { trade: "Project Manager", region: "London", pay: 55.0, agencyMarkup: 30.0, charge: 85.0, margin: 35.29, effectiveFrom: new Date("2026-01-01"), effectiveTo: null },
     }),
     prisma.rateCard.create({
-      data: {
-        role: "Site Manager",
-        location: "London",
-        payRate: 50.0,
-        chargeRate: 78.0,
-        margin: 35.9,
-        effectiveFrom: new Date("2026-01-01"),
-        effectiveTo: null,
-      },
+      data: { trade: "Site Manager", region: "London", pay: 50.0, agencyMarkup: 28.0, charge: 78.0, margin: 35.9, effectiveFrom: new Date("2026-01-01"), effectiveTo: null },
     }),
     prisma.rateCard.create({
-      data: {
-        role: "Quantity Surveyor",
-        location: "London",
-        payRate: 40.0,
-        chargeRate: 62.0,
-        margin: 35.48,
-        effectiveFrom: new Date("2026-01-01"),
-        effectiveTo: null,
-      },
+      data: { trade: "Quantity Surveyor", region: "London", pay: 40.0, agencyMarkup: 22.0, charge: 62.0, margin: 35.48, effectiveFrom: new Date("2026-01-01"), effectiveTo: null },
     }),
     prisma.rateCard.create({
-      data: {
-        role: "H&S Advisor",
-        location: "National",
-        payRate: 38.0,
-        chargeRate: 58.0,
-        margin: 34.48,
-        effectiveFrom: new Date("2026-01-01"),
-        effectiveTo: null,
-      },
+      data: { trade: "H&S Advisor", region: "National", pay: 38.0, agencyMarkup: 20.0, charge: 58.0, margin: 34.48, effectiveFrom: new Date("2026-01-01"), effectiveTo: null },
     }),
     prisma.rateCard.create({
-      data: {
-        role: "General Operative",
-        location: "National",
-        payRate: 18.0,
-        chargeRate: 32.0,
-        margin: 43.75,
-        effectiveFrom: new Date("2026-01-01"),
-        effectiveTo: null,
-      },
+      data: { trade: "General Operative", region: "National", pay: 18.0, agencyMarkup: 14.0, charge: 32.0, margin: 43.75, effectiveFrom: new Date("2026-01-01"), effectiveTo: null },
     }),
     prisma.rateCard.create({
-      data: {
-        role: "Crane Operator",
-        location: "London",
-        payRate: 35.0,
-        chargeRate: 55.0,
-        margin: 36.36,
-        effectiveFrom: new Date("2026-01-01"),
-        effectiveTo: null,
-      },
+      data: { trade: "Crane Operator", region: "London", pay: 35.0, agencyMarkup: 20.0, charge: 55.0, margin: 36.36, effectiveFrom: new Date("2026-01-01"), effectiveTo: null },
     }),
   ]);
   rateCards.forEach((r) =>
-    console.log(`  Created rate card: ${r.role} (${r.location}) - Pay: £${r.payRate}/hr, Charge: £${r.chargeRate}/hr`)
+    console.log(`  Created rate card: ${r.trade} (${r.region}) - Pay: £${r.pay}/hr, Charge: £${r.charge}/hr`)
   );
 
   console.log("\nSeed completed successfully!");

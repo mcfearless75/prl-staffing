@@ -5,33 +5,50 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
+function parseRateForm(formData: FormData) {
+  const trade = formData.get("trade") as string;
+  const region = (formData.get("region") as string) || null;
+  const sector = (formData.get("sector") as string) || null;
+  const project = (formData.get("project") as string) || null;
+  const employmentType = (formData.get("employmentType") as string) || "PAYE";
+  const rateType = (formData.get("rateType") as string) || "Time";
+  const rateBasis = (formData.get("rateBasis") as string) || "Hourly";
+  const pay = parseFloat(formData.get("pay") as string);
+  const charge = parseFloat(formData.get("charge") as string);
+
+  // Agency markup defaults to charge − pay when left blank.
+  const markupRaw = formData.get("agencyMarkup") as string;
+  const agencyMarkup = markupRaw ? parseFloat(markupRaw) : Number.isFinite(charge - pay) ? charge - pay : null;
+
+  const margin = charge > 0 ? parseFloat((((charge - pay) / charge) * 100).toFixed(1)) : null;
+
+  const effectiveFromRaw = formData.get("effectiveFrom") as string;
+  const effectiveFrom = effectiveFromRaw ? new Date(effectiveFromRaw) : new Date();
+  const effectiveToRaw = formData.get("effectiveTo") as string;
+  const effectiveTo = effectiveToRaw ? new Date(effectiveToRaw) : null;
+
+  return {
+    trade,
+    region,
+    sector,
+    project,
+    employmentType,
+    rateType,
+    rateBasis,
+    pay,
+    agencyMarkup,
+    charge,
+    margin,
+    effectiveFrom,
+    effectiveTo,
+  };
+}
+
 export async function createRateCard(formData: FormData) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
-    const role = formData.get("role") as string;
-    const location = formData.get("location") as string;
-    const payRate = parseFloat(formData.get("payRate") as string);
-    const chargeRate = parseFloat(formData.get("chargeRate") as string);
-    const margin = chargeRate > 0
-      ? parseFloat(((chargeRate - payRate) / chargeRate * 100).toFixed(1))
-      : null;
-    const effectiveFrom = new Date(formData.get("effectiveFrom") as string);
-    const effectiveToRaw = formData.get("effectiveTo") as string;
-    const effectiveTo = effectiveToRaw ? new Date(effectiveToRaw) : null;
-
-    await prisma.rateCard.create({
-      data: {
-        role,
-        location,
-        payRate,
-        chargeRate,
-        margin,
-        effectiveFrom,
-        effectiveTo,
-      },
-    });
-
+    await prisma.rateCard.create({ data: parseRateForm(formData) });
     revalidatePath("/rates");
     redirect("/rates");
   } catch (error) {
@@ -46,30 +63,7 @@ export async function updateRateCard(id: string, formData: FormData) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
-    const role = formData.get("role") as string;
-    const location = formData.get("location") as string;
-    const payRate = parseFloat(formData.get("payRate") as string);
-    const chargeRate = parseFloat(formData.get("chargeRate") as string);
-    const margin = chargeRate > 0
-      ? parseFloat(((chargeRate - payRate) / chargeRate * 100).toFixed(1))
-      : null;
-    const effectiveFrom = new Date(formData.get("effectiveFrom") as string);
-    const effectiveToRaw = formData.get("effectiveTo") as string;
-    const effectiveTo = effectiveToRaw ? new Date(effectiveToRaw) : null;
-
-    await prisma.rateCard.update({
-      where: { id },
-      data: {
-        role,
-        location,
-        payRate,
-        chargeRate,
-        margin,
-        effectiveFrom,
-        effectiveTo,
-      },
-    });
-
+    await prisma.rateCard.update({ where: { id }, data: parseRateForm(formData) });
     revalidatePath("/rates");
     redirect("/rates");
   } catch (error) {
@@ -84,10 +78,7 @@ export async function deleteRateCard(id: string) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
-    await prisma.rateCard.delete({
-      where: { id },
-    });
-
+    await prisma.rateCard.delete({ where: { id } });
     revalidatePath("/rates");
     redirect("/rates");
   } catch (error) {
