@@ -8,6 +8,7 @@ import { formatDate, getInitials } from "@/lib/utils";
 import { deleteComplianceRecord } from "../actions";
 import { StaffDocUploader } from "./edit/staff-doc-uploader";
 import { ReviewActions } from "../review/review-actions";
+import { TypeSelect } from "./type-select";
 
 export default async function ComplianceRecordPage({
   params,
@@ -107,7 +108,7 @@ export default async function ComplianceRecordPage({
             <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
               Type
             </p>
-            <p className="mt-1 text-sm text-gray-900">{record.type}</p>
+            <TypeSelect recordId={record.id} type={record.type} />
           </div>
 
           {/* Document Name */}
