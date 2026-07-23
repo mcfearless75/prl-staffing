@@ -188,6 +188,11 @@ export default async function ComplianceRecordPage({
         <StaffDocUploader
           contractorId={record.contractorId}
           docType={record.type}
+          recordId={record.id}
+          defaultReference={record.reference}
+          defaultExpiry={
+            record.expiryDate ? new Date(record.expiryDate).toISOString().split("T")[0] : null
+          }
         />
 
         {/* Existing documents */}

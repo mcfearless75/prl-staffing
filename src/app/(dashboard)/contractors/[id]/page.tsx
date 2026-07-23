@@ -7,6 +7,7 @@ import { ContractorPortalStatus } from "@/components/contractor-portal-status";
 import { ContractorQuickAssign } from "./contractor-quick-assign";
 import { DeleteContractorButton } from "./delete-contractor-button";
 import { SendAppInviteButton } from "./send-app-invite-button";
+import { categoryForType } from "@/lib/compliance-types";
 
 export default async function ContractorDetailPage({
   params,
@@ -503,18 +504,18 @@ export default async function ContractorDetailPage({
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-6">
             {(() => {
-              const grouped: Record<string, typeof complianceRecords> = {};
-              for (const rec of complianceRecords) {
-                if (!grouped[rec.type]) grouped[rec.type] = [];
-                grouped[rec.type].push(rec);
-              }
-              return Object.entries(grouped).map(([type, records]) => (
-                <div key={type}>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">{type}</h3>
-                  <div className="space-y-2">
-                    {records.map((rec) => (
+              // Right to Work evidence is tracked separately from competencies
+              // and certificates — they're different compliance obligations.
+              const isRtw = (r: (typeof complianceRecords)[number]) =>
+                categoryForType(r.type) === "Right to Work";
+              const sections = [
+                { label: "Right to Work", records: complianceRecords.filter(isRtw) },
+                { label: "Comps & Certs", records: complianceRecords.filter((r) => !isRtw(r)) },
+              ].filter((s) => s.records.length > 0);
+
+              const renderCard = (rec: (typeof complianceRecords)[number]) => (
                       <div
                         key={rec.id}
                         className={`rounded-lg border px-4 py-3 ${
@@ -569,10 +570,35 @@ export default async function ContractorDetailPage({
                           </Link>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ));
+              );
+
+              return sections.map((section) => {
+                const grouped: Record<string, typeof complianceRecords> = {};
+                for (const rec of section.records) {
+                  if (!grouped[rec.type]) grouped[rec.type] = [];
+                  grouped[rec.type].push(rec);
+                }
+                return (
+                  <section key={section.label}>
+                    <h3 className="mb-3 border-b border-gray-200 pb-1.5 text-sm font-semibold text-gray-900">
+                      {section.label}
+                      <span className="ml-2 font-normal text-gray-400">
+                        ({section.records.length})
+                      </span>
+                    </h3>
+                    <div className="space-y-3">
+                      {Object.entries(grouped).map(([type, records]) => (
+                        <div key={type}>
+                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            {type}
+                          </h4>
+                          <div className="space-y-2">{records.map(renderCard)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                );
+              });
             })()}
           </div>
         )}

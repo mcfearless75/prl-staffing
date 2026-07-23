@@ -18,10 +18,17 @@ export function StaffDocUploader({
   contractorId,
   docType,
   successMessage,
+  recordId,
+  defaultReference,
+  defaultExpiry,
 }: {
   contractorId: string;
   docType: string;
   successMessage?: string;
+  /** When set, the document number / expiry are captured alongside the upload. */
+  recordId?: string;
+  defaultReference?: string | null;
+  defaultExpiry?: string | null;
 }) {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -29,6 +36,9 @@ export function StaffDocUploader({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [reference, setReference] = useState(defaultReference ?? "");
+  const [expiry, setExpiry] = useState(defaultExpiry ?? "");
+  const [indefinite, setIndefinite] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -124,6 +134,30 @@ export function StaffDocUploader({
       }
 
       const data = await res.json();
+
+      // Record the document number / expiry against the compliance record in the
+      // same action, so the card is fully captured from one drag.
+      if (recordId && (reference.trim() || expiry || indefinite)) {
+        const detailRes = await fetch(`/api/compliance/${recordId}/details`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reference: reference.trim(),
+            expiryDate: expiry,
+            indefiniteExpiry: indefinite,
+          }),
+        });
+        if (!detailRes.ok) {
+          setMessage({
+            type: "error",
+            text: "File uploaded, but the document number / expiry could not be saved. Please set them via Edit.",
+          });
+          clearSelection();
+          router.refresh();
+          return;
+        }
+      }
+
       setMessage({
         type: "success",
         text: successMessage
@@ -221,6 +255,43 @@ export function StaffDocUploader({
         }}
         className="hidden"
       />
+
+      {recordId && selectedFile && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-600">Document number</label>
+            <input
+              type="text"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="Card / cert number"
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600">Expiry</label>
+            <input
+              type="date"
+              value={expiry}
+              disabled={indefinite}
+              onChange={(e) => setExpiry(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
+            />
+            <label className="mt-1.5 flex items-center gap-2 text-xs text-gray-600">
+              <input
+                type="checkbox"
+                checked={indefinite}
+                onChange={(e) => {
+                  setIndefinite(e.target.checked);
+                  if (e.target.checked) setExpiry("");
+                }}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              No expiry
+            </label>
+          </div>
+        </div>
+      )}
 
       {selectedFile && (
         <button
