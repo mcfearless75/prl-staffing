@@ -21,7 +21,9 @@ const ALLOWED_TYPES = [
 // the original hard-coded DOC_TYPES turned out to already exist inside the
 // taxonomy (CV, Other, P45, P60 etc), so this legacy allow-list is empty —
 // kept named/explicit so a genuinely non-taxonomy type has an obvious home.
-const LEGACY_NON_TAXONOMY_TYPES: string[] = [];
+// "Receipt" (expense receipts, Sprint C) is deliberately non-compliance —
+// it must NOT trigger the ComplianceRecord auto-link block below.
+const LEGACY_NON_TAXONOMY_TYPES: string[] = ["Receipt"];
 
 function isValidDocType(type: string): boolean {
   return isValidComplianceType(type) || LEGACY_NON_TAXONOMY_TYPES.includes(type);

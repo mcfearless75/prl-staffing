@@ -82,6 +82,76 @@ export default async function SpendDashboardPage() {
     invoiceCount: g._count._all,
   }));
 
+  // Spend by project — InvoiceLine has no direct assignment/project link, so
+  // this hops timesheetId/expenseId -> Assignment -> Project the same way the
+  // rest of this page resolves ids to display names (group in DB where
+  // possible, then a small set of follow-up lookup queries + an in-memory join).
+  const invoicedLines = await prisma.invoiceLine.findMany({
+    where: { OR: [{ timesheetId: { not: null } }, { expenseId: { not: null } }] },
+    select: { timesheetId: true, expenseId: true, amount: true },
+  });
+  const lineTimesheetIds = [...new Set(invoicedLines.map((l) => l.timesheetId).filter((v): v is string => !!v))];
+  const lineExpenseIds = [...new Set(invoicedLines.map((l) => l.expenseId).filter((v): v is string => !!v))];
+  const [linkedTimesheets, linkedExpenses] = await Promise.all([
+    lineTimesheetIds.length
+      ? prisma.timesheet.findMany({
+          where: { id: { in: lineTimesheetIds } },
+          select: { id: true, assignmentId: true },
+        })
+      : Promise.resolve([]),
+    lineExpenseIds.length
+      ? prisma.expense.findMany({
+          where: { id: { in: lineExpenseIds } },
+          select: { id: true, assignmentId: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const assignmentIdByTimesheetId = new Map(linkedTimesheets.map((t) => [t.id, t.assignmentId]));
+  const assignmentIdByExpenseId = new Map(linkedExpenses.map((e) => [e.id, e.assignmentId]));
+  const assignmentIds = [
+    ...new Set(
+      [...assignmentIdByTimesheetId.values(), ...assignmentIdByExpenseId.values()].filter(
+        (v): v is string => !!v
+      )
+    ),
+  ];
+  const linkedAssignments = assignmentIds.length
+    ? await prisma.assignment.findMany({
+        where: { id: { in: assignmentIds } },
+        select: { id: true, projectId: true },
+      })
+    : [];
+  const projectIdByAssignmentId = new Map(linkedAssignments.map((a) => [a.id, a.projectId]));
+
+  const projectSpendById = new Map<string, number>();
+  for (const line of invoicedLines) {
+    const assignmentId = line.timesheetId
+      ? assignmentIdByTimesheetId.get(line.timesheetId)
+      : line.expenseId
+      ? assignmentIdByExpenseId.get(line.expenseId)
+      : null;
+    if (!assignmentId) continue;
+    const projectId = projectIdByAssignmentId.get(assignmentId);
+    if (!projectId) continue;
+    projectSpendById.set(projectId, (projectSpendById.get(projectId) || 0) + line.amount);
+  }
+  const projectIds = [...projectSpendById.keys()];
+  const projects = projectIds.length
+    ? await prisma.project.findMany({
+        where: { id: { in: projectIds } },
+        select: { id: true, code: true, name: true },
+      })
+    : [];
+  const projectSpend = projects
+    .map((p) => ({
+      id: p.id,
+      code: p.code,
+      name: p.name,
+      total: projectSpendById.get(p.id) || 0,
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8);
+
   // Spend by contractor (from invoice lines) — top 10 by spend
   const contractorIds = contractorGroups.map((g) => g.contractorId);
   const contractors = contractorIds.length
@@ -283,6 +353,39 @@ export default async function SpendDashboardPage() {
                       <p className="text-xs text-gray-500">{pct}%</p>
                     </div>
                   </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Spend by Project */}
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="border-b border-gray-200 px-6 py-4">
+            <h2 className="text-lg font-semibold text-gray-900">By Project</h2>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {projectSpend.length === 0 ? (
+              <div className="px-6 py-8 text-center text-sm text-gray-500">No data</div>
+            ) : (
+              projectSpend.map((p) => {
+                const pct = totalSpend > 0 ? Math.round((p.total / totalSpend) * 100) : 0;
+                return (
+                  <Link
+                    key={p.id}
+                    href={`/projects/${p.id}`}
+                    className="flex items-center justify-between px-6 py-3 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {p.code} — {p.name}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(p.total)}</p>
+                      <p className="text-xs text-gray-500">{pct}%</p>
+                    </div>
+                  </Link>
                 );
               })
             )}

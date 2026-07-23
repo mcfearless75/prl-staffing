@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
-import { formatDate, getInitials } from "@/lib/utils";
+import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { KanbanBoard } from "./kanban-board";
 
@@ -22,6 +22,7 @@ export default async function AssignmentsPage({
     include: {
       contractor: true,
       company: true,
+      project: true,
     },
     orderBy: { startDate: "desc" },
   });
@@ -93,10 +94,19 @@ export default async function AssignmentsPage({
                     Company
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Project
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Role
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Location
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Charge Rate
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Value
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Start Date
@@ -139,10 +149,21 @@ export default async function AssignmentsPage({
                       {assignment.company?.name || "—"}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      {assignment.project ? `${assignment.project.code} - ${assignment.project.name}` : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                       {assignment.role}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                       {assignment.location || "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-gray-500">
+                      {assignment.chargeRate != null
+                        ? `${formatCurrency(assignment.chargeRate)}${assignment.rateBasis ? ` / ${assignment.rateBasis === "Daily" ? "day" : "hr"}` : ""}`
+                        : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-gray-500">
+                      {assignment.value != null ? formatCurrency(assignment.value) : "—"}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                       {formatDate(assignment.startDate)}

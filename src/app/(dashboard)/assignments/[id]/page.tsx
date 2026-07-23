@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/badge";
-import { formatDate, getInitials } from "@/lib/utils";
+import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import { deleteAssignment } from "../actions";
 
 export default async function AssignmentDetailPage({
@@ -18,6 +18,7 @@ export default async function AssignmentDetailPage({
     include: {
       contractor: true,
       company: true,
+      project: true,
       timesheets: true,
     },
   });
@@ -127,6 +128,36 @@ export default async function AssignmentDetailPage({
             <p className="text-sm font-medium text-gray-500">PO Number</p>
             <p className="text-sm text-gray-900">
               {assignment.poNumber || "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Project</p>
+            <p className="text-sm text-gray-900">
+              {assignment.project
+                ? `${assignment.project.code} - ${assignment.project.name}`
+                : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Charge Rate</p>
+            <p className="text-sm text-gray-900">
+              {assignment.chargeRate != null
+                ? `${formatCurrency(assignment.chargeRate)}${assignment.rateBasis ? ` / ${assignment.rateBasis === "Daily" ? "day" : "hr"}` : ""}`
+                : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Pay Rate</p>
+            <p className="text-sm text-gray-900">
+              {assignment.payRate != null
+                ? `${formatCurrency(assignment.payRate)}${assignment.rateBasis ? ` / ${assignment.rateBasis === "Daily" ? "day" : "hr"}` : ""}`
+                : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Value</p>
+            <p className="text-sm text-gray-900">
+              {assignment.value != null ? formatCurrency(assignment.value) : "—"}
             </p>
           </div>
         </div>

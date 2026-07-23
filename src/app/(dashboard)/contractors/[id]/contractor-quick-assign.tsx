@@ -20,12 +20,20 @@ interface Company {
   sites: Site[];
 }
 
+interface Project {
+  id: string;
+  code: string;
+  name: string;
+}
+
 export function ContractorQuickAssign({
   contractorId,
   companies,
+  projects = [],
 }: {
   contractorId: string;
   companies: Company[];
+  projects?: Project[];
 }) {
   const [companyId, setCompanyId] = useState("");
   const [siteId, setSiteId] = useState("");
@@ -124,6 +132,61 @@ export function ContractorQuickAssign({
               <option value="Ending">Ending</option>
               <option value="Completed">Completed</option>
             </select>
+          </div>
+
+          <div className="flex-1 min-w-[160px]">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Project</label>
+            <select
+              name="projectId"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            >
+              <option value="">No project</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.code} - {p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-24">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Charge £</label>
+            <input
+              type="number"
+              step="0.01"
+              name="chargeRate"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="w-24">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Pay £</label>
+            <input
+              type="number"
+              step="0.01"
+              name="payRate"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="w-28">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Basis</label>
+            <select
+              name="rateBasis"
+              defaultValue="Hourly"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            >
+              <option value="Hourly">Hourly</option>
+              <option value="Daily">Daily</option>
+            </select>
+          </div>
+
+          <div className="w-24">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Value £</label>
+            <input
+              type="number"
+              step="0.01"
+              name="value"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
           </div>
 
           <button

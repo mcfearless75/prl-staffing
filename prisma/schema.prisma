@@ -39,6 +39,7 @@ model Company {
   requirements  ComplianceRequirement[]
   approvalChain ApprovalChain?
   invoices      Invoice[]
+  projects      Project[]
 }
 
 // ─── Suppliers (agencies) ───
@@ -95,6 +96,7 @@ model Contractor {
   invoiceLines     InvoiceLine[]
   contractorLogin  ContractorLogin?
   documents        Document[]
+  expenses         Expense[]
 }
 
 // ─── Sites (physical locations under a Company) ───
@@ -136,6 +138,8 @@ model Assignment {
   site           Site?       @relation(fields: [siteId], references: [id])
   departmentId   String?
   department     Department? @relation(fields: [departmentId], references: [id])
+  projectId      String?
+  project        Project?    @relation(fields: [projectId], references: [id])
   role           String
   location       String?
   startDate      DateTime
@@ -143,10 +147,32 @@ model Assignment {
   status         String      @default("Active") // Placed, Active, Ending, Completed
   poNumber       String?
   notes          String?
+  chargeRate     Float?      // client charge rate for this assignment
+  payRate        Float?      // contractor pay rate for this assignment
+  rateBasis      String?     // Hourly, Daily
+  value          Float?      // agreed total assignment value
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   timesheets     Timesheet[]
   timesheetEntries TimesheetEntry[]
+  expenses       Expense[]
+}
+
+// ─── Projects (client jobs/contracts) ───
+model Project {
+  id            String       @id @default(cuid())
+  code          String       @unique // e.g. "4034"
+  name          String
+  companyId     String?
+  company       Company?     @relation(fields: [companyId], references: [id])
+  siteAddress   String?
+  costCode      String?
+  status        String       @default("Active") // Active, OnHold, Completed
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  assignments   Assignment[]
+  rateCards     RateCard[]
 }
 
 // ─── Timesheets ───
@@ -303,6 +329,7 @@ model InvoiceLine {
   contractorId  String
   contractor    Contractor @relation(fields: [contractorId], references: [id])
   timesheetId   String?
+  expenseId     String?    // Expense id when this line bills an approved expense
   description   String     // e.g. "J. Smith - Electrician"
   hours         Float
   overtimeHours Float      @default(0)
@@ -505,7 +532,9 @@ model RateCard {
   trade          String    // was "role" — e.g. "Banksman", "Slinger", "Quantity Surveyor"
   region         String?   // was "location" — e.g. "London & SE", "Midlands", "Ireland"
   sector         String?   // e.g. "Civils/Infra"
-  project        String?   // optional project scoping
+  project        String?   // legacy free text, superseded by projectId
+  projectId      String?
+  projectRef     Project?  @relation(fields: [projectId], references: [id])
   employmentType String    @default("PAYE") // CIS, PAYE, PSC
   rateType       String    @default("Time")  // Time, Piece
   rateBasis      String    @default("Hourly") // Hourly, Daily
@@ -517,6 +546,27 @@ model RateCard {
   effectiveTo    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+}
+
+// ─── Expenses (contractor-incurred costs, billable to client) ───
+model Expense {
+  id                String     @id @default(cuid())
+  contractorId      String
+  contractor        Contractor @relation(fields: [contractorId], references: [id])
+  assignmentId      String?
+  assignment        Assignment? @relation(fields: [assignmentId], references: [id])
+  timesheetId       String?    // plain string FK, mirrors InvoiceLine.timesheetId pattern
+  date              DateTime
+  category          String     // Travel, Accommodation, Materials, Other
+  description       String
+  amount            Float
+  receiptDocumentId String?    // Document id
+  status            String     @default("Pending") // Pending, Approved, Rejected, Invoiced
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  rejectionReason   String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 }
 
 // ─── QMS: Non-Conformance / CAPA ───

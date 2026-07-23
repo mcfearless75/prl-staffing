@@ -12,7 +12,7 @@ export default async function EditAssignmentPage({
 }) {
   const { id } = await params;
 
-  const [assignment, contractors, companies] = await Promise.all([
+  const [assignment, contractors, companies, projects] = await Promise.all([
     prisma.assignment.findUnique({ where: { id } }),
     prisma.contractor.findMany({
       select: { id: true, firstName: true, lastName: true },
@@ -21,6 +21,10 @@ export default async function EditAssignmentPage({
     prisma.company.findMany({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
+    }),
+    prisma.project.findMany({
+      orderBy: { code: "asc" },
+      select: { id: true, code: true, name: true },
     }),
   ]);
 
@@ -194,6 +198,102 @@ export default async function EditAssignmentPage({
                 id="poNumber"
                 name="poNumber"
                 defaultValue={assignment.poNumber || ""}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Project */}
+            <div>
+              <label
+                htmlFor="projectId"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Project
+              </label>
+              <select
+                id="projectId"
+                name="projectId"
+                defaultValue={assignment.projectId || ""}
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">No project</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.code} - {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Charge Rate */}
+            <div>
+              <label
+                htmlFor="chargeRate"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Charge Rate (£)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                id="chargeRate"
+                name="chargeRate"
+                defaultValue={assignment.chargeRate ?? ""}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Pay Rate */}
+            <div>
+              <label
+                htmlFor="payRate"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Pay Rate (£)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                id="payRate"
+                name="payRate"
+                defaultValue={assignment.payRate ?? ""}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Rate Basis */}
+            <div>
+              <label
+                htmlFor="rateBasis"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Rate Basis
+              </label>
+              <select
+                id="rateBasis"
+                name="rateBasis"
+                defaultValue={assignment.rateBasis || "Hourly"}
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="Hourly">Hourly</option>
+                <option value="Daily">Daily</option>
+              </select>
+            </div>
+
+            {/* Value */}
+            <div>
+              <label
+                htmlFor="value"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Value (£)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                id="value"
+                name="value"
+                defaultValue={assignment.value ?? ""}
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>

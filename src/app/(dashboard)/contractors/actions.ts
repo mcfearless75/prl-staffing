@@ -17,6 +17,14 @@ export async function quickAssignContractorFromProfile(
   const siteId = (formData.get("siteId") as string) || null;
   const departmentId = (formData.get("departmentId") as string) || null;
   const status = (formData.get("status") as string) || "Active";
+  const projectId = (formData.get("projectId") as string) || null;
+  const chargeRateRaw = formData.get("chargeRate") as string;
+  const chargeRate = chargeRateRaw ? parseFloat(chargeRateRaw) : null;
+  const payRateRaw = formData.get("payRate") as string;
+  const payRate = payRateRaw ? parseFloat(payRateRaw) : null;
+  const rateBasis = (formData.get("rateBasis") as string) || null;
+  const valueRaw = formData.get("value") as string;
+  const value = valueRaw ? parseFloat(valueRaw) : null;
 
   if (!companyId || !contractorId) return null;
 
@@ -40,6 +48,11 @@ export async function quickAssignContractorFromProfile(
           siteId: siteId || existing.siteId,
           departmentId: departmentId || existing.departmentId,
           status,
+          projectId: projectId || existing.projectId,
+          chargeRate: chargeRate ?? existing.chargeRate,
+          payRate: payRate ?? existing.payRate,
+          rateBasis: rateBasis || existing.rateBasis,
+          value: value ?? existing.value,
         },
       });
       revalidatePath(`/contractors/${contractorId}`);
@@ -57,9 +70,14 @@ export async function quickAssignContractorFromProfile(
       companyId,
       siteId: siteId || null,
       departmentId: departmentId || null,
+      projectId,
       role: "",
       status,
       startDate: new Date(),
+      chargeRate,
+      payRate,
+      rateBasis,
+      value,
     },
   });
 

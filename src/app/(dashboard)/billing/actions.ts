@@ -67,7 +67,33 @@ export async function generateInvoices(formData: FormData) {
       orderBy: { weekStarting: "asc" },
     });
 
-    if (timesheets.length === 0) {
+    // Find approved expenses in the same period/company scope as the timesheets
+    // above (mirrors the timesheet where-clause: same date-range field on the
+    // expense, same company scoping via the linked assignment).
+    const expenseWhere: Record<string, unknown> = {
+      status: "Approved",
+      date: {
+        gte: periodStart,
+        lte: periodEnd,
+      },
+    };
+    if (companyId) {
+      expenseWhere.assignment = { companyId };
+    }
+
+    const expenses = await prisma.expense.findMany({
+      where: expenseWhere,
+      include: {
+        contractor: true,
+        assignment: { include: { company: true } },
+      },
+      orderBy: { date: "asc" },
+    });
+    // Expenses without a linked assignment can't be scoped to a company, so
+    // they're excluded from this run rather than guessed at.
+    const scopedExpenses = expenses.filter((e) => e.assignment?.company);
+
+    if (timesheets.length === 0 && scopedExpenses.length === 0) {
       redirect("/billing/generate?error=no-timesheets");
     }
 
@@ -83,16 +109,29 @@ export async function generateInvoices(formData: FormData) {
       (t) => !invoicedTimesheetIds.has(t.id)
     );
 
-    if (uninvoicedTimesheets.length === 0) {
+    // Check which expenses are already on an invoice
+    const existingExpenseLines = await prisma.invoiceLine.findMany({
+      where: { expenseId: { in: scopedExpenses.map((e) => e.id) } },
+      select: { expenseId: true },
+    });
+    const invoicedExpenseIds = new Set(existingExpenseLines.map((l) => l.expenseId));
+
+    // Filter out already-invoiced expenses
+    const uninvoicedExpenses = scopedExpenses.filter(
+      (e) => !invoicedExpenseIds.has(e.id)
+    );
+
+    if (uninvoicedTimesheets.length === 0 && uninvoicedExpenses.length === 0) {
       redirect("/billing/generate?error=already-invoiced");
     }
 
-    // Group timesheets by company
+    // Group timesheets and expenses by company
     const byCompany = new Map<
       string,
       {
         company: { id: string; name: string };
         timesheets: typeof uninvoicedTimesheets;
+        expenses: typeof uninvoicedExpenses;
       }
     >();
 
@@ -101,9 +140,19 @@ export async function generateInvoices(formData: FormData) {
       if (!company) continue;
 
       if (!byCompany.has(company.id)) {
-        byCompany.set(company.id, { company, timesheets: [] });
+        byCompany.set(company.id, { company, timesheets: [], expenses: [] });
       }
       byCompany.get(company.id)!.timesheets.push(ts);
+    }
+
+    for (const ex of uninvoicedExpenses) {
+      const company = ex.assignment?.company;
+      if (!company) continue;
+
+      if (!byCompany.has(company.id)) {
+        byCompany.set(company.id, { company, timesheets: [], expenses: [] });
+      }
+      byCompany.get(company.id)!.expenses.push(ex);
     }
 
     // Generate one invoice per company. The whole batch is pure DB work (no
@@ -118,7 +167,7 @@ export async function generateInvoices(formData: FormData) {
         async (tx) => {
           const ids: string[] = [];
 
-          for (const [cId, { timesheets: companyTimesheets }] of byCompany) {
+          for (const [cId, { timesheets: companyTimesheets, expenses: companyExpenses }] of byCompany) {
             const invoiceNumber = await getNextInvoiceNumber(tx);
 
             // Calculate due date (30 days from now)
@@ -137,12 +186,13 @@ export async function generateInvoices(formData: FormData) {
             // Build invoice lines
             const lines: {
               contractorId: string;
-              timesheetId: string;
+              timesheetId?: string;
+              expenseId?: string;
               description: string;
               hours: number;
               overtimeHours: number;
               rate: number;
-              overtimeRate: number;
+              overtimeRate: number | null;
               amount: number;
             }[] = [];
 
@@ -151,8 +201,11 @@ export async function generateInvoices(formData: FormData) {
               // chargeRate is hourly (see schema). dayRate is per-day and must NOT
               // be used against hours — if no hourly charge rate is set, bill 0 and
               // flag the line so it gets fixed before the invoice is sent.
-              const chargeRate = contractor.chargeRate || 0;
-              const missingChargeRate = !contractor.chargeRate;
+              // Prefer the assignment's own negotiated charge rate (set per-placement
+              // on the Assignment record) over the contractor's default rate card;
+              // only flag the line when neither is available.
+              const chargeRate = ts.assignment?.chargeRate ?? contractor.chargeRate ?? 0;
+              const missingChargeRate = !ts.assignment?.chargeRate && !contractor.chargeRate;
               const overtimeRate = chargeRate * 1.5;
               const regularHours = ts.totalHours - ts.overtimeHours;
               const amount =
@@ -167,6 +220,21 @@ export async function generateInvoices(formData: FormData) {
                 rate: chargeRate,
                 overtimeRate,
                 amount: Math.round(amount * 100) / 100,
+              });
+            }
+
+            // Roll approved expenses into the invoice as their own lines —
+            // one line per expense, billed at cost (no markup applied here).
+            for (const ex of companyExpenses) {
+              lines.push({
+                contractorId: ex.contractorId,
+                expenseId: ex.id,
+                description: `${ex.category} - ${ex.description}`,
+                hours: 0,
+                overtimeHours: 0,
+                rate: ex.amount,
+                overtimeRate: null,
+                amount: ex.amount,
               });
             }
 
@@ -196,6 +264,15 @@ export async function generateInvoices(formData: FormData) {
               },
             });
 
+            // Flip the included expenses to "Invoiced" now that they're on
+            // this invoice, so they don't get pulled into a future run.
+            if (companyExpenses.length > 0) {
+              await tx.expense.updateMany({
+                where: { id: { in: companyExpenses.map((e) => e.id) } },
+                data: { status: "Invoiced" },
+              });
+            }
+
             ids.push(invoice.id);
           }
 
@@ -221,6 +298,7 @@ export async function generateInvoices(formData: FormData) {
     }
 
     revalidatePath("/billing");
+    revalidatePath("/expenses");
     if (invoiceIds.length === 1) {
       redirect(`/billing/${invoiceIds[0]}`);
     }

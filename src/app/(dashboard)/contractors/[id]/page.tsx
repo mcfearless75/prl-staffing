@@ -17,7 +17,7 @@ export default async function ContractorDetailPage({
 }) {
   const { id } = await params;
 
-  const [contractor, activityLogs, documents, complianceRecords, companies] = await Promise.all([
+  const [contractor, activityLogs, documents, complianceRecords, companies, projects] = await Promise.all([
     prisma.contractor.findUnique({
       where: { id },
       include: {
@@ -49,6 +49,10 @@ export default async function ContractorDetailPage({
           },
         },
       },
+    }),
+    prisma.project.findMany({
+      orderBy: { code: "asc" },
+      select: { id: true, code: true, name: true },
     }),
   ]);
 
@@ -318,7 +322,7 @@ export default async function ContractorDetailPage({
         <h2 className="mb-4 text-lg font-semibold text-gray-900">
           Assignments
         </h2>
-        <ContractorQuickAssign contractorId={contractor.id} companies={companies} />
+        <ContractorQuickAssign contractorId={contractor.id} companies={companies} projects={projects} />
         {contractor.assignments.length === 0 ? (
           <p className="text-sm text-gray-500">No assignments found.</p>
         ) : (

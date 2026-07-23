@@ -52,6 +52,7 @@ export default async function DashboardPage({
     assignmentsEndingSoon,
     assignmentsStartingSoon,
     assignmentsOverdueCompletion,
+    pendingExpenses,
   ] = await Promise.all([
     prisma.contractor.count(),
     prisma.assignment.count({ where: { status: "Active" } }),
@@ -117,6 +118,8 @@ export default async function DashboardPage({
     prisma.assignment.count({
       where: { status: { in: ["Active", "Ending"] }, endDate: { lt: now } },
     }),
+    // Pending expenses awaiting approval
+    prisma.expense.count({ where: { status: "Pending" } }),
   ]);
 
   const complianceScore =
@@ -420,7 +423,7 @@ export default async function DashboardPage({
         </div>
       </div>
       {/* Contractor Activity Feed */}
-      {(recentSubmittedTimesheets.length > 0 || recentDocUploads.length > 0 || recentActivity.length > 0 || assignmentsEndingSoon > 0 || assignmentsStartingSoon > 0 || assignmentsOverdueCompletion > 0) && (
+      {(recentSubmittedTimesheets.length > 0 || recentDocUploads.length > 0 || recentActivity.length > 0 || assignmentsEndingSoon > 0 || assignmentsStartingSoon > 0 || assignmentsOverdueCompletion > 0 || pendingExpenses > 0) && (
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50/50">
           <div className="flex items-center gap-2 border-b border-amber-200 px-6 py-4">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold animate-pulse">!</span>
@@ -480,6 +483,24 @@ export default async function DashboardPage({
                   <p className="text-xs text-gray-500">Active or ending assignments past their end date</p>
                 </div>
                 <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700">Review</span>
+              </Link>
+            )}
+            {/* Pending expenses awaiting approval */}
+            {pendingExpenses > 0 && (
+              <Link
+                href="/expenses"
+                className="flex items-center gap-4 px-6 py-3 hover:bg-amber-50 transition-colors"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-medium text-emerald-700">
+                  <MessageSquare className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-gray-900">
+                    <strong>{pendingExpenses}</strong> expense{pendingExpenses === 1 ? "" : "s"} awaiting approval
+                  </p>
+                  <p className="text-xs text-gray-500">Contractor-submitted expenses pending review</p>
+                </div>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">Review</span>
               </Link>
             )}
             {/* Submitted timesheets needing review */}

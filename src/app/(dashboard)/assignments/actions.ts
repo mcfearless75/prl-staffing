@@ -23,12 +23,22 @@ export async function createAssignment(formData: FormData) {
     const siteId = (formData.get("siteId") as string) || null;
     const departmentId = (formData.get("departmentId") as string) || null;
 
+    const projectId = (formData.get("projectId") as string) || null;
+    const chargeRateRaw = formData.get("chargeRate") as string;
+    const chargeRate = chargeRateRaw ? parseFloat(chargeRateRaw) : null;
+    const payRateRaw = formData.get("payRate") as string;
+    const payRate = payRateRaw ? parseFloat(payRateRaw) : null;
+    const rateBasis = (formData.get("rateBasis") as string) || null;
+    const valueRaw = formData.get("value") as string;
+    const value = valueRaw ? parseFloat(valueRaw) : null;
+
     await prisma.assignment.create({
       data: {
         contractorId,
         companyId,
         siteId,
         departmentId,
+        projectId,
         role,
         location,
         startDate,
@@ -36,6 +46,10 @@ export async function createAssignment(formData: FormData) {
         status,
         poNumber,
         notes,
+        chargeRate,
+        payRate,
+        rateBasis,
+        value,
       },
     });
 
@@ -68,6 +82,15 @@ export async function updateAssignment(id: string, formData: FormData) {
     const siteId = (formData.get("siteId") as string) || null;
     const departmentId = (formData.get("departmentId") as string) || null;
 
+    const projectId = (formData.get("projectId") as string) || null;
+    const chargeRateRaw = formData.get("chargeRate") as string;
+    const chargeRate = chargeRateRaw ? parseFloat(chargeRateRaw) : null;
+    const payRateRaw = formData.get("payRate") as string;
+    const payRate = payRateRaw ? parseFloat(payRateRaw) : null;
+    const rateBasis = (formData.get("rateBasis") as string) || null;
+    const valueRaw = formData.get("value") as string;
+    const value = valueRaw ? parseFloat(valueRaw) : null;
+
     await prisma.assignment.update({
       where: { id },
       data: {
@@ -75,6 +98,7 @@ export async function updateAssignment(id: string, formData: FormData) {
         companyId,
         siteId,
         departmentId,
+        projectId,
         role,
         location,
         startDate,
@@ -82,6 +106,10 @@ export async function updateAssignment(id: string, formData: FormData) {
         status,
         poNumber,
         notes,
+        chargeRate,
+        payRate,
+        rateBasis,
+        value,
       },
     });
 

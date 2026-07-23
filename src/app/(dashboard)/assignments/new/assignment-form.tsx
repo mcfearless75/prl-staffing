@@ -8,13 +8,15 @@ type Dept = { id: string; name: string };
 type Site = { id: string; name: string; departments: Dept[] };
 type Company = { id: string; name: string; sites: Site[] };
 type Contractor = { id: string; firstName: string; lastName: string };
+type Project = { id: string; code: string; name: string };
 
 interface Props {
   contractors: Contractor[];
   companies: Company[];
+  projects?: Project[];
 }
 
-export function AssignmentForm({ contractors, companies }: Props) {
+export function AssignmentForm({ contractors, companies, projects = [] }: Props) {
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [selectedSiteId, setSelectedSiteId] = useState("");
 
@@ -195,6 +197,84 @@ export function AssignmentForm({ contractors, companies }: Props) {
             name="poNumber"
             className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             placeholder="e.g. PO-2024-001"
+          />
+        </div>
+
+        {/* Project */}
+        <div>
+          <label htmlFor="projectId" className="block text-sm font-medium text-gray-700">
+            Project
+          </label>
+          <select
+            id="projectId"
+            name="projectId"
+            className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">No project</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.code} - {p.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Charge Rate */}
+        <div>
+          <label htmlFor="chargeRate" className="block text-sm font-medium text-gray-700">
+            Charge Rate (£)
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            id="chargeRate"
+            name="chargeRate"
+            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="e.g. 25.00"
+          />
+        </div>
+
+        {/* Pay Rate */}
+        <div>
+          <label htmlFor="payRate" className="block text-sm font-medium text-gray-700">
+            Pay Rate (£)
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            id="payRate"
+            name="payRate"
+            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="e.g. 18.00"
+          />
+        </div>
+
+        {/* Rate Basis */}
+        <div>
+          <label htmlFor="rateBasis" className="block text-sm font-medium text-gray-700">
+            Rate Basis
+          </label>
+          <select
+            id="rateBasis"
+            name="rateBasis"
+            defaultValue="Hourly"
+            className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="Hourly">Hourly</option>
+            <option value="Daily">Daily</option>
+          </select>
+        </div>
+
+        {/* Value */}
+        <div>
+          <label htmlFor="value" className="block text-sm font-medium text-gray-700">
+            Value (£)
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            id="value"
+            name="value"
+            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="e.g. 5000.00"
           />
         </div>
       </div>

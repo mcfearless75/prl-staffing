@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Clock, ShieldCheck, FileUp, LogOut, User, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Clock, ShieldCheck, FileUp, LogOut, User, MessageSquare, Receipt } from "lucide-react";
 import { useEffect } from "react";
 
 const portalNav = [
   { name: "Home", href: "/portal", icon: LayoutDashboard },
   { name: "Timesheets", href: "/portal/timesheets", icon: Clock },
+  { name: "Expenses", href: "/portal/expenses", icon: Receipt },
   { name: "Documents", href: "/portal/documents", icon: FileUp },
   { name: "Compliance", href: "/portal/compliance", icon: ShieldCheck },
   { name: "Profile", href: "/portal/profile", icon: User },
