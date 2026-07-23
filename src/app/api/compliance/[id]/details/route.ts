@@ -22,6 +22,7 @@ export async function PATCH(
   }
 
   const reference = typeof body.reference === "string" ? body.reference.trim() || null : undefined;
+  const indefiniteProvided = typeof body.indefiniteExpiry === "boolean";
   const indefinite = body.indefiniteExpiry === true;
   const rawExpiry = typeof body.expiryDate === "string" ? body.expiryDate.trim() : "";
 
@@ -36,7 +37,7 @@ export async function PATCH(
     expiryDate = parsed;
   }
 
-  if (reference === undefined && expiryDate === undefined) {
+  if (reference === undefined && expiryDate === undefined && !indefiniteProvided) {
     return NextResponse.json({ success: true, unchanged: true });
   }
 
@@ -46,6 +47,7 @@ export async function PATCH(
       data: {
         ...(reference !== undefined ? { reference } : {}),
         ...(expiryDate !== undefined ? { expiryDate } : {}),
+        ...(indefiniteProvided ? { indefiniteExpiry: indefinite } : {}),
       },
       select: { contractorId: true },
     });

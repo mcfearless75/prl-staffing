@@ -241,3 +241,34 @@ export function categoryForType(type: string): ComplianceCategory {
 export function isValidComplianceType(type: string): boolean {
   return CATEGORY_BY_TYPE.has(type);
 }
+
+/**
+ * Card-style categories where a certificate is physically two-sided — the
+ * upload form offers a Front and Back slot instead of a single file.
+ */
+const FRONT_BACK_CATEGORIES: ComplianceCategory[] = ["CSCS", "CPCS", "NPORS", "CCNSG"];
+
+export interface DocFormProfile {
+  /** RTW doc that carries a Home Office share code (Visa / Work Permit, Share Code) */
+  requiresShareCode: boolean;
+  /** Any Right to Work category type — gate upload behind a verification attestation */
+  requiresAttestation: boolean;
+  /** Card-style cert (CSCS/CPCS/NPORS/CCNSG) — offer Front + Back upload slots */
+  frontBack: boolean;
+}
+
+/**
+ * Drives the type-aware fields shown on the compliance upload form. Pure
+ * lookup — no side effects — so it can be called from both the client form
+ * and (if needed later) a server-side validator.
+ */
+export function docFormProfile(type: string): DocFormProfile {
+  const category = categoryForType(type);
+  const isRightToWork = category === "Right to Work";
+
+  return {
+    requiresShareCode: isRightToWork && (type.includes("Visa") || type.includes("Share Code")),
+    requiresAttestation: isRightToWork,
+    frontBack: FRONT_BACK_CATEGORIES.includes(category),
+  };
+}

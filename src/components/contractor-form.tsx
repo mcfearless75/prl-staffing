@@ -11,12 +11,23 @@ interface ContractorFormProps {
   action: (prevState: ContractorFormState, formData: FormData) => Promise<ContractorFormState>;
 }
 
+function notesAreStructured(notes: unknown): boolean {
+  if (typeof notes !== "string" || notes.trim() === "") return false;
+  try {
+    const parsed = JSON.parse(notes);
+    return typeof parsed === "object" && parsed !== null;
+  } catch {
+    return false;
+  }
+}
+
 export function ContractorForm({
   contractor,
   suppliers,
   action,
 }: ContractorFormProps) {
   const [state, formAction, pending] = useActionState(action, {});
+  const hasStructuredNotes = notesAreStructured(contractor?.notes);
 
   return (
     <form action={formAction}>
@@ -289,13 +300,19 @@ export function ContractorForm({
             >
               Notes
             </label>
-            <textarea
-              id="notes"
-              name="notes"
-              rows={4}
-              defaultValue={contractor?.notes ?? ""}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+            {hasStructuredNotes ? (
+              <p className="mt-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                Structured application data — view on the contractor page.
+              </p>
+            ) : (
+              <textarea
+                id="notes"
+                name="notes"
+                rows={4}
+                defaultValue={contractor?.notes ?? ""}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            )}
           </div>
         </div>
 

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Upload, Check, AlertCircle, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { docFormProfile } from "@/lib/compliance-types";
 
 const ACCEPTED = ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.doc,.docx";
 
@@ -21,6 +22,7 @@ export function StaffDocUploader({
   recordId,
   defaultReference,
   defaultExpiry,
+  defaultIndefinite,
 }: {
   contractorId: string;
   docType: string;
@@ -29,6 +31,7 @@ export function StaffDocUploader({
   recordId?: string;
   defaultReference?: string | null;
   defaultExpiry?: string | null;
+  defaultIndefinite?: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -38,9 +41,16 @@ export function StaffDocUploader({
   const [focused, setFocused] = useState(false);
   const [reference, setReference] = useState(defaultReference ?? "");
   const [expiry, setExpiry] = useState(defaultExpiry ?? "");
-  const [indefinite, setIndefinite] = useState(false);
+  const [indefinite, setIndefinite] = useState(defaultIndefinite ?? false);
+  const [attested, setAttested] = useState(false);
+  const [side, setSide] = useState<"Front" | "Back">("Front");
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const profile = docFormProfile(docType);
+  // Attestation can only be captured when the checkbox actually renders (the
+  // details block below is gated on recordId) — without recordId the gate
+  // must not block the upload, or it becomes permanently disabled.
+  const attestationRequired = Boolean(recordId) && profile.requiresAttestation;
 
   useEffect(() => {
     if (!selectedFile || !selectedFile.type.startsWith("image/")) {
@@ -114,6 +124,7 @@ export function StaffDocUploader({
 
   async function handleUpload() {
     if (!selectedFile) return;
+    if (attestationRequired && !attested) return;
     setUploading(true);
     setMessage(null);
 
@@ -122,6 +133,9 @@ export function StaffDocUploader({
       formData.append("file", selectedFile);
       formData.append("type", docType);
       formData.append("contractorId", contractorId);
+      if (profile.frontBack) {
+        formData.append("notes", `Side: ${side}`);
+      }
 
       const res = await fetch("/api/documents", {
         method: "POST",
@@ -259,12 +273,14 @@ export function StaffDocUploader({
       {recordId && selectedFile && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="block text-xs font-medium text-gray-600">Document number</label>
+            <label className="block text-xs font-medium text-gray-600">
+              {profile.requiresShareCode ? "Share code" : "Document number"}
+            </label>
             <input
               type="text"
               value={reference}
               onChange={(e) => setReference(e.target.value)}
-              placeholder="Card / cert number"
+              placeholder={profile.requiresShareCode ? "e.g. ABC-123-DEF-456" : "Card / cert number"}
               className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
@@ -287,16 +303,53 @@ export function StaffDocUploader({
                 }}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              No expiry
+              No expiry (indefinite)
             </label>
           </div>
+
+          {profile.frontBack && (
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-gray-600">Card side</label>
+              <div className="mt-1 flex gap-2">
+                {(["Front", "Back"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSide(s)}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      side === s
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-gray-300 text-gray-600 hover:border-gray-400"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Upload this side now, then select the other side and upload again.
+              </p>
+            </div>
+          )}
+
+          {profile.requiresAttestation && (
+            <label className="sm:col-span-2 flex items-start gap-2 text-xs text-gray-700">
+              <input
+                type="checkbox"
+                checked={attested}
+                onChange={(e) => setAttested(e.target.checked)}
+                className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              I confirm I have verified this worker&apos;s Right to Work documentation
+            </label>
+          )}
         </div>
       )}
 
       {selectedFile && (
         <button
           onClick={handleUpload}
-          disabled={uploading}
+          disabled={uploading || (attestationRequired && !attested)}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}

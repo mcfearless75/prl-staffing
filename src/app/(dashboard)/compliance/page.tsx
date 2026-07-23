@@ -553,7 +553,7 @@ export default async function CompliancePage({
                     {record.issueDate ? formatDate(record.issueDate) : "—"}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {record.expiryDate ? formatDate(record.expiryDate) : "—"}
+                    {record.indefiniteExpiry ? "No expiry" : record.expiryDate ? formatDate(record.expiryDate) : "—"}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <Badge variant={record.status}>

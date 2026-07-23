@@ -20,10 +20,15 @@ export async function createAssignment(formData: FormData) {
     const poNumber = formData.get("poNumber") as string;
     const notes = formData.get("notes") as string;
 
+    const siteId = (formData.get("siteId") as string) || null;
+    const departmentId = (formData.get("departmentId") as string) || null;
+
     await prisma.assignment.create({
       data: {
         contractorId,
         companyId,
+        siteId,
+        departmentId,
         role,
         location,
         startDate,
@@ -35,6 +40,7 @@ export async function createAssignment(formData: FormData) {
     });
 
     revalidatePath("/assignments");
+    revalidatePath(`/contractors/${contractorId}`);
     redirect("/assignments");
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
@@ -59,11 +65,16 @@ export async function updateAssignment(id: string, formData: FormData) {
     const poNumber = formData.get("poNumber") as string;
     const notes = formData.get("notes") as string;
 
+    const siteId = (formData.get("siteId") as string) || null;
+    const departmentId = (formData.get("departmentId") as string) || null;
+
     await prisma.assignment.update({
       where: { id },
       data: {
         contractorId,
         companyId,
+        siteId,
+        departmentId,
         role,
         location,
         startDate,
@@ -74,7 +85,9 @@ export async function updateAssignment(id: string, formData: FormData) {
       },
     });
 
+    revalidatePath("/assignments");
     revalidatePath(`/assignments/${id}`);
+    revalidatePath(`/contractors/${contractorId}`);
     redirect(`/assignments/${id}`);
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
@@ -93,12 +106,14 @@ export async function updateAssignmentStatus(id: string, status: string) {
       throw new Error("Invalid status");
     }
 
-    await prisma.assignment.update({
+    const updated = await prisma.assignment.update({
       where: { id },
       data: { status },
     });
 
     revalidatePath("/assignments");
+    revalidatePath(`/assignments/${id}`);
+    revalidatePath(`/contractors/${updated.contractorId}`);
   } catch (error) {
     if (error instanceof Error && error.message === "Invalid status") throw error;
     console.error("Failed to update assignment status:", error);
@@ -110,11 +125,12 @@ export async function deleteAssignment(id: string) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
-    await prisma.assignment.delete({
+    const deleted = await prisma.assignment.delete({
       where: { id },
     });
 
     revalidatePath("/assignments");
+    revalidatePath(`/contractors/${deleted.contractorId}`);
     redirect("/assignments");
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;

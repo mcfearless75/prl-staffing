@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { uploadToR2 } from "@/lib/r2";
 import { auth } from "@/lib/auth";
+import { isValidComplianceType } from "@/lib/compliance-types";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -15,22 +16,16 @@ const ALLOWED_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
-const DOC_TYPES = [
-  "CV",
-  "CSCS",
-  "CCNSG",
-  "NPORS",
-  "Passport",
-  "Share Code",
-  "DBS",
-  "P45",
-  "P60",
-  "Insurance",
-  "Qualification",
-  "Right to Work",
-  "IR35 Assessment",
-  "Other",
-];
+// Non-compliance document types this route also needs to accept, which sit
+// outside the compliance taxonomy in src/lib/compliance-types.ts. All 14 of
+// the original hard-coded DOC_TYPES turned out to already exist inside the
+// taxonomy (CV, Other, P45, P60 etc), so this legacy allow-list is empty —
+// kept named/explicit so a genuinely non-taxonomy type has an obvious home.
+const LEGACY_NON_TAXONOMY_TYPES: string[] = [];
+
+function isValidDocType(type: string): boolean {
+  return isValidComplianceType(type) || LEGACY_NON_TAXONOMY_TYPES.includes(type);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,7 +47,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!DOC_TYPES.includes(type)) {
+    if (!isValidDocType(type)) {
       return NextResponse.json({ error: "Invalid document type" }, { status: 400 });
     }
 
@@ -121,16 +116,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Auto-update ComplianceRecord when compliance-related docs are uploaded
-    const COMPLIANCE_DOC_TYPES = [
-      "CSCS", "CCNSG", "NPORS", "DBS", "Insurance", "Qualification", "Right to Work", "IR35 Assessment", "Passport", "Share Code",
-    ];
+    // Auto-update ComplianceRecord for any type in the compliance taxonomy
+    // (previously only a hard-coded 10-type subset triggered this)
+    const isComplianceDoc = isValidComplianceType(type);
 
-    if (COMPLIANCE_DOC_TYPES.includes(type)) {
-      // Map document types to compliance types
+    if (isComplianceDoc) {
+      // Map document types to compliance types — Passport / Share Code have
+      // historically rolled up into the umbrella "Right to Work" record type
       const complianceType =
         type === "Passport" || type === "Share Code" ? "Right to Work"
-        : type === "IR35 Assessment" ? "IR35 Assessment"
         : type;
 
       // Check for existing compliance record
@@ -172,7 +166,7 @@ export async function POST(request: NextRequest) {
         fileName: document.fileName,
         version: document.version,
       },
-      complianceUpdated: COMPLIANCE_DOC_TYPES.includes(type),
+      complianceUpdated: isComplianceDoc,
     });
   } catch (error) {
     console.error("Document upload error:", error);

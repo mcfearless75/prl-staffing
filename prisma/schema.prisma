@@ -199,6 +199,7 @@ model ComplianceRecord {
   reference    String?    // cert number etc
   issueDate    DateTime?
   expiryDate   DateTime?
+  indefiniteExpiry Boolean @default(false) // true = "No expiry" was explicitly set, distinct from not-yet-entered
   status       String     @default("Pending") // Verified, Pending, Expiring, Expired, Non-Compliant
   notes        String?
   filePath     String?    // path to uploaded document

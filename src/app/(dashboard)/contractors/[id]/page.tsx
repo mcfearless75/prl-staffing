@@ -7,6 +7,7 @@ import { ContractorPortalStatus } from "@/components/contractor-portal-status";
 import { ContractorQuickAssign } from "./contractor-quick-assign";
 import { DeleteContractorButton } from "./delete-contractor-button";
 import { SendAppInviteButton } from "./send-app-invite-button";
+import { BulkDocUploader } from "./bulk-doc-uploader";
 import { categoryForType } from "@/lib/compliance-types";
 
 export default async function ContractorDetailPage({
@@ -377,6 +378,14 @@ export default async function ContractorDetailPage({
             </Link>
           </div>
         </div>
+        <details className="mb-4 group">
+          <summary className="cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-800 select-none">
+            📥 Bulk upload documents
+          </summary>
+          <div className="mt-3">
+            <BulkDocUploader contractorId={contractor.id} />
+          </div>
+        </details>
         {contractor.compliances.length === 0 && documents.length === 0 ? (
           <p className="text-sm text-gray-500">No compliance records or documents found.</p>
         ) : (
@@ -406,7 +415,9 @@ export default async function ContractorDetailPage({
                       {compliance.reference && (
                         <span className="text-xs text-gray-500">#{compliance.reference}</span>
                       )}
-                      {compliance.expiryDate && (
+                      {compliance.indefiniteExpiry ? (
+                        <span className="text-xs text-gray-500">No expiry</span>
+                      ) : compliance.expiryDate && (
                         <span className="text-xs text-gray-500">
                           Expires {new Date(compliance.expiryDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                         </span>
@@ -556,7 +567,9 @@ export default async function ContractorDetailPage({
                                 Issued {new Date(rec.issueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                               </span>
                             )}
-                            {rec.expiryDate && (
+                            {rec.indefiniteExpiry ? (
+                              <span className="text-xs text-gray-500">No expiry</span>
+                            ) : rec.expiryDate && (
                               <span className="text-xs text-gray-500">
                                 Expires {new Date(rec.expiryDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                               </span>

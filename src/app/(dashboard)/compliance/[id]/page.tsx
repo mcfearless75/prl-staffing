@@ -147,7 +147,7 @@ export default async function ComplianceRecordPage({
               Expiry Date
             </p>
             <p className="mt-1 text-sm text-gray-900">
-              {record.expiryDate ? formatDate(record.expiryDate) : "—"}
+              {record.indefiniteExpiry ? "No expiry" : record.expiryDate ? formatDate(record.expiryDate) : "—"}
             </p>
           </div>
 
@@ -193,6 +193,7 @@ export default async function ComplianceRecordPage({
           defaultExpiry={
             record.expiryDate ? new Date(record.expiryDate).toISOString().split("T")[0] : null
           }
+          defaultIndefinite={record.indefiniteExpiry}
         />
 
         {/* Existing documents */}

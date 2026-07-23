@@ -84,7 +84,10 @@ function extractContractorData(formData: FormData) {
     niNumber: formData.get("niNumber") as string,
     utrNumber: formData.get("utrNumber") as string,
     ir35Status: formData.get("ir35Status") as string,
-    notes: formData.get("notes") as string,
+    // "notes" is omitted from the form when it holds structured JSON
+    // (see ContractorForm) — undefined here means Prisma leaves the
+    // existing column value untouched instead of nulling it out.
+    ...(formData.has("notes") ? { notes: formData.get("notes") as string } : {}),
     // Emergency contact
     emergencyContactName: formData.get("emergencyContactName") as string || null,
     emergencyContactPhone: formData.get("emergencyContactPhone") as string || null,

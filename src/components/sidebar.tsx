@@ -40,12 +40,12 @@ const navigation = [
   { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
   { name: "Contractors", href: "/contractors", icon: Users, badgeKey: null },
   { name: "Companies", href: "/companies", icon: Building2, badgeKey: null },
-  // { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
+  { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
   { name: "Timesheets", href: "/timesheets", icon: Clock, badgeKey: null },
-  // { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
+  { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
   { name: "Compliance", href: "/compliance", icon: ShieldCheck, badgeKey: "complianceAlerts" as const },
-  // { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
-  // { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
+  { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
+  { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
   { name: "Pay Queries", href: "/payment-queries", icon: MessageSquare, badgeKey: "openQueries" as const },
   { name: "Grievances", href: "/grievances", icon: AlertCircle, badgeKey: "openGrievances" as const },
   { name: "Compliance Hub", href: "/qms", icon: Shield, badgeKey: null },
@@ -54,6 +54,7 @@ const navigation = [
 
 type Counts = {
   complianceAlerts: number;
+  draftInvoices: number;
   pendingOnboarding: number;
   pendingApplicants: number;
   openQueries: number;
@@ -64,7 +65,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
-  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0 });
+  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0 });
 
   // Fetch badge counts on mount and every 30 seconds
   useEffect(() => {
