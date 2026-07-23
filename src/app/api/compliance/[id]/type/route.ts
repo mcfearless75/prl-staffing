@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireStaff } from "@/lib/require-staff";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { COMPLIANCE_TYPES, type ComplianceType } from "@/lib/compliance-types";
+import { isValidComplianceType } from "@/lib/compliance-types";
 
 export async function PATCH(
   req: NextRequest,
@@ -25,9 +25,9 @@ export async function PATCH(
       ? (body as Record<string, unknown>).type
       : undefined;
 
-  if (typeof type !== "string" || !COMPLIANCE_TYPES.includes(type as ComplianceType)) {
+  if (typeof type !== "string" || !isValidComplianceType(type)) {
     return NextResponse.json(
-      { error: `Invalid type. Must be one of: ${COMPLIANCE_TYPES.join(", ")}` },
+      { error: "Invalid document type." },
       { status: 400 }
     );
   }
@@ -35,7 +35,7 @@ export async function PATCH(
   try {
     const record = await prisma.complianceRecord.update({
       where: { id },
-      data: { type: type as ComplianceType },
+      data: { type },
       select: { contractorId: true },
     });
 

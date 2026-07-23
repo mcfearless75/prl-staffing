@@ -21,23 +21,7 @@ import { ChaseExportButton } from "./chase-export-button";
 import { ChaseEmailButton } from "./chase-email-button";
 import { ExpiryAlertButton } from "./expiry-alert-button";
 import { ComplianceTypeRows } from "./compliance-type-rows";
-
-const COMPLIANCE_TYPES = [
-  "CV",
-  "CSCS",
-  "CCNSG",
-  "NPORS",
-  "Passport",
-  "Share Code",
-  "Right to Work",
-  "DBS",
-  "P45",
-  "P60",
-  "Insurance",
-  "IR35 Assessment",
-  "Qualification",
-  "Other",
-] as const;
+import { COMPLIANCE_CATEGORIES, categoryForType } from "@/lib/compliance-types";
 
 export default async function CompliancePage({
   searchParams,
@@ -154,35 +138,11 @@ export default async function CompliancePage({
       ? Math.round((fullyCompliant / totalContractors) * 100)
       : 0;
 
-  // ── Per-type breakdown — unique contractors per type ─────────────────────
-  // Types that collapse into "Right to Work"
-  const RTW_TYPES = new Set(["Passport", "Share Code", "Right to Work"]);
-
-  // Display order: RTW first in place of the three separate types, rest unchanged
-  const DISPLAY_TYPES = [
-    "CV",
-    "CSCS",
-    "CCNSG",
-    "NPORS",
-    "Right to Work",
-    "DBS",
-    "P45",
-    "P60",
-    "Insurance",
-    "IR35 Assessment",
-    "Qualification",
-    "Other",
-  ] as const;
-
-  type DisplayTypeName = (typeof DISPLAY_TYPES)[number];
-
-  const typeBreakdown = DISPLAY_TYPES.map((displayName) => {
-    // Records belonging to this display row
-    const ofType = allRecords.filter((r) =>
-      displayName === "Right to Work"
-        ? RTW_TYPES.has(r.type)
-        : r.type === displayName
-    );
+  // ── Per-category breakdown — unique contractors per category ─────────────
+  // Records store a specific type (e.g. "CSCS (Blue) — Skilled Worker"); the
+  // overview groups them by category so it stays one bar per document family.
+  const typeBreakdown = COMPLIANCE_CATEGORIES.map((displayName) => {
+    const ofType = allRecords.filter((r) => categoryForType(r.type) === displayName);
 
     // Unique contractors who have this type
     const contractorIds = new Set(ofType.map((r) => r.contractorId));
@@ -242,7 +202,7 @@ export default async function CompliancePage({
       });
 
     return {
-      type: displayName as DisplayTypeName,
+      type: displayName,
       total,
       verified,
       expiring,
