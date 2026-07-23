@@ -1,8 +1,18 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Upload, Check, AlertCircle, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Upload, Check, AlertCircle, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+
+const ACCEPTED = ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.doc,.docx";
+
+function extensionFor(mime: string): string {
+  if (mime === "image/png") return "png";
+  if (mime === "image/jpeg") return "jpg";
+  if (mime === "image/webp") return "webp";
+  if (mime === "application/pdf") return "pdf";
+  return "png";
+}
 
 export function StaffDocUploader({
   contractorId,
@@ -16,8 +26,81 @@ export function StaffDocUploader({
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [focused, setFocused] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!selectedFile || !selectedFile.type.startsWith("image/")) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
+
+  function acceptFile(file: File) {
+    setSelectedFile(file);
+    setMessage(null);
+  }
+
+  // Pasted images arrive with a generic name — label them by document type.
+  function acceptPastedFile(file: File) {
+    const isGeneric = !file.name || file.name === "image.png";
+    const named = isGeneric
+      ? new File(
+          [file],
+          `${docType.replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.${extensionFor(file.type)}`,
+          { type: file.type }
+        )
+      : file;
+    acceptFile(named);
+  }
+
+  // Paste is scoped to this dropzone (it fires only while focused) — pages like
+  // the contractor edit screen render one uploader per document type, so a
+  // page-wide listener would drop the same image into every one of them.
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.kind === "file") {
+        const file = item.getAsFile();
+        if (file) {
+          e.preventDefault();
+          acceptPastedFile(file);
+          return;
+        }
+      }
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragActive(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      acceptFile(file);
+      return;
+    }
+
+    // Some sources (notably WhatsApp Web in a browser tab) hand over only a
+    // cross-origin blob URL, which we aren't permitted to read.
+    setMessage({
+      type: "error",
+      text: "Couldn't read that file from the drag. Copy the image instead (right-click → Copy), click this box, then press Ctrl+V.",
+    });
+  }
+
+  function clearSelection() {
+    setSelectedFile(null);
+    setMessage(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }
 
   async function handleUpload() {
     if (!selectedFile) return;
@@ -47,8 +130,7 @@ export function StaffDocUploader({
           ? `${data.document.fileName} uploaded (v${data.document.version}). ${successMessage}`
           : `${data.document.fileName} uploaded successfully (v${data.document.version}).`,
       });
-      setSelectedFile(null);
-      if (fileRef.current) fileRef.current.value = "";
+      clearSelection();
       router.refresh();
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Upload failed" });
@@ -59,32 +141,97 @@ export function StaffDocUploader({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.doc,.docx"
-          onChange={(e) => {
-            setSelectedFile(e.target.files?.[0] || null);
-            setMessage(null);
-          }}
-          className="flex-1 text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-blue-700 file:cursor-pointer"
-        />
-        {selectedFile && (
-          <button
-            onClick={handleUpload}
-            disabled={uploading}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {uploading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="h-4 w-4" />
+      <div
+        tabIndex={0}
+        onPaste={handlePaste}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragActive(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setDragActive(false);
+        }}
+        onDrop={handleDrop}
+        className={`rounded-xl border-2 border-dashed px-4 py-6 text-center outline-none transition-colors ${
+          dragActive
+            ? "border-blue-500 bg-blue-50"
+            : focused
+              ? "border-blue-400 bg-blue-50/60 ring-2 ring-blue-200"
+              : "border-blue-200 bg-white/60 hover:border-blue-300"
+        }`}
+      >
+        {selectedFile ? (
+          <div className="flex items-center justify-center gap-3">
+            {previewUrl && (
+              <img
+                src={previewUrl}
+                alt="Preview"
+                className="h-16 w-16 rounded-lg border border-gray-200 object-cover"
+              />
             )}
-            {uploading ? "Uploading..." : "Upload"}
-          </button>
+            <div className="text-left">
+              <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
+              <p className="text-xs text-gray-500">
+                {selectedFile.size > 1048576
+                  ? `${(selectedFile.size / 1048576).toFixed(1)}MB`
+                  : `${(selectedFile.size / 1024).toFixed(0)}KB`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              title="Remove"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <Upload className="mx-auto h-6 w-6 text-blue-400" />
+            <p className="mt-2 text-sm font-medium text-blue-900">
+              Drag a file here, or{" "}
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="underline underline-offset-2 hover:text-blue-700"
+              >
+                browse
+              </button>
+            </p>
+            <p className="mt-0.5 text-xs text-blue-500">
+              {focused
+                ? "Ready — press Ctrl+V to paste a copied image"
+                : "Drag from WhatsApp Desktop, Teams or Outlook — or click this box and press Ctrl+V"}
+            </p>
+          </>
         )}
       </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ACCEPTED}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) acceptFile(file);
+        }}
+        className="hidden"
+      />
+
+      {selectedFile && (
+        <button
+          onClick={handleUpload}
+          disabled={uploading}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        >
+          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {uploading ? "Uploading..." : `Upload as ${docType}`}
+        </button>
+      )}
 
       {message && (
         <div
