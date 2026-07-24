@@ -83,6 +83,33 @@ export async function GET(request: Request) {
     ]);
   }
 
+  // Append credit note rows (Sage Sales Credit) for Issued/Processed credit
+  // notes against this invoice only — Draft credit notes aren't confirmed
+  // yet and stay out of the export. Sage convention keeps SC amounts
+  // positive (no negative-amount rows).
+  const creditNotes = await prisma.creditNote.findMany({
+    where: { invoiceId: invoice.id, status: { in: ["Issued", "Processed"] } },
+    orderBy: { creditNoteNumber: "asc" },
+  });
+
+  for (const creditNote of creditNotes) {
+    rows.push([
+      "SC", // Sales Credit
+      accountRef,
+      "4000",
+      "0",
+      formatSageDate(creditNote.processedAt || creditNote.createdAt),
+      creditNote.creditNoteNumber,
+      creditNote.reason,
+      creditNote.amount.toFixed(2),
+      "T1",
+      creditNote.vatAmount.toFixed(2),
+      "1.00",
+      invoice.poNumber || "",
+      "",
+    ]);
+  }
+
   // Build CSV content
   const csvContent = [
     headers.join(","),

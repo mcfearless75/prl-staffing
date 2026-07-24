@@ -47,6 +47,7 @@ const navigation = [
   { name: "Expenses", href: "/expenses", icon: Receipt, badgeKey: null },
   { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
   { name: "Compliance", href: "/compliance", icon: ShieldCheck, badgeKey: "complianceAlerts" as const },
+  { name: "Reports", href: "/reports", icon: FileText, badgeKey: null },
   { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
   { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
   { name: "Pay Queries", href: "/payment-queries", icon: MessageSquare, badgeKey: "openQueries" as const },

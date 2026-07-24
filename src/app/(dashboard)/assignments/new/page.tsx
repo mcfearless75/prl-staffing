@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/page-header";
-import { AssignmentForm } from "./assignment-form";
+import { AssignmentForm } from "../assignment-form";
+import { createAssignment } from "../actions";
 
 export default async function NewAssignmentPage() {
   const [contractors, projects, companies] = await Promise.all([
@@ -40,7 +41,14 @@ export default async function NewAssignmentPage() {
     <div className="space-y-6">
       <PageHeader title="New Assignment" />
       <div className="rounded-xl border border-gray-200 bg-white p-6">
-        <AssignmentForm contractors={contractors} companies={companies} projects={projects} />
+        <AssignmentForm
+          contractors={contractors}
+          companies={companies}
+          projects={projects}
+          action={createAssignment}
+          submitLabel="Create Assignment"
+          cancelHref="/assignments"
+        />
       </div>
     </div>
   );

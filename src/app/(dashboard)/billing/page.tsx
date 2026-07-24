@@ -54,7 +54,25 @@ export default async function BillingPage({
         title="Billing & Invoices"
         description="Auto-generated invoices from approved timesheets with Sage export"
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/billing/aged"
+              className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              Aged Debt
+            </Link>
+            <Link
+              href="/billing/credit-notes"
+              className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              Credit Notes
+            </Link>
+            <Link
+              href="/billing/payments-import"
+              className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              Import Payments
+            </Link>
             <Link
               href="/billing/spend"
               className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"

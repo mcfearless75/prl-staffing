@@ -40,6 +40,7 @@ model Company {
   approvalChain ApprovalChain?
   invoices      Invoice[]
   projects      Project[]
+  creditNotes   CreditNote[]
 }
 
 // ─── Suppliers (agencies) ───
@@ -75,6 +76,7 @@ model Contractor {
   niNumber     String?
   utrNumber    String?
   ir35Status   String?            // Inside, Outside, TBD
+  employmentType String?          // PAYE, CIS, PSC
   emergencyContactName     String?
   emergencyContactPhone    String?
   emergencyContactRelation String?   // Spouse, Parent, Partner, Sibling, Friend, Other
@@ -99,6 +101,9 @@ model Contractor {
   documents        Document[]
   expenses         Expense[]
   noteEntries      ContractorNote[]
+  holidayLedger    HolidayLedger[]
+  holidayRequests  HolidayRequest[]
+  chaseLogs        ChaseLog[]
 }
 
 // ─── Contractor Notes (append-only staff notes thread; NOT the Contractor.notes onboarding JSON blob) ───
@@ -112,6 +117,47 @@ model ContractorNote {
   isPinned     Boolean    @default(false)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+}
+
+// ─── Holiday Ledger (accrual/payment/adjustment entries per contractor) ───
+model HolidayLedger {
+  id           String     @id @default(cuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+  timesheetId  String?    // source timesheet for accruals; plain string FK, mirrors Expense.timesheetId pattern
+  type         String     // Accrual, Payment, Adjustment
+  hours        Float
+  amount       Float?
+  weekStarting DateTime?
+  notes        String?
+  createdBy    String?
+  createdAt    DateTime   @default(now())
+}
+
+// ─── Holiday Requests (contractor-submitted, staff-reviewed) ───
+model HolidayRequest {
+  id             String     @id @default(cuid())
+  contractorId   String
+  contractor     Contractor @relation(fields: [contractorId], references: [id])
+  hoursRequested Float
+  status         String     @default("Pending") // Pending, Approved, Rejected, Paid
+  requestedAt    DateTime   @default(now())
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  notes          String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+// ─── Chase Log (record of chase communications sent to contractors) ───
+model ChaseLog {
+  id           String     @id @default(cuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+  kind         String     // e.g. "timesheet"
+  weekStarting DateTime?
+  sentAt       DateTime   @default(now())
+  sentBy       String?
 }
 
 // ─── Sites (physical locations under a Company) ───
@@ -166,11 +212,15 @@ model Assignment {
   payRate        Float?      // contractor pay rate for this assignment
   rateBasis      String?     // Hourly, Daily
   value          Float?      // agreed total assignment value
+  comparatorRate Float?      // AWR comparable-employee rate
+  awrExempt      Boolean     @default(false)
+  awrStartDate   DateTime?   // manual override for AWR 12-week clock start
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   timesheets     Timesheet[]
   timesheetEntries TimesheetEntry[]
   expenses       Expense[]
+  creditNotes    CreditNote[]
 }
 
 // ─── Projects (client jobs/contracts) ───
@@ -224,8 +274,9 @@ model TimesheetEntry {
   startTime       String?     // "HH:MM" — when set with finishTime, hours are derived from these
   finishTime      String?     // "HH:MM"
   notes           String?
-  status          String      @default("Pending") // Pending, Approved, Rejected
+  status          String      @default("Pending") // Pending, Approved, Rejected, Absent
   rejectionReason String?
+  absenceReason   String?
   assignmentId    String?
   assignment      Assignment? @relation(fields: [assignmentId], references: [id])
 }
@@ -335,6 +386,8 @@ model Invoice {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   lines          InvoiceLine[]
+  payments       InvoicePayment[]
+  creditNotes    CreditNote[]
 }
 
 model InvoiceLine {
@@ -352,6 +405,43 @@ model InvoiceLine {
   overtimeRate  Float?     // overtime rate (1.5x)
   amount        Float      // total line amount
   createdAt     DateTime   @default(now())
+}
+
+// ─── Credit Notes (adjustments against an Invoice) ───
+model CreditNote {
+  id               String      @id @default(cuid())
+  creditNoteNumber String      @unique // e.g. CN-0001
+  invoiceId        String
+  invoice          Invoice     @relation(fields: [invoiceId], references: [id])
+  companyId        String
+  company          Company     @relation(fields: [companyId], references: [id])
+  assignmentId     String?
+  assignment       Assignment? @relation(fields: [assignmentId], references: [id])
+  amount           Float
+  vatRate          Float       @default(20)
+  vatAmount        Float
+  total            Float
+  reason           String
+  status           String      @default("Draft") // Draft, Issued, Processed
+  processedAt      DateTime?
+  processedBy      String?
+  notes            String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+// ─── Invoice Payments (BACS/manual reconciliation against an Invoice) ───
+model InvoicePayment {
+  id           String   @id @default(cuid())
+  invoiceId    String
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id])
+  amount       Float
+  receivedDate DateTime
+  method       String   @default("BACS")
+  reference    String?
+  importBatch  String?
+  notes        String?
+  createdAt    DateTime @default(now())
 }
 
 // ─── Activity Log (tracks all user actions for audit) ───

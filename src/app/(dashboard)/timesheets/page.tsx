@@ -3,10 +3,10 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { formatDate } from "@/lib/utils";
-import { Plus, Settings } from "lucide-react";
+import { Plus, Settings, Mail } from "lucide-react";
 import { WeeklyTimesheetGroup } from "./weekly-group";
 
-const statuses = ["All", "Draft", "Submitted", "Approved", "Rejected"];
+const statuses = ["All", "Draft", "Submitted", "Approved", "Rejected", "Absence"];
 const PAGE_SIZE = 50;
 
 export default async function TimesheetsPage({
@@ -17,18 +17,24 @@ export default async function TimesheetsPage({
   const params = searchParams ? await searchParams : {};
   const statusFilter = params?.status || "";
   const currentPage = Math.max(1, parseInt(params?.page || "1", 10) || 1);
+  const isAbsenceFilter = statusFilter === "Absence";
 
-  const where: Record<string, unknown> = {};
-  if (statusFilter && statusFilter !== "All") {
-    where.status = statusFilter;
-  }
+  // "Absence" isn't a Timesheet.status value — it's a filter for timesheets
+  // that contain at least one Absent entry, so it needs its own where-clause
+  // shape rather than the plain status equality used by the other tabs.
+  const where: Record<string, unknown> = isAbsenceFilter
+    ? { entries: { some: { status: "Absent" } } }
+    : statusFilter && statusFilter !== "All"
+    ? { status: statusFilter }
+    : {};
 
-  const [timesheets, totalCount, statusCounts] = await Promise.all([
+  const [timesheets, totalCount, statusCounts, absenceCount] = await Promise.all([
     prisma.timesheet.findMany({
       where,
       include: {
         contractor: true,
         assignment: { include: { company: true } },
+        entries: { select: { status: true } },
       },
       orderBy: { weekStarting: "desc" },
       skip: (currentPage - 1) * PAGE_SIZE,
@@ -36,6 +42,7 @@ export default async function TimesheetsPage({
     }),
     prisma.timesheet.count({ where }),
     prisma.timesheet.groupBy({ by: ["status"], where, _count: { status: true } }),
+    prisma.timesheet.count({ where: { entries: { some: { status: "Absent" } } } }),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -65,6 +72,13 @@ export default async function TimesheetsPage({
         description={`${totalCount} timesheets`}
         action={
           <div className="flex items-center gap-2">
+            <Link
+              href="/timesheets/chase"
+              className="inline-flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-300 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 transition-colors"
+            >
+              <Mail className="h-4 w-4" />
+              Chase
+            </Link>
             <Link
               href="/timesheets/approval-chains"
               className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
@@ -118,11 +132,16 @@ export default async function TimesheetsPage({
               }
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-blue-600 text-white"
+                  ? s === "Absence"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
               {s}
+              {s === "Absence" && absenceCount > 0 && (
+                <span className="ml-1.5 text-xs opacity-80">{absenceCount}</span>
+              )}
             </Link>
           );
         })}
@@ -146,6 +165,7 @@ export default async function TimesheetsPage({
                   isException: ts.isException,
                   approvedBy: ts.approvedBy,
                   companyName: ts.assignment?.company?.name || "—",
+                  hasAbsence: ts.entries.some((e) => e.status === "Absent"),
                 })),
               ])
             )

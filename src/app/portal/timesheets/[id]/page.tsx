@@ -7,6 +7,7 @@ import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { updateContractorTimesheetEntries, submitContractorTimesheet } from "../actions";
 import { getBankHolidaysInWeek } from "@/lib/uk-bank-holidays";
+import { AbsenceDayRow } from "./absence-day-row";
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -69,35 +70,24 @@ export default async function PortalTimesheetDetailPage({
               {timesheet.entries.map((entry) => {
                 const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
                 const isWeekend = entry.dayOfWeek >= 5;
+                const badge = bankHol
+                  ? { label: bankHol.name, className: "bg-purple-100 text-purple-700" }
+                  : isWeekend
+                  ? { label: "Weekend", className: "bg-orange-100 text-orange-700" }
+                  : null;
 
                 return (
                   <div
                     key={entry.id}
-                    className={`flex items-center justify-between px-4 py-3 ${
-                      bankHol ? "bg-purple-50" : isWeekend ? "bg-orange-50/30" : ""
-                    }`}
+                    className={bankHol ? "bg-purple-50" : isWeekend ? "bg-orange-50/30" : ""}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900 w-8">{dayNames[entry.dayOfWeek]}</span>
-                      {bankHol && (
-                        <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[9px] font-medium text-purple-700">
-                          {bankHol.name}
-                        </span>
-                      )}
-                      {isWeekend && !bankHol && (
-                        <span className="rounded bg-orange-100 px-1.5 py-0.5 text-[9px] font-medium text-orange-700">
-                          Weekend
-                        </span>
-                      )}
-                    </div>
-                    <input
-                      type="number"
-                      name={`hours_${entry.dayOfWeek}`}
-                      defaultValue={entry.hours}
-                      step={0.5}
-                      min={0}
-                      max={24}
-                      className="w-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-center text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    <AbsenceDayRow
+                      dayOfWeek={entry.dayOfWeek}
+                      dayLabel={dayNames[entry.dayOfWeek]}
+                      defaultHours={entry.hours}
+                      defaultAbsent={entry.status === "Absent"}
+                      defaultReason={entry.absenceReason}
+                      badge={badge}
                     />
                   </div>
                 );
@@ -126,20 +116,35 @@ export default async function PortalTimesheetDetailPage({
             <div className="divide-y divide-gray-100">
               {timesheet.entries.map((entry) => {
                 const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
+                const isAbsent = entry.status === "Absent";
                 return (
-                  <div key={entry.id} className="flex items-center justify-between px-4 py-3">
+                  <div
+                    key={entry.id}
+                    className={`flex items-center justify-between px-4 py-3 ${isAbsent ? "bg-indigo-50/50" : ""}`}
+                  >
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-900 w-8">{dayNames[entry.dayOfWeek]}</span>
-                      {bankHol && (
+                      {bankHol && !isAbsent && (
                         <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[9px] font-medium text-purple-700">
                           {bankHol.name}
                         </span>
                       )}
+                      {isAbsent && (
+                        <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[9px] font-medium text-indigo-700">
+                          Absent — {entry.absenceReason}
+                        </span>
+                      )}
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-bold text-gray-900">{entry.hours}h</span>
-                      {entry.overtime > 0 && (
-                        <span className="ml-2 text-xs text-orange-600">+{entry.overtime}h OT</span>
+                      {isAbsent ? (
+                        <span className="text-sm font-bold text-indigo-600">A</span>
+                      ) : (
+                        <>
+                          <span className="text-sm font-bold text-gray-900">{entry.hours}h</span>
+                          {entry.overtime > 0 && (
+                            <span className="ml-2 text-xs text-orange-600">+{entry.overtime}h OT</span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

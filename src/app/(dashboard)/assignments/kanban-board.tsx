@@ -285,7 +285,11 @@ export function KanbanBoard({
         setError(null);
       } catch (err) {
         setAssignments(previousAssignments);
-        setError("Failed to update status. Please try again.");
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : "Failed to update status. Please try again."
+        );
       } finally {
         setSaving(false);
       }

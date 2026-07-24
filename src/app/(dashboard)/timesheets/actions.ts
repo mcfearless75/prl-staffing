@@ -581,6 +581,86 @@ export async function rejectTimesheetEntry(entryId: string, reason: string) {
   }
 }
 
+export async function markTimesheetEntryAbsent(entryId: string, reason: string, note?: string) {
+  const guard = await requireStaff();
+  if (!guard.ok) redirect(guard.reason === "forbidden" ? "/" : "/login");
+  try {
+    const entry = await prisma.timesheetEntry.findUnique({
+      where: { id: entryId },
+      include: { timesheet: { include: { entries: { orderBy: { dayOfWeek: "asc" } } } } },
+    });
+    if (!entry) throw new Error("Timesheet entry not found");
+
+    const { timesheet } = entry;
+    if (timesheet.status !== "Draft" && timesheet.status !== "Submitted") {
+      throw new Error(`Cannot mark a day absent on a timesheet with status "${timesheet.status}".`);
+    }
+    if (entry.status === "Absent") return;
+
+    const absenceReason = note?.trim() ? `${reason}: ${note.trim()}` : reason;
+    const oldHours = entry.hours;
+
+    // Recompute the whole week's overtime breakdown with this day zeroed out —
+    // matches updateTimesheetEntries' approach so totals stay consistent with
+    // the auto-overtime engine rather than being adjusted ad hoc.
+    const newEntries = timesheet.entries.map((e) => ({
+      dayOfWeek: e.dayOfWeek,
+      hours: e.id === entryId ? 0 : e.hours,
+      date: new Date(timesheet.weekStarting.getTime() + e.dayOfWeek * 86400000),
+    }));
+    const overtimeResult = calculateOvertime(newEntries, timesheet.weekStarting, DEFAULT_OVERTIME_CONFIG);
+
+    await prisma.$transaction([
+      prisma.timesheetEntry.update({
+        where: { id: entryId },
+        data: {
+          status: "Absent",
+          hours: 0,
+          overtime: 0,
+          absenceReason,
+        },
+      }),
+      ...timesheet.entries
+        .filter((e) => e.id !== entryId)
+        .map((e) => {
+          const dayBreakdown = overtimeResult.dailyBreakdown.find((b) => b.dayOfWeek === e.dayOfWeek);
+          return prisma.timesheetEntry.update({
+            where: { id: e.id },
+            data: { overtime: dayBreakdown?.overtimeHours ?? e.overtime },
+          });
+        }),
+      prisma.timesheet.update({
+        where: { id: timesheet.id },
+        data: {
+          totalHours: overtimeResult.totalRegularHours + overtimeResult.totalOvertimeHours,
+          overtimeHours: overtimeResult.totalOvertimeHours,
+          isException: overtimeResult.exceptions.length > 0,
+          exceptionReason: overtimeResult.exceptions.length > 0 ? overtimeResult.exceptions.join("; ") : null,
+        },
+      }),
+    ]);
+
+    await logTimesheetAudit({
+      timesheetId: timesheet.id,
+      action: "DayMarkedAbsent",
+      field: dayNames[entry.dayOfWeek],
+      oldValue: String(oldHours),
+      newValue: absenceReason,
+    });
+
+    revalidatePath(`/timesheets/${timesheet.id}`);
+    revalidatePath(`/timesheets/${timesheet.id}/edit`);
+    revalidatePath("/timesheets");
+  } catch (error) {
+    if (error instanceof Error && (
+      error.message === "Timesheet entry not found" ||
+      error.message.startsWith("Cannot mark a day absent")
+    )) throw error;
+    console.error("Failed to mark day absent:", error);
+    throw new Error("Failed to mark day absent. Please try again.");
+  }
+}
+
 export async function reopenTimesheet(id: string) {
   const session = await auth();
   if (!session?.user) redirect("/login");

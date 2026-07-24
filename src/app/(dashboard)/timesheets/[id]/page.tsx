@@ -10,6 +10,7 @@ import { rejectTimesheet } from "../actions";
 import { getTimesheetAuditTrail } from "@/lib/timesheet-audit";
 import { getBankHolidaysInWeek } from "@/lib/uk-bank-holidays";
 import { RejectDayControl } from "./reject-day-control";
+import { MarkAbsentControl } from "./mark-absent-control";
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -135,6 +136,7 @@ export default async function TimesheetDetailPage({
               const isWeekend = entry.dayOfWeek >= 5;
               const hasOvertime = entry.overtime > 0;
               const isRejected = entry.status === "Rejected";
+              const isAbsent = entry.status === "Absent";
 
               return (
                 <div key={entry.id} className="text-center">
@@ -143,7 +145,9 @@ export default async function TimesheetDetailPage({
                   </p>
                   <div
                     className={`rounded-xl py-4 px-2 text-xl font-bold transition-colors ${
-                      isRejected
+                      isAbsent
+                        ? "bg-indigo-100 text-indigo-700 border-2 border-indigo-300"
+                        : isRejected
                         ? "bg-red-100 text-red-700 border-2 border-red-300"
                         : bankHol
                         ? "bg-purple-100 text-purple-700 border-2 border-purple-300"
@@ -154,16 +158,21 @@ export default async function TimesheetDetailPage({
                         : "bg-gray-50 text-gray-400 border border-gray-200"
                     }`}
                   >
-                    {entry.hours}
+                    {isAbsent ? "A" : entry.hours}
                   </div>
-                  {hasOvertime && (
+                  {hasOvertime && !isAbsent && (
                     <p className="text-xs text-orange-600 font-medium mt-1">
                       +{entry.overtime}h OT
                     </p>
                   )}
-                  {bankHol && (
+                  {bankHol && !isAbsent && (
                     <p className="text-[10px] text-purple-600 font-medium mt-1 leading-tight">
                       {bankHol.name}
+                    </p>
+                  )}
+                  {isAbsent && (
+                    <p className="text-[10px] text-indigo-600 font-medium mt-1 leading-tight">
+                      Absent — {entry.absenceReason}
                     </p>
                   )}
                   {isRejected && (
@@ -171,8 +180,11 @@ export default async function TimesheetDetailPage({
                       {entry.rejectionReason}
                     </p>
                   )}
-                  {timesheet.status === "Submitted" && !isRejected && (
+                  {timesheet.status === "Submitted" && !isRejected && !isAbsent && (
                     <RejectDayControl entryId={entry.id} dayLabel={dayNames[entry.dayOfWeek]} />
+                  )}
+                  {(timesheet.status === "Draft" || timesheet.status === "Submitted") && !isRejected && !isAbsent && (
+                    <MarkAbsentControl entryId={entry.id} dayLabel={dayNames[entry.dayOfWeek]} />
                   )}
                 </div>
               );
@@ -338,6 +350,9 @@ export default async function TimesheetDetailPage({
                   )}
                   {(entry.action === "Reopened" || entry.action === "ExceptionFlagged") && (
                     <svg className="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+                  )}
+                  {entry.action === "DayMarkedAbsent" && (
+                    <svg className="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">

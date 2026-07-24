@@ -16,6 +16,7 @@ type TimesheetRow = {
   isException: boolean;
   approvedBy: string | null;
   companyName: string;
+  hasAbsence: boolean;
 };
 
 type GroupedData = Record<string, TimesheetRow[]>;
@@ -181,7 +182,9 @@ export function WeeklyTimesheetGroup({
                         key={ts.id}
                         className={`hover:bg-gray-50 transition-colors ${
                           ts.isException ? "bg-amber-50/40" : ""
-                        } ${ts.status === "Submitted" ? "bg-orange-50/30" : ""}`}
+                        } ${ts.status === "Submitted" ? "bg-orange-50/30" : ""} ${
+                          ts.hasAbsence ? "bg-indigo-50/30" : ""
+                        }`}
                       >
                         <td className="whitespace-nowrap px-4 py-2.5 text-sm font-medium text-gray-900">
                           {ts.contractorName}
@@ -214,6 +217,11 @@ export function WeeklyTimesheetGroup({
                                   Auto
                                 </span>
                               )}
+                            {ts.hasAbsence && (
+                              <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">
+                                Absence
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="whitespace-nowrap px-4 py-2.5 text-sm text-gray-500">

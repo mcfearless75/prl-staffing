@@ -382,3 +382,553 @@ export async function markInvoicePaid(id: string) {
 export async function approveInvoice(id: string) {
   return updateInvoiceStatus(id, "Approved");
 }
+
+// ─── Credit Notes ───
+
+/**
+ * Get next credit note number (CN-0001, CN-0002, etc.)
+ * Same max-parse pattern as getNextInvoiceNumber — a lexicographic sort on
+ * the string would break past 4 digits ("CN-10000" < "CN-9999").
+ */
+async function getNextCreditNoteNumber(
+  tx: Prisma.TransactionClient | typeof prisma
+): Promise<string> {
+  const creditNotes = await tx.creditNote.findMany({
+    select: { creditNoteNumber: true },
+  });
+
+  const maxNum = creditNotes.reduce((max, cn) => {
+    const n = parseInt(cn.creditNoteNumber.replace("CN-", ""), 10);
+    return Number.isFinite(n) && n > max ? n : max;
+  }, 0);
+
+  return `CN-${String(maxNum + 1).padStart(4, "0")}`;
+}
+
+/**
+ * Create a credit note against an invoice. Starts life as "Draft" and must
+ * be moved through Issued → Processed via the dedicated actions below.
+ */
+export async function createCreditNote(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const invoiceId = (formData.get("invoiceId") as string) || "";
+  const amount = parseFloat((formData.get("amount") as string) || "");
+  const vatRate = parseFloat((formData.get("vatRate") as string) || "20");
+  const reason = ((formData.get("reason") as string) || "").trim();
+  const assignmentId = (formData.get("assignmentId") as string) || null;
+
+  if (!invoiceId) redirect("/billing/credit-notes");
+  if (!Number.isFinite(amount) || amount <= 0) {
+    redirect(`/billing/credit-notes/new?invoiceId=${invoiceId}&error=invalid-amount`);
+  }
+  if (!reason) {
+    redirect(`/billing/credit-notes/new?invoiceId=${invoiceId}&error=missing-reason`);
+  }
+
+  try {
+    const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+    if (!invoice) redirect("/billing/credit-notes?error=invoice-not-found");
+
+    const vatAmount = Math.round(amount * (vatRate / 100) * 100) / 100;
+    const total = Math.round((amount + vatAmount) * 100) / 100;
+
+    const runCreate = () =>
+      prisma.$transaction(
+        async (tx) => {
+          const creditNoteNumber = await getNextCreditNoteNumber(tx);
+          return tx.creditNote.create({
+            data: {
+              creditNoteNumber,
+              invoiceId,
+              companyId: invoice.companyId,
+              assignmentId: assignmentId || null,
+              amount,
+              vatRate,
+              vatAmount,
+              total,
+              reason,
+            },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      );
+
+    // Same write-conflict retry as invoice generation: a Serializable
+    // transaction can abort with P2034 if another credit note is created in
+    // the same window, or P2002 if the parsed-max number collides.
+    let creditNote;
+    try {
+      creditNote = await runCreate();
+    } catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (code === "P2034" || code === "P2002") {
+        creditNote = await runCreate();
+      } else {
+        throw error;
+      }
+    }
+
+    revalidatePath(`/billing/${invoiceId}`);
+    revalidatePath("/billing/credit-notes");
+    redirect(`/billing/credit-notes/${creditNote.id}`);
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error("Failed to create credit note:", error);
+    redirect(`/billing/credit-notes/new?invoiceId=${invoiceId}&error=create-failed`);
+  }
+}
+
+/**
+ * Draft → Issued
+ */
+export async function issueCreditNote(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+  try {
+    const creditNote = await prisma.creditNote.findUnique({ where: { id } });
+    if (!creditNote) throw new Error("Credit note not found.");
+    if (creditNote.status !== "Draft") {
+      throw new Error(`Cannot issue a credit note with status "${creditNote.status}".`);
+    }
+
+    await prisma.creditNote.update({ where: { id }, data: { status: "Issued" } });
+
+    revalidatePath(`/billing/credit-notes/${id}`);
+    revalidatePath("/billing/credit-notes");
+    revalidatePath(`/billing/${creditNote.invoiceId}`);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "Credit note not found." || error.message.startsWith("Cannot issue"))
+    )
+      throw error;
+    console.error("Failed to issue credit note:", error);
+    throw new Error("Failed to issue credit note. Please try again.");
+  }
+}
+
+/**
+ * Issued → Processed (mirrors Requidex's "Mark Processed" action)
+ */
+export async function markCreditNoteProcessed(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+  try {
+    const creditNote = await prisma.creditNote.findUnique({ where: { id } });
+    if (!creditNote) throw new Error("Credit note not found.");
+    if (creditNote.status !== "Issued") {
+      throw new Error(`Cannot mark a credit note with status "${creditNote.status}" as processed.`);
+    }
+
+    await prisma.creditNote.update({
+      where: { id },
+      data: {
+        status: "Processed",
+        processedAt: new Date(),
+        processedBy: session.user.email || session.user.name || "staff",
+      },
+    });
+
+    revalidatePath(`/billing/credit-notes/${id}`);
+    revalidatePath("/billing/credit-notes");
+    revalidatePath(`/billing/${creditNote.invoiceId}`);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "Credit note not found." || error.message.startsWith("Cannot mark"))
+    )
+      throw error;
+    console.error("Failed to mark credit note processed:", error);
+    throw new Error("Failed to mark credit note as processed. Please try again.");
+  }
+}
+
+// ─── Payments ───
+
+/**
+ * Recompute amountPaid (always derived — never stored) for an invoice and
+ * flip its status accordingly:
+ *  - amountPaid >= total  → "Paid" (+ paidDate), unless already Paid
+ *  - amountPaid < total and status is currently "Paid" → revert to "Sent"
+ *    (the state that precedes Paid in the normal lifecycle)
+ * Called from the same transaction that records or deletes a payment so the
+ * status transition is never out of sync with the underlying payment rows.
+ */
+async function applyPaymentRecalc(
+  tx: Prisma.TransactionClient | typeof prisma,
+  invoiceId: string
+): Promise<void> {
+  const invoice = await tx.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { payments: true },
+  });
+  if (!invoice) return;
+
+  const amountPaid = Math.round(invoice.payments.reduce((sum, p) => sum + p.amount, 0) * 100) / 100;
+
+  if (amountPaid >= invoice.total && invoice.status !== "Paid") {
+    await tx.invoice.update({
+      where: { id: invoiceId },
+      data: { status: "Paid", paidDate: new Date() },
+    });
+  } else if (amountPaid < invoice.total && invoice.status === "Paid") {
+    await tx.invoice.update({
+      where: { id: invoiceId },
+      data: { status: "Sent", paidDate: null },
+    });
+  }
+}
+
+/**
+ * Record a payment against an invoice. amountPaid is never stored directly —
+ * it's re-derived from the sum of InvoicePayment rows every time.
+ */
+export async function recordPayment(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const invoiceId = (formData.get("invoiceId") as string) || "";
+  const amount = parseFloat((formData.get("amount") as string) || "");
+  const receivedDateRaw = (formData.get("receivedDate") as string) || "";
+  const method = (formData.get("method") as string) || "BACS";
+  const reference = ((formData.get("reference") as string) || "").trim() || null;
+  const receivedDate = receivedDateRaw ? new Date(receivedDateRaw) : null;
+
+  if (!invoiceId) redirect("/billing");
+  if (!Number.isFinite(amount) || amount <= 0) {
+    redirect(`/billing/${invoiceId}?error=invalid-amount`);
+  }
+  if (!receivedDate || Number.isNaN(receivedDate.getTime())) {
+    redirect(`/billing/${invoiceId}?error=invalid-date`);
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.invoicePayment.create({
+        data: {
+          invoiceId,
+          amount,
+          receivedDate: receivedDate as Date,
+          method,
+          reference,
+        },
+      });
+      await applyPaymentRecalc(tx, invoiceId);
+    });
+
+    revalidatePath(`/billing/${invoiceId}`);
+    revalidatePath("/billing");
+    revalidatePath("/billing/aged");
+  } catch (error) {
+    console.error("Failed to record payment:", error);
+    redirect(`/billing/${invoiceId}?error=payment-failed`);
+  }
+}
+
+/**
+ * Delete a payment (staff only — dashboard routes are already staff-gated
+ * by middleware). Re-derives amountPaid afterwards and reverts a "Paid"
+ * invoice back to "Sent" if the balance drops below total.
+ */
+export async function deletePayment(id: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+  try {
+    const payment = await prisma.invoicePayment.findUnique({ where: { id } });
+    if (!payment) throw new Error("Payment not found.");
+    const invoiceId = payment.invoiceId;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.invoicePayment.delete({ where: { id } });
+      await applyPaymentRecalc(tx, invoiceId);
+    });
+
+    revalidatePath(`/billing/${invoiceId}`);
+    revalidatePath("/billing");
+    revalidatePath("/billing/aged");
+  } catch (error) {
+    if (error instanceof Error && error.message === "Payment not found.") throw error;
+    console.error("Failed to delete payment:", error);
+    throw new Error("Failed to delete payment. Please try again.");
+  }
+}
+
+// ─── Payments Import (CSV) ───
+
+interface ParsedPaymentRow {
+  reference: string;
+  amount: number;
+  date: Date;
+}
+
+const REFERENCE_HEADERS = ["reference", "invoicenumber", "invoiceno", "invoiceref", "ref", "invoice"];
+const AMOUNT_HEADERS = ["amount", "value", "paymentamount"];
+const DATE_HEADERS = ["date", "receiveddate", "paymentdate", "datepaid"];
+
+function normalizeHeader(h: string): string {
+  return h.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Minimal quoted-field CSV line splitter — handles `"a,b",c` style cells. */
+function splitCsvLine(line: string): string[] {
+  const cells: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === "," && !inQuotes) {
+      cells.push(cur);
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  cells.push(cur);
+  return cells.map((c) => c.trim());
+}
+
+function parsePaymentsCsv(text: string): { rows: ParsedPaymentRow[]; malformed: string[] } {
+  const lines = text
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map(splitCsvLine);
+
+  const rows: ParsedPaymentRow[] = [];
+  const malformed: string[] = [];
+  if (lines.length === 0) return { rows, malformed };
+
+  const header = lines[0].map(normalizeHeader);
+  const refIdx = header.findIndex((h) => REFERENCE_HEADERS.includes(h));
+  const amountIdx = header.findIndex((h) => AMOUNT_HEADERS.includes(h));
+  const dateIdx = header.findIndex((h) => DATE_HEADERS.includes(h));
+  const hasHeader = refIdx !== -1 && amountIdx !== -1 && dateIdx !== -1;
+
+  const dataLines = hasHeader ? lines.slice(1) : lines;
+  const rIdx = hasHeader ? refIdx : 0;
+  const aIdx = hasHeader ? amountIdx : 1;
+  const dIdx = hasHeader ? dateIdx : 2;
+
+  for (const cells of dataLines) {
+    const reference = (cells[rIdx] || "").trim();
+    const amountStr = (cells[aIdx] || "").replace(/[£,]/g, "").trim();
+    const dateStr = (cells[dIdx] || "").trim();
+    const amount = parseFloat(amountStr);
+    const date = dateStr ? new Date(dateStr) : null;
+
+    if (!reference || !Number.isFinite(amount) || amount <= 0 || !date || Number.isNaN(date.getTime())) {
+      malformed.push(cells.join(","));
+      continue;
+    }
+    rows.push({ reference, amount, date });
+  }
+
+  return { rows, malformed };
+}
+
+export interface PaymentsImportPreviewRow {
+  reference: string;
+  amount: number;
+  date: string; // ISO
+  status: "matched" | "already-paid" | "unmatched";
+  invoiceId?: string;
+  invoiceTotal?: number;
+  invoiceStatus?: string;
+}
+
+export interface PaymentsImportPreview {
+  rows: PaymentsImportPreviewRow[];
+  malformed: string[];
+  matchedCount: number;
+  alreadyPaidCount: number;
+  unmatchedCount: number;
+}
+
+/**
+ * Parse + match a pasted/uploaded CSV against invoices by invoiceNumber.
+ * Read-only — writes nothing. Unmatched rows are always reported, never
+ * silently dropped.
+ */
+export async function previewPaymentsImport(csvText: string): Promise<PaymentsImportPreview> {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const { rows, malformed } = parsePaymentsCsv(csvText);
+  const references = [...new Set(rows.map((r) => r.reference))];
+
+  const invoices = await prisma.invoice.findMany({
+    where: { invoiceNumber: { in: references } },
+    include: { payments: true },
+  });
+  const byNumber = new Map(invoices.map((inv) => [inv.invoiceNumber, inv]));
+
+  const previewRows: PaymentsImportPreviewRow[] = rows.map((r) => {
+    const invoice = byNumber.get(r.reference);
+    if (!invoice) {
+      return { reference: r.reference, amount: r.amount, date: r.date.toISOString(), status: "unmatched" };
+    }
+    const amountPaid = invoice.payments.reduce((sum, p) => sum + p.amount, 0);
+    const status: PaymentsImportPreviewRow["status"] =
+      invoice.status === "Paid" || amountPaid >= invoice.total ? "already-paid" : "matched";
+    return {
+      reference: r.reference,
+      amount: r.amount,
+      date: r.date.toISOString(),
+      status,
+      invoiceId: invoice.id,
+      invoiceTotal: invoice.total,
+      invoiceStatus: invoice.status,
+    };
+  });
+
+  return {
+    rows: previewRows,
+    malformed,
+    matchedCount: previewRows.filter((r) => r.status === "matched").length,
+    alreadyPaidCount: previewRows.filter((r) => r.status === "already-paid").length,
+    unmatchedCount: previewRows.filter((r) => r.status === "unmatched").length,
+  };
+}
+
+export interface PaymentsImportResult {
+  imported: number;
+  skippedUnmatched: number;
+  skippedMalformed: number;
+  skippedAlreadyPaid: number;
+  skippedDuplicate: number;
+  importBatch: string;
+}
+
+/** Fingerprint used to detect a payment already recorded — same invoice,
+ * amount (to the penny), received date (day-level), and reference. */
+function paymentFingerprint(invoiceId: string, amount: number, receivedDate: Date, reference: string): string {
+  const amountCents = Math.round(amount * 100);
+  return `${invoiceId}|${amountCents}|${receivedDate.toISOString().slice(0, 10)}|${reference}`;
+}
+
+/**
+ * Re-parses the same CSV and commits matched (+ already-paid) rows as
+ * InvoicePayment records in one Serializable transaction, retrying once on
+ * a write conflict — the multi-row write path the house style calls for.
+ * Unmatched rows are counted and reported, never silently dropped.
+ *
+ * Double-import protection: a row is skipped (not re-applied) when its
+ * target invoice is already fully paid, or when an identical InvoicePayment
+ * (same invoice + amount + received date + reference) already exists —
+ * either from a prior confirm or from an earlier row in this same run.
+ */
+export async function confirmPaymentsImport(csvText: string): Promise<PaymentsImportResult> {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const { rows, malformed } = parsePaymentsCsv(csvText);
+  const references = [...new Set(rows.map((r) => r.reference))];
+  const importBatch = `imp-${Date.now()}`;
+
+  const runImport = () =>
+    prisma.$transaction(
+      async (tx) => {
+        const invoices = await tx.invoice.findMany({
+          where: { invoiceNumber: { in: references } },
+          include: { payments: true },
+        });
+        const byNumber = new Map(invoices.map((inv) => [inv.invoiceNumber, inv]));
+
+        // Running amountPaid per invoice, updated as rows in this batch are applied.
+        const amountPaidByInvoice = new Map(
+          invoices.map((inv) => [inv.id, inv.payments.reduce((sum, p) => sum + p.amount, 0)])
+        );
+        // Existing payment fingerprints, seeded from the DB and grown as this
+        // batch applies rows — catches duplicates both against history and
+        // against other rows earlier in the same CSV.
+        const seenFingerprints = new Set(
+          invoices.flatMap((inv) =>
+            inv.payments.map((p) => paymentFingerprint(inv.id, p.amount, p.receivedDate, p.reference ?? ""))
+          )
+        );
+
+        let imported = 0;
+        let skippedUnmatched = 0;
+        let skippedAlreadyPaid = 0;
+        let skippedDuplicate = 0;
+        const touchedInvoiceIds = new Set<string>();
+
+        for (const row of rows) {
+          const invoice = byNumber.get(row.reference);
+          if (!invoice) {
+            skippedUnmatched++;
+            continue;
+          }
+
+          const currentAmountPaid = amountPaidByInvoice.get(invoice.id) ?? 0;
+          if (currentAmountPaid >= invoice.total) {
+            skippedAlreadyPaid++;
+            continue;
+          }
+
+          const fingerprint = paymentFingerprint(invoice.id, row.amount, row.date, row.reference);
+          if (seenFingerprints.has(fingerprint)) {
+            skippedDuplicate++;
+            continue;
+          }
+
+          await tx.invoicePayment.create({
+            data: {
+              invoiceId: invoice.id,
+              amount: row.amount,
+              receivedDate: row.date,
+              method: "BACS",
+              reference: row.reference,
+              importBatch,
+            },
+          });
+          seenFingerprints.add(fingerprint);
+          amountPaidByInvoice.set(invoice.id, currentAmountPaid + row.amount);
+          touchedInvoiceIds.add(invoice.id);
+          imported++;
+        }
+
+        for (const invoiceId of touchedInvoiceIds) {
+          await applyPaymentRecalc(tx, invoiceId);
+        }
+
+        return { imported, skippedUnmatched, skippedAlreadyPaid, skippedDuplicate };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+
+  let result: { imported: number; skippedUnmatched: number; skippedAlreadyPaid: number; skippedDuplicate: number };
+  try {
+    result = await runImport();
+  } catch (error) {
+    const code = (error as { code?: string })?.code;
+    if (code === "P2034" || code === "P2002") {
+      result = await runImport();
+    } else {
+      console.error("Failed to import payments:", error);
+      throw new Error("Failed to import payments. Please try again.");
+    }
+  }
+
+  revalidatePath("/billing");
+  revalidatePath("/billing/aged");
+
+  return {
+    imported: result.imported,
+    skippedUnmatched: result.skippedUnmatched,
+    skippedMalformed: malformed.length,
+    skippedAlreadyPaid: result.skippedAlreadyPaid,
+    skippedDuplicate: result.skippedDuplicate,
+    importBatch,
+  };
+}
