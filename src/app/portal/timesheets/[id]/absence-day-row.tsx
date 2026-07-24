@@ -4,6 +4,8 @@ import { useState } from "react";
 
 const ABSENCE_REASONS = ["Sick", "Unauthorised", "Authorised", "Site closed"] as const;
 
+export type AssignmentOption = { id: string; label: string };
+
 export function AbsenceDayRow({
   dayOfWeek,
   dayLabel,
@@ -11,6 +13,9 @@ export function AbsenceDayRow({
   defaultAbsent,
   defaultReason,
   badge,
+  assignmentOptions,
+  assignmentValue,
+  onAssignmentChange,
 }: {
   dayOfWeek: number;
   dayLabel: string;
@@ -18,6 +23,11 @@ export function AbsenceDayRow({
   defaultAbsent: boolean;
   defaultReason: string | null;
   badge?: { label: string; className: string } | null;
+  /** Session contractor's own Active/Placed assignments — omit to hide the picker entirely. */
+  assignmentOptions?: AssignmentOption[];
+  /** Controlled by the parent so "apply to all" can push a value into every day at once. */
+  assignmentValue?: string;
+  onAssignmentChange?: (value: string) => void;
 }) {
   const [absent, setAbsent] = useState(defaultAbsent);
   // A stored absenceReason like "Sick: felt unwell" splits back into select + note.
@@ -77,6 +87,22 @@ export function AbsenceDayRow({
             className="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
+      )}
+
+      {assignmentOptions && assignmentOptions.length > 0 && (
+        <select
+          name={`assignment_${dayOfWeek}`}
+          value={assignmentValue ?? ""}
+          onChange={(e) => onAssignmentChange?.(e.target.value)}
+          className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-xs text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="">No site</option>
+          {assignmentOptions.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.label}
+            </option>
+          ))}
+        </select>
       )}
     </div>
   );

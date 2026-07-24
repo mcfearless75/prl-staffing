@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { formatDate } from "@/lib/utils";
 
 /**
  * Get next invoice number (INV-0001, INV-0002, etc.)
@@ -62,7 +63,10 @@ export async function generateInvoices(formData: FormData) {
       where,
       include: {
         contractor: true,
-        assignment: { include: { company: true } },
+        assignment: { include: { company: true, site: true, department: true } },
+        entries: {
+          include: { assignment: { include: { company: true, site: true, department: true } } },
+        },
       },
       orderBy: { weekStarting: "asc" },
     });
@@ -136,7 +140,12 @@ export async function generateInvoices(formData: FormData) {
     >();
 
     for (const ts of uninvoicedTimesheets) {
-      const company = ts.assignment?.company;
+      // Fall back to the first entry carrying a resolved assignment when the
+      // week-level assignment is missing (e.g. per-day assignments were set
+      // but the week-level one never got synced). If entries span more than
+      // one company this buckets to the first resolved one — genuinely
+      // cross-company weeks are out of scope here.
+      const company = ts.assignment?.company ?? ts.entries.find((e) => e.assignment?.company)?.assignment?.company;
       if (!company) continue;
 
       if (!byCompany.has(company.id)) {
@@ -198,29 +207,97 @@ export async function generateInvoices(formData: FormData) {
 
             for (const ts of companyTimesheets) {
               const contractor = ts.contractor;
-              // chargeRate is hourly (see schema). dayRate is per-day and must NOT
-              // be used against hours — if no hourly charge rate is set, bill 0 and
-              // flag the line so it gets fixed before the invoice is sent.
-              // Prefer the assignment's own negotiated charge rate (set per-placement
-              // on the Assignment record) over the contractor's default rate card;
-              // only flag the line when neither is available.
-              const chargeRate = ts.assignment?.chargeRate ?? contractor.chargeRate ?? 0;
-              const missingChargeRate = !ts.assignment?.chargeRate && !contractor.chargeRate;
-              const overtimeRate = chargeRate * 1.5;
-              const regularHours = ts.totalHours - ts.overtimeHours;
-              const amount =
-                regularHours * chargeRate + ts.overtimeHours * overtimeRate;
 
-              lines.push({
-                contractorId: contractor.id,
-                timesheetId: ts.id,
-                description: `${contractor.firstName.charAt(0)}. ${contractor.lastName} - ${ts.assignment?.role || contractor.jobTitle || "Contractor"}${missingChargeRate ? " [NO CHARGE RATE SET]" : ""}`,
-                hours: regularHours,
-                overtimeHours: ts.overtimeHours,
-                rate: chargeRate,
-                overtimeRate,
-                amount: Math.round(amount * 100) / 100,
-              });
+              // Group this timesheet's day entries by the assignment actually
+              // worked that day (entry.assignmentId), falling back to the
+              // timesheet-level assignmentId for any day that predates
+              // per-day assignment tracking. Grouping by this resolved key —
+              // rather than by entry.assignmentId directly — means a legacy
+              // or single-assignment week (every entry.assignmentId is null)
+              // always collapses to exactly one group keyed on
+              // ts.assignmentId, which takes the identical branch below as
+              // pre-split invoices.
+              const groups = new Map<
+                string,
+                { assignment: typeof ts.assignment | null; entries: typeof ts.entries }
+              >();
+              for (const entry of ts.entries) {
+                const key = entry.assignmentId ?? ts.assignmentId ?? "__none__";
+                const groupAssignment = entry.assignment ?? ts.assignment ?? null;
+                const existingGroup = groups.get(key);
+                if (existingGroup) {
+                  existingGroup.entries.push(entry);
+                } else {
+                  groups.set(key, { assignment: groupAssignment, entries: [entry] });
+                }
+              }
+              const groupList = [...groups.values()];
+
+              if (groupList.length <= 1) {
+                // Regression-safe path: 0 or 1 resolved assignment for the
+                // whole week — this MUST produce exactly the same numbers as
+                // the pre-split logic (same source fields, same formula).
+                // chargeRate is hourly (see schema). dayRate is per-day and must
+                // NOT be used against hours — if no hourly charge rate is set,
+                // bill 0 and flag the line so it gets fixed before the invoice
+                // is sent. Prefer the assignment's own negotiated charge rate
+                // (set per-placement on the Assignment record) over the
+                // contractor's default rate card; only flag the line when
+                // neither is available.
+                const soleAssignment = groupList[0]?.assignment ?? ts.assignment ?? null;
+                const chargeRate = soleAssignment?.chargeRate ?? contractor.chargeRate ?? 0;
+                const missingChargeRate = !soleAssignment?.chargeRate && !contractor.chargeRate;
+                const overtimeRate = chargeRate * 1.5;
+                const regularHours = ts.totalHours - ts.overtimeHours;
+                const amount = regularHours * chargeRate + ts.overtimeHours * overtimeRate;
+
+                lines.push({
+                  contractorId: contractor.id,
+                  timesheetId: ts.id,
+                  description: `${contractor.firstName.charAt(0)}. ${contractor.lastName} - ${soleAssignment?.role || contractor.jobTitle || "Contractor"}${missingChargeRate ? " [NO CHARGE RATE SET]" : ""}`,
+                  hours: regularHours,
+                  overtimeHours: ts.overtimeHours,
+                  rate: chargeRate,
+                  overtimeRate,
+                  amount: Math.round(amount * 100) / 100,
+                });
+              } else {
+                // Multiple assignments worked within the same week — split
+                // into one invoice line per assignment, each priced at that
+                // assignment's own charge rate (falling back to the
+                // contractor's default), using the per-day hours/overtime
+                // actually recorded against that assignment.
+                for (const group of groupList) {
+                  const groupHours = group.entries.reduce((sum, e) => sum + e.hours, 0);
+                  const groupOvertime = group.entries.reduce((sum, e) => sum + e.overtime, 0);
+                  const regularHours = groupHours - groupOvertime;
+                  if (regularHours <= 0 && groupOvertime <= 0) continue; // nothing billable in this split (e.g. absence-only)
+
+                  const chargeRate = group.assignment?.chargeRate ?? contractor.chargeRate ?? 0;
+                  const missingChargeRate = !group.assignment?.chargeRate && !contractor.chargeRate;
+                  const overtimeRate = chargeRate * 1.5;
+                  const amount = regularHours * chargeRate + groupOvertime * overtimeRate;
+
+                  const siteDeptParts = [group.assignment?.site?.name, group.assignment?.department?.name].filter(
+                    (v): v is string => Boolean(v)
+                  );
+                  const siteDeptLabel =
+                    siteDeptParts.length > 0
+                      ? siteDeptParts.join(" / ")
+                      : group.assignment?.role || contractor.jobTitle || "Contractor";
+
+                  lines.push({
+                    contractorId: contractor.id,
+                    timesheetId: ts.id,
+                    description: `${contractor.firstName.charAt(0)}. ${contractor.lastName} - w/c ${formatDate(ts.weekStarting)} - ${siteDeptLabel}${missingChargeRate ? " [NO CHARGE RATE SET]" : ""}`,
+                    hours: regularHours,
+                    overtimeHours: groupOvertime,
+                    rate: chargeRate,
+                    overtimeRate,
+                    amount: Math.round(amount * 100) / 100,
+                  });
+                }
+              }
             }
 
             // Roll approved expenses into the invoice as their own lines —

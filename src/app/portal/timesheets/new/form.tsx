@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { calculateProfessionalHours } from "@/lib/professional-hours";
+import { formatAssignmentLabel } from "../assignment-label";
 
 type Assignment = {
   id: string;
   role: string;
   company: { name: string };
   location: string | null;
+  site?: { name: string } | null;
+  department?: { name: string } | null;
 };
 
 type DayEntry = {
@@ -131,7 +134,7 @@ export function PortalTimesheetForm({
           >
             {assignments.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.role} — {a.company.name} {a.location ? `(${a.location})` : ""}
+                {formatAssignmentLabel(a)}
               </option>
             ))}
           </select>
@@ -196,7 +199,7 @@ export function PortalTimesheetForm({
                   <option value="">No site</option>
                   {assignments.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.role} — {a.company.name}
+                      {formatAssignmentLabel(a)}
                     </option>
                   ))}
                 </select>

@@ -15,7 +15,7 @@ export default async function PortalNewTimesheetPage() {
       contractorId,
       status: { in: ["Active", "Placed"] },
     },
-    include: { company: true },
+    include: { company: true, site: true, department: true },
     orderBy: { startDate: "desc" },
   });
 

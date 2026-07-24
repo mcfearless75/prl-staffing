@@ -75,6 +75,22 @@ export async function checkComplianceForAssignment(params: {
   };
 }
 
+/**
+ * When an assignment is saved as Placed/Active, the contractor should be
+ * treated as working again. Only flips a contractor from "Inactive" to
+ * "Active" — never touches "On Hold" (a deliberate staff flag) or an
+ * already-"Active" contractor. Auto-deactivation on assignment end is
+ * explicitly out of scope.
+ */
+async function activateContractorIfInactive(contractorId: string, status: string): Promise<void> {
+  if (!GATED_STATUSES.has(status)) return;
+
+  await prisma.contractor.updateMany({
+    where: { id: contractorId, status: "Inactive" },
+    data: { status: "Active" },
+  });
+}
+
 function isRedirectError(error: unknown): boolean {
   if (error instanceof Error && error.message === "NEXT_REDIRECT") return true;
   return typeof (error as { digest?: string })?.digest === "string" && (error as { digest?: string }).digest!.startsWith("NEXT_REDIRECT");
@@ -199,8 +215,11 @@ export async function createAssignment(
     return { error: "Failed to create assignment. Please try again." };
   }
 
+  await activateContractorIfInactive(contractorId, status);
+
   revalidatePath("/assignments");
   revalidatePath(`/contractors/${contractorId}`);
+  revalidatePath("/contractors");
   redirect("/assignments");
 }
 
@@ -285,9 +304,12 @@ export async function updateAssignment(
     return { error: "Failed to update assignment. Please try again." };
   }
 
+  await activateContractorIfInactive(contractorId, status);
+
   revalidatePath("/assignments");
   revalidatePath(`/assignments/${id}`);
   revalidatePath(`/contractors/${contractorId}`);
+  revalidatePath("/contractors");
   redirect(`/assignments/${id}`);
 }
 
@@ -321,9 +343,12 @@ export async function updateAssignmentStatus(id: string, status: string) {
       data: { status },
     });
 
+    await activateContractorIfInactive(updated.contractorId, status);
+
     revalidatePath("/assignments");
     revalidatePath(`/assignments/${id}`);
     revalidatePath(`/contractors/${updated.contractorId}`);
+    revalidatePath("/contractors");
   } catch (error) {
     if (
       error instanceof Error &&

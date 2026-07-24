@@ -81,15 +81,18 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
               </Link>
             );
           })}
-          <a
-            href={`mailto:info@prlsitesolutions.co.uk?subject=${encodeURIComponent(
-              `Pay Query — ${session?.user?.name || ""}`
-            )}`}
-            className="flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium text-gray-500 transition-colors"
+          <Link
+            href="/portal/pay-query"
+            className={cn(
+              "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
+              pathname.startsWith("/portal/pay-query") ? "text-blue-600" : "text-gray-500"
+            )}
           >
-            <MessageSquare className="h-5 w-5 text-gray-400" />
+            <MessageSquare
+              className={cn("h-5 w-5", pathname.startsWith("/portal/pay-query") ? "text-blue-600" : "text-gray-400")}
+            />
             Pay Query
-          </a>
+          </Link>
         </div>
       </nav>
     </div>

@@ -25,7 +25,20 @@ async function requireSessionContractorId(): Promise<string> {
 export async function createContractorTimesheet(_contractorId: string, formData: FormData) {
   const contractorId = await requireSessionContractorId();
 
-  const assignmentId = (formData.get("assignmentId") as string) || null;
+  const rawAssignmentId = (formData.get("assignmentId") as string) || null;
+
+  // Never trust a client-submitted assignmentId — confirm server-side that it
+  // is one of this contractor's own Active/Placed assignments before it can
+  // be attached to the timesheet or seeded onto its entries.
+  let assignmentId: string | null = null;
+  if (rawAssignmentId) {
+    const owned = await prisma.assignment.findFirst({
+      where: { id: rawAssignmentId, contractorId, status: { in: ["Active", "Placed"] } },
+      select: { id: true },
+    });
+    assignmentId = owned ? owned.id : null;
+  }
+
   const weekStarting = new Date(formData.get("weekStarting") as string);
 
   const timesheet = await prisma.timesheet.create({
@@ -36,13 +49,17 @@ export async function createContractorTimesheet(_contractorId: string, formData:
     },
   });
 
-  // Create 7 empty entries
+  // Create 7 empty entries, seeded with the chosen assignment — the common
+  // case is a single placement all week ("apply to all" from the moment the
+  // timesheet is created); per-day overrides happen later via
+  // updateContractorTimesheetEntries.
   await prisma.timesheetEntry.createMany({
     data: Array.from({ length: 7 }, (_, i) => ({
       timesheetId: timesheet.id,
       dayOfWeek: i,
       hours: 0,
       overtime: 0,
+      assignmentId: assignmentId || undefined,
     })),
   });
 
@@ -61,18 +78,44 @@ export async function updateContractorTimesheetEntries(timesheetId: string, form
 
   if (!timesheet || timesheet.status !== "Draft") return;
 
-  const newEntries: { dayOfWeek: number; hours: number; absent: boolean; absenceReason: string | null }[] = [];
+  // Per-day assignment choices must be validated server-side against this
+  // contractor's own Active/Placed assignments — never trust the client-side
+  // <select> filtering alone (same guard style as requireSessionContractorId
+  // above: the session, not client input, is the source of truth for what
+  // this contractor is allowed to attach to a day).
+  const ownedAssignments = await prisma.assignment.findMany({
+    where: { contractorId, status: { in: ["Active", "Placed"] } },
+    select: { id: true },
+  });
+  const ownedAssignmentIds = new Set(ownedAssignments.map((a) => a.id));
+
+  const newEntries: {
+    dayOfWeek: number;
+    hours: number;
+    absent: boolean;
+    absenceReason: string | null;
+    assignmentId: string | null;
+  }[] = [];
   const auditEntries: { timesheetId: string; action: string; field: string; oldValue?: string; newValue?: string }[] = [];
 
   for (let day = 0; day < 7; day++) {
     const isAbsent = formData.get(`absent_${day}`) === "on";
     const existingEntry = timesheet.entries.find((e) => e.dayOfWeek === day);
 
+    // A submitted assignment that doesn't belong to this contractor is
+    // ignored outright — the day keeps whatever assignment it already had
+    // rather than silently accepting a tampered value.
+    const rawAssignmentId = (formData.get(`assignment_${day}`) as string) || null;
+    const assignmentId =
+      rawAssignmentId && ownedAssignmentIds.has(rawAssignmentId)
+        ? rawAssignmentId
+        : existingEntry?.assignmentId ?? null;
+
     if (isAbsent) {
       const reason = (formData.get(`reason_${day}`) as string) || "Sick";
       const note = ((formData.get(`note_${day}`) as string) || "").trim();
       const absenceReason = note ? `${reason}: ${note}` : reason;
-      newEntries.push({ dayOfWeek: day, hours: 0, absent: true, absenceReason });
+      newEntries.push({ dayOfWeek: day, hours: 0, absent: true, absenceReason, assignmentId });
 
       if (existingEntry?.status !== "Absent") {
         auditEntries.push({
@@ -85,7 +128,7 @@ export async function updateContractorTimesheetEntries(timesheetId: string, form
       }
     } else {
       const hours = parseFloat((formData.get(`hours_${day}`) as string) || "0");
-      newEntries.push({ dayOfWeek: day, hours, absent: false, absenceReason: null });
+      newEntries.push({ dayOfWeek: day, hours, absent: false, absenceReason: null, assignmentId });
 
       if (existingEntry?.status === "Absent") {
         auditEntries.push({
@@ -124,6 +167,7 @@ export async function updateContractorTimesheetEntries(timesheetId: string, form
           overtime: dayData.absent ? 0 : dayBreakdown?.overtimeHours || 0,
           status: dayData.absent ? "Absent" : entry.status === "Absent" ? "Pending" : entry.status,
           absenceReason: dayData.absenceReason,
+          assignmentId: dayData.assignmentId,
         },
       });
     }
@@ -132,6 +176,25 @@ export async function updateContractorTimesheetEntries(timesheetId: string, form
   const isException = overtimeResult.exceptions.length > 0;
   const totalHours = overtimeResult.totalRegularHours + overtimeResult.totalOvertimeHours;
 
+  // The timesheet-level assignmentId stays as the default/fallback (used by
+  // invoicing when a week never gets split across assignments) — set it to
+  // whichever assignment covers the most days this save. Ties break in favour
+  // of the first one encountered (Monday-first day order).
+  const assignmentDayCounts = new Map<string, number>();
+  for (const e of newEntries) {
+    if (e.assignmentId) {
+      assignmentDayCounts.set(e.assignmentId, (assignmentDayCounts.get(e.assignmentId) || 0) + 1);
+    }
+  }
+  let mostUsedAssignmentId: string | null = timesheet.assignmentId;
+  let bestCount = 0;
+  for (const [id, count] of assignmentDayCounts) {
+    if (count > bestCount) {
+      bestCount = count;
+      mostUsedAssignmentId = id;
+    }
+  }
+
   await prisma.timesheet.update({
     where: { id: timesheetId },
     data: {
@@ -139,6 +202,7 @@ export async function updateContractorTimesheetEntries(timesheetId: string, form
       overtimeHours: overtimeResult.totalOvertimeHours,
       isException,
       exceptionReason: isException ? overtimeResult.exceptions.join("; ") : null,
+      assignmentId: mostUsedAssignmentId || undefined,
     },
   });
 

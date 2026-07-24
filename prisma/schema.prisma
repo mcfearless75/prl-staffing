@@ -70,7 +70,7 @@ model Contractor {
   dayRate      Float?
   payRate      Float?             // hourly pay rate
   chargeRate   Float?             // hourly charge rate
-  status       String             @default("Active") // Active, Inactive, On Hold
+  status       String             @default("Inactive") // Active, Inactive, On Hold
   supplierId   String?
   supplier     Supplier?          @relation(fields: [supplierId], references: [id])
   niNumber     String?

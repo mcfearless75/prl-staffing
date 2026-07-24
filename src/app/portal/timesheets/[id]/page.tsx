@@ -7,7 +7,7 @@ import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { updateContractorTimesheetEntries, submitContractorTimesheet } from "../actions";
 import { getBankHolidaysInWeek } from "@/lib/uk-bank-holidays";
-import { AbsenceDayRow } from "./absence-day-row";
+import { DraftDayList } from "./draft-day-list";
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -26,16 +26,39 @@ export default async function PortalTimesheetDetailPage({
     include: {
       contractor: true,
       assignment: { include: { company: true } },
-      entries: { orderBy: { dayOfWeek: "asc" } },
+      entries: {
+        orderBy: { dayOfWeek: "asc" },
+        include: { assignment: { include: { company: true, site: true, department: true } } },
+      },
     },
   });
 
   if (!timesheet || timesheet.contractorId !== contractorId) notFound();
 
+  // Session contractor's own Active/Placed assignments — the only options a
+  // per-day picker may ever offer (also re-validated server-side on save).
+  const assignments = await prisma.assignment.findMany({
+    where: { contractorId, status: { in: ["Active", "Placed"] } },
+    include: { company: true, site: true, department: true },
+    orderBy: { startDate: "desc" },
+  });
+
   const bankHolidays = getBankHolidaysInWeek(timesheet.weekStarting);
   const isDraft = timesheet.status === "Draft";
   const updateAction = updateContractorTimesheetEntries.bind(null, timesheet.id);
   const submitAction = submitContractorTimesheet.bind(null, timesheet.id);
+
+  function dayAssignmentLabel(entry: {
+    assignment: {
+      site: { name: string } | null;
+      department: { name: string } | null;
+      company: { name: string };
+    } | null;
+  }): string | null {
+    if (!entry.assignment) return null;
+    const parts = [entry.assignment.site?.name, entry.assignment.department?.name].filter(Boolean);
+    return parts.length > 0 ? parts.join(" / ") : entry.assignment.company.name;
+  }
 
   return (
     <div className="space-y-4">
@@ -66,33 +89,44 @@ export default async function PortalTimesheetDetailPage({
         {isDraft ? (
           /* Editable form */
           <form action={updateAction}>
-            <div className="divide-y divide-gray-100">
-              {timesheet.entries.map((entry) => {
-                const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
-                const isWeekend = entry.dayOfWeek >= 5;
-                const badge = bankHol
-                  ? { label: bankHol.name, className: "bg-purple-100 text-purple-700" }
-                  : isWeekend
-                  ? { label: "Weekend", className: "bg-orange-100 text-orange-700" }
-                  : null;
-
-                return (
-                  <div
-                    key={entry.id}
-                    className={bankHol ? "bg-purple-50" : isWeekend ? "bg-orange-50/30" : ""}
-                  >
-                    <AbsenceDayRow
-                      dayOfWeek={entry.dayOfWeek}
-                      dayLabel={dayNames[entry.dayOfWeek]}
-                      defaultHours={entry.hours}
-                      defaultAbsent={entry.status === "Absent"}
-                      defaultReason={entry.absenceReason}
-                      badge={badge}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+            <DraftDayList
+              entries={timesheet.entries.map((entry) => ({
+                id: entry.id,
+                dayOfWeek: entry.dayOfWeek,
+                hours: entry.hours,
+                status: entry.status,
+                absenceReason: entry.absenceReason,
+                assignmentId: entry.assignmentId,
+              }))}
+              dayNames={dayNames}
+              dayBadges={Object.fromEntries(
+                timesheet.entries.map((entry) => {
+                  const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
+                  const isWeekend = entry.dayOfWeek >= 5;
+                  const badge = bankHol
+                    ? { label: bankHol.name, className: "bg-purple-100 text-purple-700" }
+                    : isWeekend
+                    ? { label: "Weekend", className: "bg-orange-100 text-orange-700" }
+                    : null;
+                  return [entry.dayOfWeek, badge];
+                })
+              )}
+              rowBgClass={Object.fromEntries(
+                timesheet.entries.map((entry) => {
+                  const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
+                  const isWeekend = entry.dayOfWeek >= 5;
+                  return [entry.dayOfWeek, bankHol ? "bg-purple-50" : isWeekend ? "bg-orange-50/30" : ""];
+                })
+              )}
+              assignments={assignments.map((a) => ({
+                id: a.id,
+                role: a.role,
+                company: { name: a.company.name },
+                site: a.site ? { name: a.site.name } : null,
+                department: a.department ? { name: a.department.name } : null,
+              }))}
+              defaultAssignmentId={timesheet.assignmentId}
+            />
 
             {/* Totals */}
             <div className="border-t border-gray-200 px-4 py-3 bg-gray-50 flex justify-between items-center">
@@ -133,6 +167,9 @@ export default async function PortalTimesheetDetailPage({
                         <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[9px] font-medium text-indigo-700">
                           Absent — {entry.absenceReason}
                         </span>
+                      )}
+                      {!isAbsent && dayAssignmentLabel(entry) && (
+                        <span className="text-[10px] text-gray-400">{dayAssignmentLabel(entry)}</span>
                       )}
                     </div>
                     <div className="text-right">

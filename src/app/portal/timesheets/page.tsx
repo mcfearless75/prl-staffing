@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { createContractorTimesheet } from "./actions";
+import { formatAssignmentLabel } from "./assignment-label";
 
 export default async function PortalTimesheetsPage() {
   const session = await auth();
@@ -23,7 +24,7 @@ export default async function PortalTimesheetsPage() {
   // Get active assignments for new timesheet
   const assignments = await prisma.assignment.findMany({
     where: { contractorId, status: { in: ["Active", "Placed"] } },
-    include: { company: true },
+    include: { company: true, site: true, department: true },
   });
 
   const createAction = createContractorTimesheet.bind(null, contractorId);
@@ -47,7 +48,7 @@ export default async function PortalTimesheetsPage() {
               <option value="">Select assignment</option>
               {assignments.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.role} - {a.company.name}
+                  {formatAssignmentLabel(a)}
                 </option>
               ))}
             </select>

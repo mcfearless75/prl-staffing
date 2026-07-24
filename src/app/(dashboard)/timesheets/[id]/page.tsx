@@ -32,7 +32,10 @@ export default async function TimesheetDetailPage({
     include: {
       contractor: true,
       assignment: { include: { company: true } },
-      entries: { orderBy: { dayOfWeek: "asc" } },
+      entries: {
+        orderBy: { dayOfWeek: "asc" },
+        include: { assignment: { include: { company: true, site: true, department: true } } },
+      },
       approvals: { orderBy: { stepOrder: "asc" } },
     },
   });
@@ -43,6 +46,21 @@ export default async function TimesheetDetailPage({
 
   const auditTrail = await getTimesheetAuditTrail(timesheet.id);
   const bankHolidays = getBankHolidaysInWeek(timesheet.weekStarting);
+
+  // Reveals mid-week site/department switches — only shown when the day has
+  // its own assignment recorded (falls back to nothing when it just used the
+  // timesheet-level default).
+  function dayAssignmentLabel(entry: {
+    assignment: {
+      site: { name: string } | null;
+      department: { name: string } | null;
+      company: { name: string };
+    } | null;
+  }): string | null {
+    if (!entry.assignment) return null;
+    const parts = [entry.assignment.site?.name, entry.assignment.department?.name].filter(Boolean);
+    return parts.length > 0 ? parts.join(" / ") : entry.assignment.company.name;
+  }
 
   const submitAction = submitTimesheet.bind(null, timesheet.id);
   const approveAction = approveTimesheet.bind(null, timesheet.id);
@@ -178,6 +196,11 @@ export default async function TimesheetDetailPage({
                   {isRejected && (
                     <p className="text-[10px] text-red-600 font-medium mt-1 leading-tight">
                       {entry.rejectionReason}
+                    </p>
+                  )}
+                  {!isAbsent && dayAssignmentLabel(entry) && (
+                    <p className="text-[10px] text-gray-500 mt-1 leading-tight">
+                      {dayAssignmentLabel(entry)}
                     </p>
                   )}
                   {timesheet.status === "Submitted" && !isRejected && !isAbsent && (
