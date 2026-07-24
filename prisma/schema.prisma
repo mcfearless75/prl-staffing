@@ -84,6 +84,7 @@ model Contractor {
   nextOfKin                String?
   medicalNotes             String?   // allergies, conditions (confidential)
   notes        String?
+  ref          String?            @unique // human-readable reference, e.g. C00001
   inviteSentAt              DateTime?
   inviteOpenedAt            DateTime?
   inviteToken               String?   @unique
@@ -97,6 +98,20 @@ model Contractor {
   contractorLogin  ContractorLogin?
   documents        Document[]
   expenses         Expense[]
+  noteEntries      ContractorNote[]
+}
+
+// ─── Contractor Notes (append-only staff notes thread; NOT the Contractor.notes onboarding JSON blob) ───
+model ContractorNote {
+  id           String     @id @default(cuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  body         String
+  authorId     String?
+  authorName   String
+  isPinned     Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
 // ─── Sites (physical locations under a Company) ───
