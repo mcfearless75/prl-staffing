@@ -79,8 +79,8 @@ export async function checkComplianceForAssignment(params: {
  * When an assignment is saved as Placed/Active, the contractor should be
  * treated as working again. Only flips a contractor from "Inactive" to
  * "Active" — never touches "On Hold" (a deliberate staff flag) or an
- * already-"Active" contractor. Auto-deactivation on assignment end is
- * explicitly out of scope.
+ * already-"Active" contractor. See deactivateContractorIfNoActiveAssignments
+ * below for the reverse transition.
  */
 async function activateContractorIfInactive(contractorId: string, status: string): Promise<void> {
   if (!GATED_STATUSES.has(status)) return;
@@ -88,6 +88,25 @@ async function activateContractorIfInactive(contractorId: string, status: string
   await prisma.contractor.updateMany({
     where: { id: contractorId, status: "Inactive" },
     data: { status: "Active" },
+  });
+}
+
+/**
+ * When an assignment moves out of Placed/Active (or is deleted), the
+ * contractor may no longer be working anywhere. Only flips a contractor
+ * from "Active" to "Inactive" when they have zero remaining assignments
+ * with status in {Placed, Active} — never touches "On Hold" (a deliberate
+ * staff flag) or a contractor who already has other active/placed work.
+ */
+async function deactivateContractorIfNoActiveAssignments(contractorId: string): Promise<void> {
+  const remaining = await prisma.assignment.count({
+    where: { contractorId, status: { in: ["Placed", "Active"] } },
+  });
+  if (remaining > 0) return;
+
+  await prisma.contractor.updateMany({
+    where: { id: contractorId, status: "Active" },
+    data: { status: "Inactive" },
   });
 }
 
@@ -305,6 +324,9 @@ export async function updateAssignment(
   }
 
   await activateContractorIfInactive(contractorId, status);
+  if (!GATED_STATUSES.has(status)) {
+    await deactivateContractorIfNoActiveAssignments(contractorId);
+  }
 
   revalidatePath("/assignments");
   revalidatePath(`/assignments/${id}`);
@@ -344,6 +366,9 @@ export async function updateAssignmentStatus(id: string, status: string) {
     });
 
     await activateContractorIfInactive(updated.contractorId, status);
+    if (!GATED_STATUSES.has(status)) {
+      await deactivateContractorIfNoActiveAssignments(updated.contractorId);
+    }
 
     revalidatePath("/assignments");
     revalidatePath(`/assignments/${id}`);
@@ -370,8 +395,11 @@ export async function deleteAssignment(id: string) {
       where: { id },
     });
 
+    await deactivateContractorIfNoActiveAssignments(deleted.contractorId);
+
     revalidatePath("/assignments");
     revalidatePath(`/contractors/${deleted.contractorId}`);
+    revalidatePath("/contractors");
     redirect("/assignments");
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;

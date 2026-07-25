@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { RolePicker } from "@/components/role-picker";
 
 type ContractorFormState = { error?: string };
 
 interface ContractorFormProps {
   contractor?: any;
   suppliers: Array<{ id: string; name: string }>;
+  jobRoles: Array<{ id: string; name: string }>;
+  selectedJobRoleIds?: string[];
   action: (prevState: ContractorFormState, formData: FormData) => Promise<ContractorFormState>;
 }
 
@@ -24,6 +27,8 @@ function notesAreStructured(notes: unknown): boolean {
 export function ContractorForm({
   contractor,
   suppliers,
+  jobRoles,
+  selectedJobRoleIds,
   action,
 }: ContractorFormProps) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -141,6 +146,22 @@ export function ContractorForm({
               defaultValue={contractor?.jobTitle ?? ""}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+          </div>
+
+          {/* Job Roles */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700">Job Roles</label>
+            <p className="mt-1 text-xs text-gray-500">
+              Pick one or more roles from the catalogue. If Job Title is left blank, it will be
+              seeded from the first role picked here.
+            </p>
+            <div className="mt-1">
+              <RolePicker
+                options={jobRoles}
+                selectedIds={selectedJobRoleIds ?? []}
+                name="jobRoleIds"
+              />
+            </div>
           </div>
 
           {/* Day Rate */}

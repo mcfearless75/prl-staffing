@@ -104,6 +104,7 @@ model Contractor {
   holidayLedger    HolidayLedger[]
   holidayRequests  HolidayRequest[]
   chaseLogs        ChaseLog[]
+  jobRoles         ContractorJobRole[]
 }
 
 // ─── Contractor Notes (append-only staff notes thread; NOT the Contractor.notes onboarding JSON blob) ───
@@ -903,4 +904,27 @@ model AuditorUser {
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+}
+
+// ─── Job Roles (admin-managed trade/role catalogue) ───
+model JobRole {
+  id          String               @id @default(cuid())
+  name        String               @unique
+  active      Boolean              @default(true)
+  sortOrder   Int                  @default(0)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  contractors ContractorJobRole[]
+}
+
+// ─── Contractor <-> Job Role (many-to-many join) ───
+model ContractorJobRole {
+  id           String     @id @default(cuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  jobRoleId    String
+  jobRole      JobRole    @relation(fields: [jobRoleId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([contractorId, jobRoleId])
 }

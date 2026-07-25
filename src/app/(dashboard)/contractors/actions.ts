@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
+import type { Prisma } from "@prisma/client";
 
 type AssignResult = { type: "ok" | "moved" | "duplicate" | "error"; message: string } | null;
 
@@ -130,6 +131,52 @@ function isUniqueEmailError(error: unknown): boolean {
   );
 }
 
+// RolePicker emits every selected id as its own hidden input sharing the
+// `jobRoleIds` name — read the full array back with formData.getAll().
+function extractRoleIds(formData: FormData): string[] {
+  return Array.from(new Set((formData.getAll("jobRoleIds") as string[]).filter(Boolean)));
+}
+
+// Primary-role seed: only used when the submitted jobTitle is blank, so the
+// free-text field always wins when the user has set one.
+async function resolvePrimaryRoleName(roleIds: string[]): Promise<string | null> {
+  if (roleIds.length === 0) return null;
+  const primary = await prisma.jobRole.findUnique({
+    where: { id: roleIds[0] },
+    select: { name: true },
+  });
+  return primary?.name ?? null;
+}
+
+// Diffs the contractor's current ContractorJobRole rows against the
+// submitted role ids and creates/deletes only what changed.
+async function syncContractorJobRoles(
+  tx: Prisma.TransactionClient,
+  contractorId: string,
+  roleIds: string[]
+): Promise<void> {
+  const existing = await tx.contractorJobRole.findMany({
+    where: { contractorId },
+    select: { id: true, jobRoleId: true },
+  });
+  const existingRoleIds = new Set(existing.map((r) => r.jobRoleId));
+
+  const toAdd = roleIds.filter((roleId) => !existingRoleIds.has(roleId));
+  const toRemoveIds = existing
+    .filter((r) => !roleIds.includes(r.jobRoleId))
+    .map((r) => r.id);
+
+  if (toAdd.length > 0) {
+    await tx.contractorJobRole.createMany({
+      data: toAdd.map((jobRoleId) => ({ contractorId, jobRoleId })),
+      skipDuplicates: true,
+    });
+  }
+  if (toRemoveIds.length > 0) {
+    await tx.contractorJobRole.deleteMany({ where: { id: { in: toRemoveIds } } });
+  }
+}
+
 export async function createContractor(
   _prevState: ContractorFormState,
   formData: FormData
@@ -138,12 +185,23 @@ export async function createContractor(
   if (!session?.user) redirect("/login");
   try {
     const data = extractContractorData(formData);
+    const roleIds = extractRoleIds(formData);
 
-    const contractor = await prisma.contractor.create({
-      data: {
-        ...data,
-        supplierId: data.supplierId === "" ? null : data.supplierId,
-      },
+    // Primary-role seed: only fires when the submitted Job Title is blank.
+    if (!data.jobTitle?.trim() && roleIds.length > 0) {
+      const primaryRoleName = await resolvePrimaryRoleName(roleIds);
+      if (primaryRoleName) data.jobTitle = primaryRoleName;
+    }
+
+    const contractor = await prisma.$transaction(async (tx) => {
+      const created = await tx.contractor.create({
+        data: {
+          ...data,
+          supplierId: data.supplierId === "" ? null : data.supplierId,
+        },
+      });
+      await syncContractorJobRoles(tx, created.id, roleIds);
+      return created;
     });
 
     // Auto-create contractor portal login (password set via forgot-password flow)
@@ -182,13 +240,23 @@ export async function updateContractor(
   if (!session?.user) redirect("/login");
   try {
     const data = extractContractorData(formData);
+    const roleIds = extractRoleIds(formData);
 
-    await prisma.contractor.update({
-      where: { id },
-      data: {
-        ...data,
-        supplierId: data.supplierId === "" ? null : data.supplierId,
-      },
+    // Primary-role seed: only fires when the submitted Job Title is blank.
+    if (!data.jobTitle?.trim() && roleIds.length > 0) {
+      const primaryRoleName = await resolvePrimaryRoleName(roleIds);
+      if (primaryRoleName) data.jobTitle = primaryRoleName;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.contractor.update({
+        where: { id },
+        data: {
+          ...data,
+          supplierId: data.supplierId === "" ? null : data.supplierId,
+        },
+      });
+      await syncContractorJobRoles(tx, id, roleIds);
     });
 
     revalidatePath(`/contractors/${id}`);

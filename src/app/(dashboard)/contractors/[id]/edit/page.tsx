@@ -7,6 +7,7 @@ import { ContractorForm } from "@/components/contractor-form";
 import { updateContractor } from "../../actions";
 import { StaffDocUploader } from "@/app/(dashboard)/compliance/[id]/edit/staff-doc-uploader";
 import { formatDate } from "@/lib/utils";
+import { listActiveJobRoles } from "@/lib/job-roles";
 
 const DOC_TYPES = [
   { type: "Passport", label: "Passport", emoji: "🛂" },
@@ -24,7 +25,7 @@ export default async function EditContractorPage({
 }) {
   const { id } = await params;
 
-  const [contractor, suppliers, documents, complianceRecords] = await Promise.all([
+  const [contractor, suppliers, documents, complianceRecords, jobRoles, contractorJobRoles] = await Promise.all([
     prisma.contractor.findUnique({ where: { id } }),
     prisma.supplier.findMany({
       select: { id: true, name: true },
@@ -38,6 +39,11 @@ export default async function EditContractorPage({
       where: { contractorId: id },
       orderBy: { type: "asc" },
     }),
+    listActiveJobRoles(),
+    prisma.contractorJobRole.findMany({
+      where: { contractorId: id },
+      select: { jobRoleId: true },
+    }),
   ]);
 
   if (!contractor) {
@@ -45,6 +51,7 @@ export default async function EditContractorPage({
   }
 
   const updateAction = updateContractor.bind(null, contractor.id);
+  const selectedJobRoleIds = contractorJobRoles.map((r) => r.jobRoleId);
 
   const docsByType = DOC_TYPES.map((dt) => ({
     ...dt,
@@ -68,6 +75,8 @@ export default async function EditContractorPage({
       <ContractorForm
         contractor={contractor}
         suppliers={suppliers}
+        jobRoles={jobRoles}
+        selectedJobRoleIds={selectedJobRoleIds}
         action={updateAction}
       />
 

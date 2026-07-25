@@ -112,9 +112,6 @@ export default async function AssignmentsPage({
                     Start Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    End Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Status
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -167,11 +164,6 @@ export default async function AssignmentsPage({
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                       {formatDate(assignment.startDate)}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {assignment.endDate
-                        ? formatDate(assignment.endDate)
-                        : "—"}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
                       <Badge variant={assignment.status}>

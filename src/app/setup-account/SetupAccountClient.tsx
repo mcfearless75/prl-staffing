@@ -1,9 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { RolePicker } from "@/components/role-picker";
 
-type Step = "email" | "password" | "done" | "existing";
+type Step = "email" | "password" | "roles" | "done" | "existing";
+
+interface RoleOption {
+  id: string;
+  name: string;
+}
 
 export default function SetupAccountClient() {
   const router = useRouter();
@@ -15,6 +22,10 @@ export default function SetupAccountClient() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+  const [rolesError, setRolesError] = useState("");
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,13 +78,132 @@ export default function SetupAccountClient() {
 
       if (!res.ok) {
         setError(data.error || "Something went wrong");
-      } else {
+        setLoading(false);
+        return;
+      }
+
+      // Sign the contractor in immediately so the roles step can rely on a
+      // real session (the roles API now requires session.user.contractorId —
+      // it no longer trusts a client-supplied email). Role selection is
+      // optional, so if sign-in fails for any reason, skip straight to
+      // "done" rather than stranding the user — but surface it as a concern.
+      try {
+        const signInResult = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
+        if (signInResult?.error) {
+          console.error("setup-account: auto sign-in after password setup failed:", signInResult.error);
+          setStep("done");
+        } else {
+          setStep("roles");
+        }
+      } catch (signInErr) {
+        console.error("setup-account: auto sign-in after password setup threw:", signInErr);
         setStep("done");
       }
     } catch {
       setError("Network error. Please try again.");
+      setLoading(false);
+      return;
     }
     setLoading(false);
+  }
+
+  useEffect(() => {
+    if (step !== "roles") return;
+    let cancelled = false;
+    setRolesLoading(true);
+    fetch("/api/auth/setup-account/roles")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        setRoleOptions(Array.isArray(data.roles) ? data.roles : []);
+      })
+      .catch(() => {
+        if (!cancelled) setRolesError("Could not load job roles.");
+      })
+      .finally(() => {
+        if (!cancelled) setRolesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step]);
+
+  async function handleRolesSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    const formData = new FormData(e.currentTarget);
+    const roleIds = formData.getAll("jobRoleIds") as string[];
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/setup-account/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Something went wrong");
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError("Network error. Please try again.");
+      setLoading(false);
+      return;
+    }
+    setLoading(false);
+    setStep("done");
+  }
+
+  if (step === "roles") {
+    return (
+      <>
+        <div className="mb-6 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/prl_logo.jpg" alt="PRL Site Solutions" className="mx-auto mb-4 rounded-full w-16 h-16" />
+          <h1 className="text-xl font-bold text-gray-900">What do you do?</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Pick the job roles that apply to you. This is optional and helps us match you to the right work.
+          </p>
+        </div>
+
+        <form onSubmit={handleRolesSubmit} className="space-y-4">
+          {error && (
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
+          )}
+          {rolesError && (
+            <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">{rolesError}</div>
+          )}
+
+          {rolesLoading ? (
+            <p className="text-sm text-gray-500">Loading job roles...</p>
+          ) : (
+            <RolePicker options={roleOptions} selectedIds={[]} name="jobRoleIds" />
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-blue-600 px-4 py-3 sm:py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {loading ? "Saving..." : "Continue"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStep("done")}
+            className="w-full text-sm text-gray-400 hover:text-gray-600"
+          >
+            Skip for now
+          </button>
+        </form>
+      </>
+    );
   }
 
   if (step === "done") {
