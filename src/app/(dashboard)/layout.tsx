@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/sidebar";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { HelpButton } from "@/components/help-button";
 
 export default function DashboardLayout({
   children,
@@ -11,6 +12,7 @@ export default function DashboardLayout({
       <Sidebar />
       {/* Auto-refresh every 30s — keeps dashboard, timesheets, compliance live */}
       <AutoRefresh intervalMs={30000} />
+      <HelpButton />
       <main className="relative min-h-screen pt-14 lg:pt-0 lg:ml-64">
         {/* Full-screen watermark */}
         <div className="pointer-events-none fixed inset-0 lg:ml-64 flex items-center justify-center opacity-[0.03] z-0">

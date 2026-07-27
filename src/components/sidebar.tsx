@@ -28,6 +28,7 @@ import {
   Send,
   Bot,
   Wrench,
+  HelpCircle,
 } from "lucide-react";
 
 const navigation = [
@@ -50,6 +51,7 @@ const navigation = [
   { name: "Grievances", href: "/grievances", icon: AlertCircle, badgeKey: "openGrievances" as const },
   { name: "QMS", href: "/qms", icon: Shield, badgeKey: null },
   { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
+  { name: "Help", href: "/help", icon: HelpCircle, badgeKey: null },
 ];
 
 // Suppliers, Expenses and Projects are built and functional but hidden from
