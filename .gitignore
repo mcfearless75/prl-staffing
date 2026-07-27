@@ -62,3 +62,8 @@ contractor-data.json
 
 # Claude local settings
 .claude/settings.local.json
+
+# Binary assets in public/ trip Tailwind v4's content scanner (byte sequences
+# get misread as arbitrary-value class candidates) — excluded from scanning.
+public/*.eps
+public/*.docx

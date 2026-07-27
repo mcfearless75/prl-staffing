@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" },
@@ -29,6 +30,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // A stray package-lock.json one level up (C:\Users\LAPTOP80\) was tricking
+  // Turbopack into inferring the wrong workspace root, which then choked on
+  // binary assets under public/ during local dev. Pinning it explicitly fixes
+  // that for every future `next dev` run in this repo.
+  turbopack: {
+    root: path.join(__dirname),
+  },
   async redirects() {
     return [
       // Redirect apex domain → www, preserving full path + query string.

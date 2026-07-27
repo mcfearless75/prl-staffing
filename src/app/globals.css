@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source not "public/**/*.{eps,jpg,jpeg,png,gif,ico,pdf,docx}";
 
 /* Mobile-friendly tables: horizontal scroll on small screens */
 @media (max-width: 768px) {

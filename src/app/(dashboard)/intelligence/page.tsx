@@ -44,6 +44,12 @@ export default async function IntelligencePage() {
               🎯 Smart Matching
             </Link>
             <Link
+              href="/intelligence/map"
+              className="rounded-lg bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-200 transition-colors"
+            >
+              🗺️ Coverage Map
+            </Link>
+            <Link
               href="/intelligence/risk"
               className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-700 hover:bg-amber-200 transition-colors"
             >

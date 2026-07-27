@@ -83,6 +83,9 @@ model Contractor {
   dateOfBirth              DateTime?
   address                  String?
   postcode                 String?
+  latitude                 Float?    // geocoded from postcode, for coverage map
+  longitude                Float?
+  geocodedAt               DateTime? // last successful/attempted geocode, avoids re-querying on every backfill
   nextOfKin                String?
   medicalNotes             String?   // allergies, conditions (confidential)
   notes        String?
@@ -168,6 +171,9 @@ model Site {
   address     String?
   city        String?
   postcode    String?
+  latitude    Float?    // geocoded from postcode, for coverage map
+  longitude   Float?
+  geocodedAt  DateTime?
   isActive    Boolean      @default(true)
   companyId   String
   company     Company      @relation(fields: [companyId], references: [id])
