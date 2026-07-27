@@ -5,6 +5,7 @@
  */
 
 import { prisma } from "@/lib/db";
+import { syncComplianceStatuses } from "@/lib/compliance-sync";
 
 // ─── Types ───
 
@@ -67,6 +68,22 @@ export async function generateInsights(): Promise<Insight[]> {
   const sevenDays = new Date(now.getTime() + 7 * 86400000);
   const thirtyDays = new Date(now.getTime() + 30 * 86400000);
 
+  // Status (Verified/Expiring/Expired) is only ever updated when this runs —
+  // without it, a record can sit at stale status "Verified" days after its
+  // expiry date has entered the warning window, so the "expiring soon" alert
+  // below and the compliance score would silently disagree with each other.
+  await syncComplianceStatuses();
+
+  // Compliance score matches the /compliance dashboard: scoped to
+  // contractors currently on an active assignment, not the whole book.
+  const assignedContractorIds = (
+    await prisma.assignment.findMany({
+      where: { status: { in: ["Placed", "Active", "Ending"] } },
+      select: { contractorId: true },
+      distinct: ["contractorId"],
+    })
+  ).map((a) => a.contractorId);
+
   // Parallel data fetch
   const [
     totalContractors,
@@ -104,8 +121,8 @@ export async function generateInsights(): Promise<Insight[]> {
         status: { in: ["Approved", "Sent"] },
       },
     }),
-    prisma.complianceRecord.count(),
-    prisma.complianceRecord.count({ where: { status: "Verified" } }),
+    prisma.complianceRecord.count({ where: { contractorId: { in: assignedContractorIds } } }),
+    prisma.complianceRecord.count({ where: { contractorId: { in: assignedContractorIds }, status: "Verified" } }),
     prisma.complianceRecord.count({
       where: { expiryDate: { gte: now, lte: thirtyDays }, status: { not: "Expired" } },
     }),
@@ -150,7 +167,16 @@ export async function generateInsights(): Promise<Insight[]> {
     ? Math.round((verifiedCompliance / totalComplianceRecords) * 100)
     : 0;
 
-  if (complianceScore >= 90) {
+  // A record can be genuinely 97% verified and still have something
+  // expiring in 3 days — both are true at once, but showing a green
+  // "healthy" card right next to a critical "action needed" alert reads as
+  // a straight contradiction. Only claim "healthy" when nothing else in
+  // compliance is already flagged critical or warning this run.
+  const hasUnresolvedComplianceIssue = insights.some(
+    (i) => i.category === "compliance" && (i.severity === "critical" || i.severity === "warning")
+  );
+
+  if (complianceScore >= 90 && !hasUnresolvedComplianceIssue) {
     insights.push({
       id: "comp-score-good",
       category: "compliance",
@@ -417,6 +443,9 @@ export async function assessRisks(): Promise<RiskItem[]> {
   const risks: RiskItem[] = [];
   const now = new Date();
 
+  // Keeps status (Expired/Expiring) current before reading it below.
+  await syncComplianceStatuses();
+
   // Get data
   const [
     expiringRecords,
@@ -537,6 +566,11 @@ export async function assessRisks(): Promise<RiskItem[]> {
 export async function detectAnomalies(): Promise<Anomaly[]> {
   const anomalies: Anomaly[] = [];
   const now = new Date();
+
+  // Without this, check #6 below (active contractor, expired compliance)
+  // filters on status: "Expired" directly — a record whose expiry date has
+  // passed but whose status hasn't been synced yet would be silently missed.
+  await syncComplianceStatuses();
 
   // Get recent timesheets for analysis
   const recentTimesheets = await prisma.timesheet.findMany({
