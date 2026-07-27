@@ -84,7 +84,6 @@ export default async function EditAssignmentPage({
             chargeRate: assignment.chargeRate,
             payRate: assignment.payRate,
             rateBasis: assignment.rateBasis,
-            value: assignment.value,
             comparatorRate: assignment.comparatorRate,
             awrExempt: assignment.awrExempt,
             awrStartDate: toDateInputValue(assignment.awrStartDate),

@@ -218,7 +218,6 @@ model Assignment {
   chargeRate     Float?      // client charge rate for this assignment
   payRate        Float?      // contractor pay rate for this assignment
   rateBasis      String?     // Hourly, Daily
-  value          Float?      // agreed total assignment value
   comparatorRate Float?      // AWR comparable-employee rate
   awrExempt      Boolean     @default(false)
   awrStartDate   DateTime?   // manual override for AWR 12-week clock start

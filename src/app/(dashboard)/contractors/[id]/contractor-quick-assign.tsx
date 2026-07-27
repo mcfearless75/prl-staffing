@@ -179,16 +179,6 @@ export function ContractorQuickAssign({
             </select>
           </div>
 
-          <div className="w-24">
-            <label className="block text-xs font-medium text-gray-600 mb-1">Value £</label>
-            <input
-              type="number"
-              step="0.01"
-              name="value"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
           <button
             type="submit"
             disabled={!companyId || pending}

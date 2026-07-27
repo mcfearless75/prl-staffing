@@ -4,7 +4,6 @@ import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
-import { formatCurrency } from "@/lib/utils";
 import { Plus, Search } from "lucide-react";
 
 const STATUSES = ["Active", "OnHold", "Completed"] as const;
@@ -42,7 +41,6 @@ export default async function ProjectsPage({
       include: {
         company: { select: { id: true, name: true } },
         _count: { select: { assignments: true } },
-        assignments: { select: { value: true } },
       },
       orderBy: { code: "asc" },
     }),
@@ -130,13 +128,11 @@ export default async function ProjectsPage({
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Company</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Assignments</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Spend</th>
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {projects.map((project) => {
-                const spend = project.assignments.reduce((sum, a) => sum + (a.value || 0), 0);
                 const label = statusLabel(project.status);
                 return (
                   <tr key={project.id} className="hover:bg-gray-50 transition-colors">
@@ -147,7 +143,6 @@ export default async function ProjectsPage({
                       <Badge variant={label}>{label}</Badge>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{project._count.assignments}</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{formatCurrency(spend)}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-right">
                       <Link
                         href={`/projects/${project.id}`}

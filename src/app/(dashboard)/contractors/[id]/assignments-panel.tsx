@@ -28,7 +28,6 @@ export interface AssignmentPanelRow {
   chargeRate: number | null;
   payRate: number | null;
   rateBasis: string | null;
-  value: number | null;
   company: AssignmentCompany | null;
   site: AssignmentSite | null;
   department: AssignmentDepartment | null;
@@ -50,14 +49,11 @@ export function AssignmentsPanel({ assignments }: AssignmentsPanelProps) {
     return <p className="text-sm text-gray-500">No assignments found.</p>;
   }
 
-  const totalValue = assignments.reduce((sum, a) => sum + (a.value ?? 0), 0);
   const activeCount = assignments.filter((a) => a.status === "Active").length;
 
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-600">
-        <span className="font-medium">{formatCurrency(totalValue)}</span> total assignment value
-        {" — "}
         <span className="font-medium">{activeCount}</span> active assignment{activeCount !== 1 ? "s" : ""}
         {" of "}
         {assignments.length}
@@ -75,7 +71,6 @@ export function AssignmentsPanel({ assignments }: AssignmentsPanelProps) {
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Charge Rate</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Pay Rate</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Rate Basis</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Value</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -115,9 +110,6 @@ export function AssignmentsPanel({ assignments }: AssignmentsPanelProps) {
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                     {assignment.rateBasis || "—"}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-900">
-                    {assignment.value != null ? formatCurrency(assignment.value) : "—"}
                   </td>
                 </tr>
               );

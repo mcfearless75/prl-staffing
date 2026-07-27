@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { parseAssignmentRateFields } from "@/lib/assignment-rates";
 
 export type AssignmentFormState = { error?: string } | null;
 
@@ -177,13 +178,7 @@ export async function createAssignment(
   const departmentId = (formData.get("departmentId") as string) || null;
 
   const projectId = (formData.get("projectId") as string) || null;
-  const chargeRateRaw = formData.get("chargeRate") as string;
-  const chargeRate = chargeRateRaw ? parseFloat(chargeRateRaw) : null;
-  const payRateRaw = formData.get("payRate") as string;
-  const payRate = payRateRaw ? parseFloat(payRateRaw) : null;
-  const rateBasis = (formData.get("rateBasis") as string) || null;
-  const valueRaw = formData.get("value") as string;
-  const value = valueRaw ? parseFloat(valueRaw) : null;
+  const { chargeRate, payRate, rateBasis } = parseAssignmentRateFields(formData);
 
   const comparatorRateRaw = formData.get("comparatorRate") as string;
   const comparatorRate = comparatorRateRaw ? parseFloat(comparatorRateRaw) : null;
@@ -222,7 +217,6 @@ export async function createAssignment(
         chargeRate,
         payRate,
         rateBasis,
-        value,
         comparatorRate,
         awrExempt,
         awrStartDate,
@@ -265,13 +259,7 @@ export async function updateAssignment(
   const departmentId = (formData.get("departmentId") as string) || null;
 
   const projectId = (formData.get("projectId") as string) || null;
-  const chargeRateRaw = formData.get("chargeRate") as string;
-  const chargeRate = chargeRateRaw ? parseFloat(chargeRateRaw) : null;
-  const payRateRaw = formData.get("payRate") as string;
-  const payRate = payRateRaw ? parseFloat(payRateRaw) : null;
-  const rateBasis = (formData.get("rateBasis") as string) || null;
-  const valueRaw = formData.get("value") as string;
-  const value = valueRaw ? parseFloat(valueRaw) : null;
+  const { chargeRate, payRate, rateBasis } = parseAssignmentRateFields(formData);
 
   const comparatorRateRaw = formData.get("comparatorRate") as string;
   const comparatorRate = comparatorRateRaw ? parseFloat(comparatorRateRaw) : null;
@@ -311,7 +299,6 @@ export async function updateAssignment(
         chargeRate,
         payRate,
         rateBasis,
-        value,
         comparatorRate,
         awrExempt,
         awrStartDate,

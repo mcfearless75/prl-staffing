@@ -154,12 +154,6 @@ export default async function AssignmentDetailPage({
                 : "—"}
             </p>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Value</p>
-            <p className="text-sm text-gray-900">
-              {assignment.value != null ? formatCurrency(assignment.value) : "—"}
-            </p>
-          </div>
         </div>
       </div>
 

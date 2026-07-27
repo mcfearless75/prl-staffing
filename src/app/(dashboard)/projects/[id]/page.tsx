@@ -31,7 +31,6 @@ export default async function ProjectDetailPage({
     notFound();
   }
 
-  const totalSpend = project.assignments.reduce((sum, a) => sum + (a.value || 0), 0);
   // Badge/status-color map uses "On Hold" (with a space) as the key — Project.status
   // stores the compact "OnHold" enum value, so translate it just for display.
   const statusLabel = project.status === "OnHold" ? "On Hold" : project.status;
@@ -84,11 +83,6 @@ export default async function ProjectDetailPage({
             </dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-gray-500">Total Assignment Value</dt>
-            <dd className="mt-1 text-sm font-semibold text-gray-900">{formatCurrency(totalSpend)}</dd>
-            <p className="mt-1 text-xs text-gray-400">Sum of agreed assignment values — see Billing → Spend for actual invoiced totals</p>
-          </div>
-          <div>
             <dt className="text-sm font-medium text-gray-500">Created</dt>
             <dd className="mt-1 text-sm text-gray-900">{formatDate(project.createdAt)}</dd>
           </div>
@@ -116,7 +110,6 @@ export default async function ProjectDetailPage({
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Start</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">End</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Charge Rate</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Value</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
                 </tr>
@@ -134,9 +127,6 @@ export default async function ProjectDetailPage({
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                       {assignment.chargeRate != null ? formatCurrency(assignment.chargeRate) : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                      {assignment.value != null ? formatCurrency(assignment.value) : "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
                       <Badge variant={assignment.status}>{assignment.status}</Badge>

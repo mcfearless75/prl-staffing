@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import type { Prisma } from "@prisma/client";
+import { parseAssignmentRateFields } from "@/lib/assignment-rates";
 
 type AssignResult = { type: "ok" | "moved" | "duplicate" | "error"; message: string } | null;
 
@@ -19,13 +20,7 @@ export async function quickAssignContractorFromProfile(
   const departmentId = (formData.get("departmentId") as string) || null;
   const status = (formData.get("status") as string) || "Active";
   const projectId = (formData.get("projectId") as string) || null;
-  const chargeRateRaw = formData.get("chargeRate") as string;
-  const chargeRate = chargeRateRaw ? parseFloat(chargeRateRaw) : null;
-  const payRateRaw = formData.get("payRate") as string;
-  const payRate = payRateRaw ? parseFloat(payRateRaw) : null;
-  const rateBasis = (formData.get("rateBasis") as string) || null;
-  const valueRaw = formData.get("value") as string;
-  const value = valueRaw ? parseFloat(valueRaw) : null;
+  const { chargeRate, payRate, rateBasis } = parseAssignmentRateFields(formData);
 
   if (!companyId || !contractorId) return null;
 
@@ -53,7 +48,6 @@ export async function quickAssignContractorFromProfile(
           chargeRate: chargeRate ?? existing.chargeRate,
           payRate: payRate ?? existing.payRate,
           rateBasis: rateBasis || existing.rateBasis,
-          value: value ?? existing.value,
         },
       });
       revalidatePath(`/contractors/${contractorId}`);
@@ -78,7 +72,6 @@ export async function quickAssignContractorFromProfile(
       chargeRate,
       payRate,
       rateBasis,
-      value,
     },
   });
 

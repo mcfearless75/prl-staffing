@@ -105,9 +105,6 @@ export default async function AssignmentsPage({
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                     Charge Rate
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Value
-                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Start Date
                   </th>
@@ -158,9 +155,6 @@ export default async function AssignmentsPage({
                       {assignment.chargeRate != null
                         ? `${formatCurrency(assignment.chargeRate)}${assignment.rateBasis ? ` / ${assignment.rateBasis === "Daily" ? "day" : "hr"}` : ""}`
                         : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-gray-500">
-                      {assignment.value != null ? formatCurrency(assignment.value) : "—"}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                       {formatDate(assignment.startDate)}

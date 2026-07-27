@@ -170,7 +170,7 @@ export const HELP_CONTENT: HelpSection[] = [
         match: ["/projects"],
         summary:
           "Tracks discrete work packages/contracts that assignments can link to. Currently hidden from the main menu but still fully working at this address.",
-        tips: ["A project's \"Total Assignment Value\" is NOT the same as actual invoiced totals — check Billing → Spend for real figures."],
+        tips: ["Check Billing → Spend for actual invoiced totals against a project."],
       },
     ],
   },
@@ -185,7 +185,6 @@ export const HELP_CONTENT: HelpSection[] = [
         tips: [
           "You can't save an assignment as Placed/Active if the contractor is missing mandatory compliance for that role — you'll need to tick an override and give a reason, which is logged.",
           "AWR (Agency Workers Regulations) isn't clutter — it's a legal 12-week equal-pay clock. Leave it alone unless you're sure it doesn't apply.",
-          "The Value field is typed in manually — it does not calculate itself from the rate × hours.",
         ],
       },
     ],
