@@ -39,7 +39,7 @@ export default async function DashboardPage({
     pendingTimesheets,
     complianceAlerts,
     totalCompanies,
-    activeSuppliers,
+    docsAwaitingReview,
     recentContractors,
     recentAlerts,
     totalComplianceRecords,
@@ -63,7 +63,7 @@ export default async function DashboardPage({
       where: { status: { in: ["Expiring", "Expired", "Non-Compliant"] } },
     }),
     prisma.company.count(),
-    prisma.supplier.count({ where: { isActive: true } }),
+    prisma.complianceRecord.count({ where: { status: "Pending" } }),
     prisma.contractor.findMany({
       orderBy: { createdAt: "desc" },
       take: 5,
@@ -127,14 +127,25 @@ export default async function DashboardPage({
       ? Math.round((verifiedComplianceRecords / totalComplianceRecords) * 100)
       : 0;
 
-  const [allComplianceRecords, totalContractorCount] = await Promise.all([
+  const [allComplianceRecords, totalContractorCount, activeAssignmentContractors] = await Promise.all([
     prisma.complianceRecord.findMany({ select: { contractorId: true, status: true } }),
     prisma.contractor.count({ where: { status: { notIn: ["Left", "Inactive"] } } }),
+    // Score is scoped to subcontractors actively assigned to a client — same
+    // rule as the /compliance dashboard.
+    prisma.assignment.findMany({
+      where: { status: { in: ["Placed", "Active", "Ending"] } },
+      select: { contractorId: true },
+      distinct: ["contractorId"],
+    }),
   ]);
 
-  const contractorIdsWithRecords = new Set(allComplianceRecords.map((r) => r.contractorId));
+  const assignedContractorIds = new Set(activeAssignmentContractors.map((a) => a.contractorId));
+  const assignedTotal = assignedContractorIds.size;
+  const assignedComplianceRecords = allComplianceRecords.filter((r) => assignedContractorIds.has(r.contractorId));
+
+  const contractorIdsWithRecords = new Set(assignedComplianceRecords.map((r) => r.contractorId));
   const byContractor = new Map<string, string[]>();
-  for (const r of allComplianceRecords) {
+  for (const r of assignedComplianceRecords) {
     const existing = byContractor.get(r.contractorId) ?? [];
     existing.push(r.status);
     byContractor.set(r.contractorId, existing);
@@ -152,9 +163,9 @@ export default async function DashboardPage({
     else if (w === "Pending") compliancePending++;
     else complianceActionRequired++;
   }
-  const complianceNoRecords = totalContractorCount - contractorIdsWithRecords.size;
-  const workforceScore = totalContractorCount > 0
-    ? Math.round((complianceFullyCompliant / totalContractorCount) * 100)
+  const complianceNoRecords = assignedTotal - contractorIdsWithRecords.size;
+  const workforceScore = assignedTotal > 0
+    ? Math.round((complianceFullyCompliant / assignedTotal) * 100)
     : 0;
 
   // Demo mode — URL param OR today-only date override (reverts automatically at midnight)
@@ -164,7 +175,7 @@ export default async function DashboardPage({
 
   const displayWorkforceScore = isDemoActive ? 100 : workforceScore;
   const displayComplianceScore = isDemoActive ? 100 : complianceScore;
-  const displayFullyCompliant = isDemoActive ? totalContractorCount : complianceFullyCompliant;
+  const displayFullyCompliant = isDemoActive ? assignedTotal : complianceFullyCompliant;
   const displayPending = isDemoActive ? 0 : compliancePending;
   const displayActionRequired = isDemoActive ? 0 : complianceActionRequired;
   const displayNoRecords = isDemoActive ? 0 : complianceNoRecords;
@@ -173,13 +184,13 @@ export default async function DashboardPage({
     <div className="space-y-8">
 <PageHeader
         title="Dashboard"
-        description="Overview of your contractor workforce and compliance status."
+        description="Overview of your subcontractor workforce and compliance status."
       />
 
       {/* KPI Cards - all clickable */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Contractors"
+          title="Total Subcontractors"
           value={totalContractors}
           icon={Users}
           href="/contractors"
@@ -203,16 +214,16 @@ export default async function DashboardPage({
           href="/compliance?status=Expiring"
         />
         <StatCard
-          title="Companies"
+          title="Clients"
           value={totalCompanies}
           icon={Building2}
           href="/companies"
         />
         <StatCard
-          title="Active Suppliers"
-          value={activeSuppliers}
+          title="Docs Awaiting Review"
+          value={docsAwaitingReview}
           icon={ShieldCheck}
-          href="/suppliers"
+          href="/compliance/review"
         />
         <StatCard
           title="New Applicants"
@@ -251,7 +262,10 @@ export default async function DashboardPage({
           >
             {displayWorkforceScore}%
           </span>
-          <p className="mt-1 text-sm text-gray-500">of workforce fully compliant</p>
+          <p className="mt-1 text-sm text-gray-500">of assigned workforce fully compliant</p>
+          <p className="mt-0.5 text-xs text-gray-400">
+            {assignedTotal} of {totalContractorCount} subcontractors currently assigned
+          </p>
         </div>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
@@ -326,7 +340,7 @@ export default async function DashboardPage({
         <div className="rounded-xl border border-gray-200 bg-white">
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
             <h2 className="text-lg font-semibold text-gray-900">
-              Recent Contractors
+              Recent Subcontractors
             </h2>
             <Link
               href="/contractors"

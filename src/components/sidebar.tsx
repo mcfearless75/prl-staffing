@@ -13,7 +13,6 @@ import {
   Clock,
   ShieldCheck,
   TrendingUp,
-  Truck,
   ClipboardList,
   LogOut,
   Receipt,
@@ -23,7 +22,6 @@ import {
   Activity,
   Shield,
   UserPlus,
-  Lock,
   MessageSquare,
   AlertCircle,
   FileText,
@@ -40,23 +38,24 @@ const navigation = [
   { name: "Campaign", href: "/campaign", icon: Send, badgeKey: null },
   { name: "Applicants", href: "/applicants", icon: UserCheck, badgeKey: "pendingApplicants" as const },
   { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
-  { name: "Contractors", href: "/contractors", icon: Users, badgeKey: null },
-  { name: "Companies", href: "/companies", icon: Building2, badgeKey: null },
+  { name: "Subcontractors", href: "/contractors", icon: Users, badgeKey: null },
+  { name: "Clients", href: "/companies", icon: Building2, badgeKey: null },
   { name: "Projects", href: "/projects", icon: FolderKanban, badgeKey: null },
   { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
   { name: "Timesheets", href: "/timesheets", icon: Clock, badgeKey: null },
-  { name: "Expenses", href: "/expenses", icon: Receipt, badgeKey: null },
   { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
   { name: "Compliance", href: "/compliance", icon: ShieldCheck, badgeKey: "complianceAlerts" as const },
   { name: "Reports", href: "/reports", icon: FileText, badgeKey: null },
   { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
   { name: "Job Roles", href: "/job-roles", icon: Wrench, badgeKey: null },
-  { name: "Suppliers", href: "/suppliers", icon: Truck, badgeKey: null },
   { name: "Pay Queries", href: "/payment-queries", icon: MessageSquare, badgeKey: "openQueries" as const },
   { name: "Grievances", href: "/grievances", icon: AlertCircle, badgeKey: "openGrievances" as const },
-  { name: "Compliance Hub", href: "/qms", icon: Shield, badgeKey: null },
+  { name: "QMS", href: "/qms", icon: Shield, badgeKey: null },
   { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
 ];
+
+// Suppliers and Expenses are built and functional but hidden from nav per
+// client request (2026-07-27) — routes still resolve directly by URL.
 
 type Counts = {
   complianceAlerts: number;

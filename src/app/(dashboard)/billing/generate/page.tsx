@@ -2,7 +2,12 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { formatDate } from "@/lib/utils";
 import { generateInvoices } from "../actions";
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
+}
 
 export default async function GenerateInvoicesPage({
   searchParams,
@@ -17,10 +22,39 @@ export default async function GenerateInvoicesPage({
     orderBy: { name: "asc" },
   });
 
-  // Count approved uninvoiced timesheets
-  const approvedCount = await prisma.timesheet.count({
+  // Approved timesheets not yet on any invoice — the actual "ready to bill"
+  // pool, broken down so staff can check it before generating blind.
+  const approvedTimesheets = await prisma.timesheet.findMany({
     where: { status: "Approved" },
+    include: {
+      contractor: true,
+      assignment: { include: { company: true, site: true, department: true } },
+    },
+    orderBy: { weekStarting: "asc" },
   });
+  const invoicedLines = await prisma.invoiceLine.findMany({
+    where: { timesheetId: { in: approvedTimesheets.map((t) => t.id) } },
+    select: { timesheetId: true },
+  });
+  const invoicedIds = new Set(invoicedLines.map((l) => l.timesheetId));
+  const unbilled = approvedTimesheets.filter((t) => !invoicedIds.has(t.id));
+  const approvedCount = unbilled.length;
+
+  // Group Client → Site/Dept for the review table
+  const byClient = new Map<
+    string,
+    { clientName: string; rows: typeof unbilled; total: number; missingRate: number }
+  >();
+  for (const ts of unbilled) {
+    const clientName = ts.assignment?.company?.name ?? "No client on assignment";
+    const bucket = byClient.get(clientName) ?? { clientName, rows: [], total: 0, missingRate: 0 };
+    bucket.rows.push(ts);
+    const rate = ts.assignment?.chargeRate;
+    if (rate == null) bucket.missingRate++;
+    else bucket.total += ts.totalHours * rate + ts.overtimeHours * rate * 1.5;
+    byClient.set(clientName, bucket);
+  }
+  const clientGroups = Array.from(byClient.values()).sort((a, b) => a.clientName.localeCompare(b.clientName));
 
   return (
     <div className="space-y-6">
@@ -149,9 +183,89 @@ export default async function GenerateInvoicesPage({
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
             <p className="text-xs font-medium uppercase text-emerald-600">Ready to Invoice</p>
             <p className="mt-1 text-3xl font-bold text-emerald-700">{approvedCount}</p>
-            <p className="text-xs text-emerald-600 mt-1">approved timesheets</p>
+            <p className="text-xs text-emerald-600 mt-1">approved timesheets, not yet billed</p>
           </div>
         </div>
+      </div>
+
+      {/* Pre-invoice check: exactly what's ready to bill, per client */}
+      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-sm font-semibold text-gray-900">Unbilled Approved Hours</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Every approved timesheet not yet on an invoice — check this before generating.
+          </p>
+        </div>
+        {clientGroups.length === 0 ? (
+          <p className="px-6 py-8 text-center text-sm text-gray-400">
+            Nothing to bill — no approved, unbilled timesheets right now.
+          </p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {clientGroups.map((group) => (
+              <div key={group.clientName}>
+                <div className="flex items-center justify-between gap-3 bg-gray-50 px-6 py-2.5">
+                  <p className="text-sm font-semibold text-gray-800">{group.clientName}</p>
+                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                    {group.missingRate > 0 && (
+                      <span className="rounded bg-amber-100 px-2 py-0.5 font-medium text-amber-700">
+                        {group.missingRate} with no charge rate set
+                      </span>
+                    )}
+                    <span className="font-semibold text-gray-700">{formatCurrency(group.total)}</span>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                        <th className="px-6 py-2">Subcontractor</th>
+                        <th className="px-6 py-2">Site / Dept</th>
+                        <th className="px-6 py-2">Week Ending</th>
+                        <th className="px-6 py-2 text-right">Hours</th>
+                        <th className="px-6 py-2 text-right">OT</th>
+                        <th className="px-6 py-2 text-right">Rate</th>
+                        <th className="px-6 py-2 text-right">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {group.rows.map((ts) => {
+                        const weekEnding = new Date(ts.weekStarting);
+                        weekEnding.setDate(weekEnding.getDate() + 6);
+                        const rate = ts.assignment?.chargeRate ?? null;
+                        const value = rate != null ? ts.totalHours * rate + ts.overtimeHours * rate * 1.5 : null;
+                        const siteDept = [ts.assignment?.site?.name, ts.assignment?.department?.name]
+                          .filter(Boolean)
+                          .join(" / ") || "—";
+                        return (
+                          <tr key={ts.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="whitespace-nowrap px-6 py-2 text-gray-900">
+                              {ts.contractor.firstName} {ts.contractor.lastName}
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-2 text-gray-500">{siteDept}</td>
+                            <td className="whitespace-nowrap px-6 py-2 text-gray-500">{formatDate(weekEnding)}</td>
+                            <td className="whitespace-nowrap px-6 py-2 text-right text-gray-900">{ts.totalHours}h</td>
+                            <td className="whitespace-nowrap px-6 py-2 text-right text-gray-500">
+                              {ts.overtimeHours > 0 ? `${ts.overtimeHours}h` : "—"}
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-2 text-right text-gray-500">
+                              {rate != null ? formatCurrency(rate) : (
+                                <span className="text-amber-600 font-medium">Not set</span>
+                              )}
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-2 text-right font-medium text-gray-900">
+                              {value != null ? formatCurrency(value) : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

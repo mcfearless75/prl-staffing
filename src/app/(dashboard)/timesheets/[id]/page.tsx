@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
+import { ArrowLeft } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { submitTimesheet, approveTimesheet, reopenTimesheet } from "../actions";
 import { rejectTimesheet } from "../actions";
@@ -62,6 +63,9 @@ export default async function TimesheetDetailPage({
     return parts.length > 0 ? parts.join(" / ") : entry.assignment.company.name;
   }
 
+  const weekEnding = new Date(timesheet.weekStarting);
+  weekEnding.setDate(weekEnding.getDate() + 6);
+
   const submitAction = submitTimesheet.bind(null, timesheet.id);
   const approveAction = approveTimesheet.bind(null, timesheet.id);
   const rejectAction = rejectTimesheet.bind(null, timesheet.id);
@@ -69,9 +73,16 @@ export default async function TimesheetDetailPage({
 
   return (
     <div className="space-y-6">
+      <Link
+        href="/timesheets"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Timesheets
+      </Link>
       <PageHeader
         title={`${timesheet.contractor.firstName} ${timesheet.contractor.lastName}`}
-        description={`Week starting ${formatDate(timesheet.weekStarting)}`}
+        description={`Week ending ${formatDate(weekEnding)}`}
         action={
           <div className="flex items-center gap-2">
             {timesheet.isException && (

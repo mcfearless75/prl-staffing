@@ -16,6 +16,8 @@ type TimesheetRow = {
   isException: boolean;
   approvedBy: string | null;
   companyName: string;
+  siteName: string;
+  departmentName: string;
   hasAbsence: boolean;
 };
 
@@ -89,6 +91,15 @@ export function WeeklyTimesheetGroup({
         const weekEnd = new Date(weekDate);
         weekEnd.setDate(weekEnd.getDate() + 6);
 
+        // Grouped view is ordered Client → Site → Dept, matching how PRL
+        // works timesheets — not raw assignment/DB order.
+        const sortedTimesheets = [...timesheets].sort((a, b) =>
+          a.companyName.localeCompare(b.companyName) ||
+          a.siteName.localeCompare(b.siteName) ||
+          a.departmentName.localeCompare(b.departmentName) ||
+          a.contractorName.localeCompare(b.contractorName)
+        );
+
         return (
           <div key={week} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
             {/* Week Header - clickable */}
@@ -105,10 +116,10 @@ export function WeeklyTimesheetGroup({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h3 className="text-sm font-semibold text-gray-900">
-                    Week of {formatDate(week)}
+                    W/E {formatDate(weekEnd.toISOString())}
                   </h3>
                   <span className="text-xs text-gray-400">
-                    → {formatDate(weekEnd.toISOString())}
+                    (w/c {formatDate(week)})
                   </span>
                 </div>
                 <div className="flex items-center gap-4 mt-1">
@@ -169,7 +180,7 @@ export function WeeklyTimesheetGroup({
                         Status
                       </th>
                       <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-gray-500">
-                        Assignment
+                        Client / Site / Dept
                       </th>
                       <th className="px-4 py-2 text-right text-[10px] font-medium uppercase tracking-wider text-gray-500">
                         Actions
@@ -177,7 +188,7 @@ export function WeeklyTimesheetGroup({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {timesheets.map((ts) => (
+                    {sortedTimesheets.map((ts) => (
                       <tr
                         key={ts.id}
                         className={`hover:bg-gray-50 transition-colors ${
@@ -226,6 +237,12 @@ export function WeeklyTimesheetGroup({
                         </td>
                         <td className="whitespace-nowrap px-4 py-2.5 text-sm text-gray-500">
                           {ts.companyName}
+                          {ts.siteName !== "—" && (
+                            <span className="text-gray-400"> / {ts.siteName}</span>
+                          )}
+                          {ts.departmentName !== "—" && (
+                            <span className="text-gray-400"> / {ts.departmentName}</span>
+                          )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-2.5 text-right">
                           <Link

@@ -83,6 +83,7 @@ export default function CampaignPage() {
   const [filter, setFilter] = useState<"all" | "opened" | "incomplete" | "complete" | "notSignedUp">("all");
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ created: number; alreadyExisted: number; noEmail: string[] } | null>(null);
+  const [sendingOneId, setSendingOneId] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -146,6 +147,37 @@ export default function CampaignPage() {
       setError(String(err));
     } finally {
       setSending(false);
+    }
+  }
+
+  // Which single-send email applies to a given contractor, mirroring the
+  // bulk-campaign eligibility rules above (welcome / incomplete-profile / none).
+  function individualSendMode(c: ContractorRow): "newUsers" | "incompleteOnly" | null {
+    if (!c.isActivated) return "newUsers";
+    if (!c.profileComplete || !c.docsUploaded) return "incompleteOnly";
+    return null;
+  }
+
+  async function handleSendOne(c: ContractorRow) {
+    const mode = individualSendMode(c);
+    if (!mode) return;
+    const label = mode === "newUsers" ? "welcome" : "incomplete profile reminder";
+    if (!confirm(`Send the ${label} email to ${c.firstName} ${c.lastName}?`)) return;
+    setSendingOneId(c.id);
+    setError(null);
+    try {
+      const res = await fetch("/api/campaign/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode, contractorId: c.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) setError(data.error || "Send failed");
+      else await fetchStats();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setSendingOneId(null);
     }
   }
 
@@ -506,6 +538,7 @@ export default function CampaignPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Missing Fields</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Docs</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Send</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -533,10 +566,24 @@ export default function CampaignPage() {
                       }
                     </td>
                     <td className="px-4 py-3"><ProfileBadge c={c} /></td>
+                    <td className="px-4 py-3 text-right">
+                      {individualSendMode(c) && c.email ? (
+                        <button
+                          onClick={() => handleSendOne(c)}
+                          disabled={sendingOneId === c.id}
+                          className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        >
+                          {sendingOneId === c.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                          Send
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {filteredContractors.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">No contractors match this filter.</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400 text-sm">No contractors match this filter.</td></tr>
                 )}
               </tbody>
             </table>

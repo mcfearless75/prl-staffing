@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { formatDate } from "@/lib/utils";
+import { ArrowLeft } from "lucide-react";
 import { updateTimesheetEntries } from "../../actions";
 import { getBankHolidaysInWeek } from "@/lib/uk-bank-holidays";
 import { HoursInput } from "./hours-input";
@@ -47,11 +48,21 @@ export default async function EditTimesheetPage({
       label: `${a.role} - ${a.company.name}`,
     }));
 
+  const weekEnding = new Date(timesheet.weekStarting);
+  weekEnding.setDate(weekEnding.getDate() + 6);
+
   return (
     <div className="space-y-6">
+      <Link
+        href={`/timesheets/${timesheet.id}`}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Timesheet
+      </Link>
       <PageHeader
         title={`Edit Timesheet — ${timesheet.contractor.firstName} ${timesheet.contractor.lastName}`}
-        description={`Week starting ${formatDate(timesheet.weekStarting)}`}
+        description={`Week ending ${formatDate(weekEnding)}`}
       />
 
       {/* Info Banner */}

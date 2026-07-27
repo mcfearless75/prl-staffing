@@ -8,7 +8,6 @@ import { Badge } from "@/components/badge";
 type Company = {
   id: string;
   name: string;
-  city: string | null;
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
@@ -108,7 +107,6 @@ export function CompaniesTable({ companies }: { companies: Company[] }) {
                 />
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">City</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Contact Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Contact Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Phone</th>
@@ -131,7 +129,6 @@ export function CompaniesTable({ companies }: { companies: Company[] }) {
                   />
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">{company.name}</td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{company.city || "—"}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{company.contactName || "—"}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{company.contactEmail || "—"}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{company.contactPhone || "—"}</td>

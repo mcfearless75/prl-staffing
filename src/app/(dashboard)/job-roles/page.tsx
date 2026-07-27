@@ -4,11 +4,12 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, X, ArrowUp, ArrowDown } from "lucide-react";
 
 type JobRolesSearchParams = {
   q?: string;
   status?: string;
+  sort?: string;
 };
 
 function buildQuery(current: JobRolesSearchParams, patch: Partial<JobRolesSearchParams>): string {
@@ -30,6 +31,7 @@ export default async function JobRolesPage({
   const sp = await searchParams;
   const q = sp.q?.trim() || "";
   const status = STATUS_OPTIONS.includes(sp.status as never) ? sp.status : undefined;
+  const nameSort = sp.sort === "name-desc" ? "desc" : sp.sort === "name-asc" ? "asc" : undefined;
 
   const where: Prisma.JobRoleWhereInput = {
     ...(status === "Active" ? { active: true } : {}),
@@ -39,12 +41,13 @@ export default async function JobRolesPage({
 
   const jobRoles = await prisma.jobRole.findMany({
     where,
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    orderBy: nameSort ? [{ name: nameSort }] : [{ sortOrder: "asc" }, { name: "asc" }],
   });
 
   const current: JobRolesSearchParams = {
     ...(q ? { q } : {}),
     ...(status ? { status } : {}),
+    ...(sp.sort ? { sort: sp.sort } : {}),
   };
 
   return (
@@ -85,15 +88,25 @@ export default async function JobRolesPage({
 
         <form action="/job-roles" method="get" className="ml-auto flex items-center gap-2">
           {status && <input type="hidden" name="status" value={status} />}
+          {sp.sort && <input type="hidden" name="sort" value={sp.sort} />}
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               name="q"
               defaultValue={q}
-              placeholder="Search roles"
-              className="w-56 rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Search job roles by name…"
+              className="w-72 rounded-lg border-2 border-gray-300 py-2.5 pl-10 pr-9 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+            {q && (
+              <Link
+                href={`/job-roles${buildQuery(current, { q: "" }) ? `?${buildQuery(current, { q: "" })}` : ""}`}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                title="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </Link>
+            )}
           </div>
         </form>
       </div>
@@ -104,14 +117,19 @@ export default async function JobRolesPage({
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  {["Name", "Status", "Sort Order"].map((h) => (
-                    <th
-                      key={h}
-                      className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <Link
+                      href={`/job-roles?${buildQuery(current, { sort: nameSort === "asc" ? "name-desc" : "name-asc" })}`}
+                      className="inline-flex items-center gap-1 hover:text-gray-700"
                     >
-                      {h}
-                    </th>
-                  ))}
+                      Name
+                      {nameSort === "asc" && <ArrowUp className="h-3 w-3" />}
+                      {nameSort === "desc" && <ArrowDown className="h-3 w-3" />}
+                    </Link>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Status
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                     Actions
                   </th>
@@ -127,9 +145,6 @@ export default async function JobRolesPage({
                       <Badge variant={role.active ? "Active" : "Inactive"}>
                         {role.active ? "Active" : "Archived"}
                       </Badge>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {role.sortOrder}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right">
                       <Link

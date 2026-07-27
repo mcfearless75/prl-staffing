@@ -33,7 +33,7 @@ export default async function TimesheetsPage({
       where,
       include: {
         contractor: true,
-        assignment: { include: { company: true } },
+        assignment: { include: { company: true, site: true, department: true } },
         entries: { select: { status: true } },
       },
       orderBy: { weekStarting: "desc" },
@@ -165,6 +165,8 @@ export default async function TimesheetsPage({
                   isException: ts.isException,
                   approvedBy: ts.approvedBy,
                   companyName: ts.assignment?.company?.name || "—",
+                  siteName: ts.assignment?.site?.name || "—",
+                  departmentName: ts.assignment?.department?.name || "—",
                   hasAbsence: ts.entries.some((e) => e.status === "Absent"),
                 })),
               ])

@@ -49,6 +49,10 @@ export default async function CompliancePage({
   // specific status filters to exactly that.
   if (status === "all") {
     // no status filter — show everything including Verified
+  } else if (status === "ActionRequired") {
+    // Summary-card shorthand for the "Non-Compliant" worst-status bucket,
+    // which spans both raw record statuses.
+    where.status = { in: ["Expired", "Non-Compliant"] };
   } else if (status) {
     where.status = status;
   } else {
@@ -62,7 +66,7 @@ export default async function CompliancePage({
   // Sync statuses based on expiry dates before fetching
   await syncComplianceStatuses();
 
-  const [records, allRecords, gaps, totalContractors] = await Promise.all([
+  const [records, allRecords, gaps, totalContractors, assignedContractors] = await Promise.all([
     prisma.complianceRecord.findMany({
       where,
       include: { contractor: true },
@@ -73,13 +77,24 @@ export default async function CompliancePage({
     prisma.contractor.count({
       where: { status: { notIn: ["Left", "Inactive"] } },
     }),
+    // Score is scoped to subcontractors actively assigned to a client — we
+    // can't sensibly chase certs for people not currently working for us.
+    prisma.assignment.findMany({
+      where: { status: { in: ["Placed", "Active", "Ending"] } },
+      select: { contractorId: true },
+      distinct: ["contractorId"],
+    }),
   ]);
 
-  // Contractors with no compliance records at all (for chase view)
+  const assignedContractorIds = new Set(assignedContractors.map((a) => a.contractorId));
+  const assignedTotal = assignedContractorIds.size;
+
+  // Contractors with no compliance records at all (for chase view) — scoped
+  // to the assigned workforce, same as the score above.
   const contractorIdsWithRecords = [...new Set(allRecords.map((r) => r.contractorId))];
   const noRecordContractors = await prisma.contractor.findMany({
     where: {
-      id: { notIn: contractorIdsWithRecords },
+      id: { notIn: contractorIdsWithRecords, in: [...assignedContractorIds] },
       status: { notIn: ["Left", "Inactive"] },
     },
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
@@ -95,12 +110,14 @@ export default async function CompliancePage({
   );
 
   // ── Contractor-centric metrics ──────────────────────────────────────────────
-  // Group all records by contractorId
+  // Score is scoped to the assigned workforce: group only records for
+  // contractors currently on a Placed/Active/Ending assignment.
+  const assignedRecords = allRecords.filter((r) => assignedContractorIds.has(r.contractorId));
   const recordsByContractor = new Map<
     string,
     { status: string; contractorId: string }[]
   >();
-  for (const r of allRecords) {
+  for (const r of assignedRecords) {
     const existing = recordsByContractor.get(r.contractorId) ?? [];
     existing.push({ status: r.status, contractorId: r.contractorId });
     recordsByContractor.set(r.contractorId, existing);
@@ -131,9 +148,16 @@ export default async function CompliancePage({
     else pendingReview++;
   }
 
-  const noRecords = totalContractors - contractorsWithRecords;
-  // Score is against the full workforce — honest audit number
+  const noRecords = assignedTotal - contractorsWithRecords;
+  // Score is against the assigned workforce only — matches how PRL actually
+  // tracks certs (people no longer placed anywhere aren't chased for docs).
   const riskScore =
+    assignedTotal > 0
+      ? Math.round((fullyCompliant / assignedTotal) * 100)
+      : 0;
+  // Whole-book number kept as a secondary audit stat (includes anyone not
+  // currently assigned, e.g. between placements).
+  const wholeWorkforceScore =
     totalContractors > 0
       ? Math.round((fullyCompliant / totalContractors) * 100)
       : 0;
@@ -141,8 +165,9 @@ export default async function CompliancePage({
   // ── Per-category breakdown — unique contractors per category ─────────────
   // Records store a specific type (e.g. "CSCS (Blue) — Skilled Worker"); the
   // overview groups them by category so it stays one bar per document family.
+  // Scoped to the assigned workforce, same reasoning as the score above.
   const typeBreakdown = COMPLIANCE_CATEGORIES.map((displayName) => {
-    const ofType = allRecords.filter((r) => categoryForType(r.type) === displayName);
+    const ofType = assignedRecords.filter((r) => categoryForType(r.type) === displayName);
 
     // Unique contractors who have this type
     const contractorIds = new Set(ofType.map((r) => r.contractorId));
@@ -298,41 +323,61 @@ export default async function CompliancePage({
           <div className="flex flex-col items-center gap-1">
             <ComplianceScoreRing score={riskScore} />
             <p className="text-[10px] text-gray-400 text-center leading-tight max-w-[72px]">
-              of total workforce
+              of assigned workforce
             </p>
           </div>
         </div>
 
-        {/* Summary Cards — full workforce view for audit */}
+        {/* Summary Cards — scoped to subcontractors on an active assignment.
+            Each card links to the matching filtered list below. */}
         <div className="grid grid-cols-5 gap-3 mb-2">
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center">
+          <Link
+            href="/compliance?status=Verified"
+            className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center transition-shadow hover:shadow-md"
+          >
             <p className="text-3xl font-bold text-emerald-700">{fullyCompliant}</p>
             <p className="text-xs font-medium text-emerald-600 mt-1">Fully Compliant</p>
-          </div>
-          <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-center">
+          </Link>
+          <Link
+            href="/compliance?status=Expiring"
+            className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-center transition-shadow hover:shadow-md"
+          >
             <p className="text-3xl font-bold text-amber-700">{contractorExpiring}</p>
             <p className="text-xs font-medium text-amber-600 mt-1">Expiring Soon</p>
-          </div>
-          <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-center">
+          </Link>
+          <Link
+            href="/compliance?status=ActionRequired"
+            className="rounded-xl bg-red-50 border border-red-200 p-4 text-center transition-shadow hover:shadow-md"
+          >
             <p className="text-3xl font-bold text-red-700">{actionRequired}</p>
             <p className="text-xs font-medium text-red-600 mt-1">Action Required</p>
-          </div>
-          <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 text-center">
+          </Link>
+          <Link
+            href="/compliance?status=Pending"
+            className="rounded-xl bg-blue-50 border border-blue-200 p-4 text-center transition-shadow hover:shadow-md"
+          >
             <p className="text-3xl font-bold text-blue-700">{pendingReview}</p>
             <p className="text-xs font-medium text-blue-600 mt-1">Pending Review</p>
-          </div>
-          <div className="rounded-xl bg-gray-100 border border-gray-300 p-4 text-center">
+          </Link>
+          <Link
+            href="/compliance#no-records"
+            className="rounded-xl bg-gray-100 border border-gray-300 p-4 text-center transition-shadow hover:shadow-md"
+          >
             <p className="text-3xl font-bold text-gray-600">{noRecords}</p>
             <p className="text-xs font-medium text-gray-500 mt-1">No Records</p>
-          </div>
+          </Link>
         </div>
         <div className="flex items-center justify-between mb-6">
           <p className="text-xs text-gray-500">
-            Total workforce: <span className="font-semibold text-gray-900">{totalContractors}</span> contractors
+            Assigned workforce: <span className="font-semibold text-gray-900">{assignedTotal}</span> subcontractors currently placed
             &nbsp;·&nbsp;
             <span className="text-red-600 font-medium">{noRecords} have no compliance documents on file</span>
           </p>
-          <p className="text-xs text-gray-400">{contractorsWithRecords} contractors have at least one record</p>
+          <p className="text-xs text-gray-400">
+            {contractorsWithRecords} of {assignedTotal} have at least one record
+            &nbsp;·&nbsp;
+            whole book ({totalContractors} subcontractors): {wholeWorkforceScore}%
+          </p>
         </div>
 
         {/* Per-Type Progress Bars — rows with chase lists expand to show who to chase */}
@@ -609,7 +654,7 @@ export default async function CompliancePage({
 
       {/* No Records — contractor chase list */}
       {noRecordContractors.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div id="no-records" className="rounded-xl border border-gray-200 bg-white overflow-hidden scroll-mt-4">
           <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-200 bg-gray-50">
             <div>
               <h2 className="text-sm font-semibold text-gray-900">

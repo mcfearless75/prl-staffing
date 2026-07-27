@@ -8,15 +8,23 @@ import { CompaniesTable } from "./companies-table";
 export default async function CompaniesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ search?: string }>;
+  searchParams?: Promise<{ search?: string; all?: string }>;
 }) {
   const params = await searchParams;
   const search = params?.search || "";
+  const showAll = params?.all === "true";
+  const toggleQuery = new URLSearchParams();
+  if (search) toggleQuery.set("search", search);
+  if (!showAll) toggleQuery.set("all", "true");
+  const toggleHref = `/companies${toggleQuery.toString() ? `?${toggleQuery.toString()}` : ""}`;
 
   const where: Record<string, unknown> = {};
 
   if (search) {
     where.name = { contains: search, mode: "insensitive" };
+  }
+  if (!showAll) {
+    where.isActive = true;
   }
 
   const companies = await prisma.company.findMany({
@@ -27,26 +35,27 @@ export default async function CompaniesPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Companies"
+        title="Clients"
         action={
           <Link
             href="/companies/new"
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            Add Company
+            Add Client
           </Link>
         }
       />
 
       {/* Search Bar */}
       <form method="GET" className="flex items-center gap-4">
+        {showAll && <input type="hidden" name="all" value="true" />}
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             name="search"
-            placeholder="Search by company name..."
+            placeholder="Search by client name..."
             defaultValue={search}
             className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
@@ -59,10 +68,18 @@ export default async function CompaniesPage({
         </button>
       </form>
 
-      {/* Count */}
-      <p className="text-sm text-gray-500">
-        {companies.length} {companies.length === 1 ? "company" : "companies"}{search ? ` matching "${search}"` : " total"}
-      </p>
+      {/* Count + active-only toggle */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">
+          {companies.length} {companies.length === 1 ? "client" : "clients"}{search ? ` matching "${search}"` : showAll ? " total" : " active"}
+        </p>
+        <Link
+          href={toggleHref}
+          className="text-xs font-medium text-blue-600 hover:text-blue-800"
+        >
+          {showAll ? "Show active clients only" : "Show inactive clients too"}
+        </Link>
+      </div>
 
       {/* Companies Table */}
       {companies.length > 0 ? (

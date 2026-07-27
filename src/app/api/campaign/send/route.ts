@@ -525,6 +525,7 @@ export async function POST(request: Request) {
     let isIncompleteOnly = false;
     let isNewUsers = false;
     let isNoCompliance = false;
+    let singleContractorId: string | null = null;
     try {
       const body = await request.json();
       isResend = body?.resend === true;
@@ -533,6 +534,7 @@ export async function POST(request: Request) {
       isIncompleteOnly = body?.mode === "incompleteOnly";
       isNewUsers = body?.mode === "newUsers";
       isNoCompliance = body?.mode === "noCompliance";
+      singleContractorId = typeof body?.contractorId === "string" ? body.contractorId : null;
       // resendAll and incompleteOnly use the profile completion email template
       if (isResendAll || isIncompleteOnly) isProfileCompletion = true;
     } catch {
@@ -547,7 +549,11 @@ export async function POST(request: Request) {
     };
 
     const contractors = await prisma.contractor.findMany({
-      where: isNoCompliance
+      // A single-contractor send targets that person directly, bypassing the
+      // batch eligibility filters below (staff picked them deliberately).
+      where: singleContractorId
+        ? { ...baseWhere, id: singleContractorId }
+        : isNoCompliance
         ? { ...baseWhere, compliances: { none: {} } }
         : isResendAll || isIncompleteOnly
         // Fetch ALL activated contractors; incompleteOnly will filter in-code
