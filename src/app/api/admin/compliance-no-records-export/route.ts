@@ -34,16 +34,18 @@ export async function GET() {
     },
   });
 
-  const header = "Name,Email,Phone,Status,ProfileURL";
+  const header = "Name,Email,Phone,Status,Profile";
   const rows = contractors.map((c) => {
     const name = escapeCSV(`${c.firstName} ${c.lastName}`);
     const email = escapeCSV(c.email ?? "");
     const phone = escapeCSV(c.phone ?? "");
     const status = escapeCSV(c.status ?? "");
-    const profileUrl = escapeCSV(
-      `https://www.prismworkforce.online/contractors/${c.id}`
-    );
-    return `${name},${email},${phone},${status},${profileUrl}`;
+    // Excel/Sheets don't reliably auto-linkify a plain URL string in a CSV
+    // cell — HYPERLINK() renders as a real clickable link on open instead.
+    // Must stay outside escapeCSV: quoting the whole formula would make
+    // Excel treat it as literal text rather than evaluate it.
+    const profileLink = `"=HYPERLINK(""https://www.prismworkforce.online/contractors/${c.id}"",""Open Profile"")"`;
+    return `${name},${email},${phone},${status},${profileLink}`;
   });
 
   const csv = [header, ...rows].join("\n");
