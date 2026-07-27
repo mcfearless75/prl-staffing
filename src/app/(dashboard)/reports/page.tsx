@@ -52,12 +52,11 @@ export default async function ReportsHubPage() {
     {
       title: "Compliance Gap Report",
       description: "Per-contractor breakdown of missing, pending and verified compliance documents.",
-      href: "/api/compliance/gap-report",
+      href: "/compliance/gap-report",
       actionLabel: "Open",
       icon: ShieldAlert,
       color: "bg-amber-50 text-amber-600 border-amber-200",
       iconBg: "bg-amber-100",
-      openInNewTab: true,
     },
     {
       title: "No-Records Export",
@@ -70,9 +69,9 @@ export default async function ReportsHubPage() {
     },
     {
       title: "Sage Export",
-      description: "Export an approved invoice in Sage 50/200 import format from the invoice detail page.",
+      description: "Open an approved invoice, then use \"Export for Sage\" on that invoice — this isn't a single bulk file.",
       href: "/billing",
-      actionLabel: "Open Billing",
+      actionLabel: "View Invoices",
       icon: Receipt,
       color: "bg-emerald-50 text-emerald-600 border-emerald-200",
       iconBg: "bg-emerald-100",

@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   Users,
   Building2,
-  FolderKanban,
   Clock,
   ShieldCheck,
   TrendingUp,
@@ -40,7 +39,6 @@ const navigation = [
   { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
   { name: "Subcontractors", href: "/contractors", icon: Users, badgeKey: null },
   { name: "Clients", href: "/companies", icon: Building2, badgeKey: null },
-  { name: "Projects", href: "/projects", icon: FolderKanban, badgeKey: null },
   { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
   { name: "Timesheets", href: "/timesheets", icon: Clock, badgeKey: null },
   { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
@@ -54,8 +52,8 @@ const navigation = [
   { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
 ];
 
-// Suppliers and Expenses are built and functional but hidden from nav per
-// client request (2026-07-27) — routes still resolve directly by URL.
+// Suppliers, Expenses and Projects are built and functional but hidden from
+// nav per client request (2026-07-27) — routes still resolve directly by URL.
 
 type Counts = {
   complianceAlerts: number;
