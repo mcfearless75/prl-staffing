@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 export async function PUT(request: Request) {
   try {
@@ -23,22 +24,42 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    // Contractor.email is non-nullable and unique — it is the portal sign-in
+    // identity, so a blank value can never be written.
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    if (!normalizedEmail) {
+      return NextResponse.json(
+        { error: "Email address is required — it is how you sign in to the portal." },
+        { status: 400 }
+      );
+    }
+
     // Update contractor record — this updates the MAIN backend database
-    await prisma.contractor.update({
-      where: { id: contractorId },
-      data: {
-        phone: phone || null,
-        email: email || null,
-        address: address || null,
-        postcode: postcode || null,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        niNumber: niNumber || null,
-        nextOfKin: nextOfKin || null,
-        emergencyContactName: emergencyContactName || null,
-        emergencyContactPhone: emergencyContactPhone || null,
-        emergencyContactRelation: emergencyContactRelation || null,
-      },
-    });
+    try {
+      await prisma.contractor.update({
+        where: { id: contractorId },
+        data: {
+          phone: phone || null,
+          email: normalizedEmail,
+          address: address || null,
+          postcode: postcode || null,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          niNumber: niNumber || null,
+          nextOfKin: nextOfKin || null,
+          emergencyContactName: emergencyContactName || null,
+          emergencyContactPhone: emergencyContactPhone || null,
+          emergencyContactRelation: emergencyContactRelation || null,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        return NextResponse.json(
+          { error: "That email address is already in use by another worker." },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     // Log the activity
     try {
@@ -49,7 +70,7 @@ export async function PUT(request: Request) {
           entityId: contractorId,
           details: "Contractor updated their own profile via portal",
           userId: sessionUser.contractorId,
-          userEmail: email || "contractor",
+          userEmail: normalizedEmail,
         },
       });
     } catch {

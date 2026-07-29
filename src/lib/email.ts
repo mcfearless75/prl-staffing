@@ -1,4 +1,161 @@
 import { Resend } from "resend";
+import { prisma } from "@/lib/db";
+
+export const DEFAULT_EMAIL_FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
+
+export interface SendEmailResult {
+  success: boolean;
+  error?: string;
+  id?: string;
+}
+
+// Read env vars INSIDE the function (not at module level) so they're always fresh
+export function getEmailFrom() {
+  return process.env.EMAIL_FROM || DEFAULT_EMAIL_FROM;
+}
+
+// Staff notification groups. Each falls back to the address the route previously
+// hardcoded, so behaviour is unchanged with no env vars set — the env var exists
+// so a leaver's mailbox can be swapped without a code deploy.
+function recipientList(envValue: string | undefined, fallback: string[]): string[] {
+  const parsed = (envValue ?? "")
+    .split(",")
+    .map((address) => address.trim())
+    .filter(Boolean);
+  return parsed.length > 0 ? parsed : fallback;
+}
+
+export const PAY_QUERY_RECIPIENTS = recipientList(process.env.PAY_QUERY_RECIPIENTS, [
+  "jenni@prlsitesolutions.co.uk",
+]);
+
+export const SURVEY_RECIPIENTS = recipientList(process.env.SURVEY_RECIPIENTS, [
+  "adella@prlsitesolutions.co.uk",
+]);
+
+export const GRIEVANCE_RECIPIENTS = recipientList(process.env.GRIEVANCE_RECIPIENTS, [
+  "adella@prlsitesolutions.co.uk",
+  "keenan@prlsitesolutions.co.uk",
+]);
+
+export const APPLICATION_RECIPIENTS = recipientList(process.env.APPLICATION_RECIPIENTS, [
+  "adella@prlsitesolutions.co.uk",
+  "helen@prlsitesolutions.co.uk",
+]);
+
+export const NEW_STARTER_RECIPIENTS = recipientList(process.env.NEW_STARTER_RECIPIENTS, [
+  "helen@prlsitesolutions.co.uk",
+  "adella@prlsitesolutions.co.uk",
+]);
+
+export const ONBOARDING_RECIPIENTS = recipientList(process.env.ONBOARDING_RECIPIENTS, [
+  "adella@prlsitesolutions.co.uk",
+  "helen@prlsitesolutions.co.uk",
+]);
+
+export const SUPPLIER_QUESTIONNAIRE_RECIPIENTS = recipientList(
+  process.env.SUPPLIER_QUESTIONNAIRE_RECIPIENTS,
+  ["adella@prlsitesolutions.co.uk", "helen@prlsitesolutions.co.uk"]
+);
+
+async function logEmail(entry: {
+  to: string;
+  subject: string;
+  template?: string;
+  status: string;
+  error?: string;
+  providerId?: string;
+}) {
+  try {
+    await prisma.emailLog.create({
+      data: {
+        to: entry.to,
+        subject: entry.subject,
+        template: entry.template ?? null,
+        status: entry.status,
+        error: entry.error ?? null,
+        providerId: entry.providerId ?? null,
+      },
+    });
+  } catch (err) {
+    console.error("EmailLog write failed:", err);
+  }
+}
+
+/**
+ * Single send path for all outbound email. Never throws — always returns a result.
+ * The Resend SDK resolves with { data, error } on API-level failures rather than
+ * rejecting, so the error branch below is the only way those surface.
+ */
+export async function sendEmail(opts: {
+  to: string | string[];
+  subject: string;
+  html: string;
+  template?: string;
+  replyTo?: string;
+  text?: string;
+}): Promise<SendEmailResult> {
+  const recipients = Array.isArray(opts.to) ? opts.to : [opts.to];
+  const toLabel = recipients.join(", ");
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    const error = "RESEND_API_KEY not configured";
+    console.warn("RESEND_API_KEY not set. Email not sent to:", toLabel);
+    await logEmail({
+      to: toLabel,
+      subject: opts.subject,
+      template: opts.template,
+      status: "failed",
+      error,
+    });
+    return { success: false, error };
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const { data, error } = await resend.emails.send({
+      from: getEmailFrom(),
+      to: recipients,
+      subject: opts.subject,
+      html: opts.html,
+      ...(opts.text ? { text: opts.text } : {}),
+      ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
+    });
+
+    if (error) {
+      console.error("Email send error:", error);
+      await logEmail({
+        to: toLabel,
+        subject: opts.subject,
+        template: opts.template,
+        status: "failed",
+        error: error.message || String(error),
+      });
+      return { success: false, error: error.message || String(error) };
+    }
+
+    await logEmail({
+      to: toLabel,
+      subject: opts.subject,
+      template: opts.template,
+      status: "sent",
+      providerId: data?.id,
+    });
+    return { success: true, id: data?.id };
+  } catch (err) {
+    console.error("Email send exception:", err);
+    const error = err instanceof Error ? err.message : String(err);
+    await logEmail({
+      to: toLabel,
+      subject: opts.subject,
+      template: opts.template,
+      status: "failed",
+      error,
+    });
+    return { success: false, error };
+  }
+}
 
 /**
  * Send password reset / set password email
@@ -9,17 +166,6 @@ export async function sendPasswordResetEmail(
   resetUrl: string,
   isNewAccount: boolean = false
 ) {
-  // Read env vars INSIDE the function (not at module level) so they're always fresh
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <onboarding@resend.dev>";
-
-  if (!apiKey) {
-    console.warn("RESEND_API_KEY not set. Email not sent to:", to);
-    return { success: false, error: "RESEND_API_KEY not configured" };
-  }
-
-  const resend = new Resend(apiKey);
-
   const subject = isNewAccount
     ? "Set Up Your PRL Site Solutions Account"
     : "Reset Your PRL Site Solutions Password";
@@ -78,23 +224,11 @@ export async function sendPasswordResetEmail(
     </div>
   `;
 
-  try {
-    const { data, error } = await resend.emails.send({
-      from: fromEmail,
-      to: [to],
-      subject,
-      html,
-      text: bodyText,
-    });
-
-    if (error) {
-      console.error("Email send error:", error);
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, id: data?.id };
-  } catch (error) {
-    console.error("Email send exception:", error);
-    return { success: false, error: String(error) };
-  }
+  return sendEmail({
+    to,
+    subject,
+    html,
+    text: bodyText,
+    template: isNewAccount ? "account-setup" : "password-reset",
+  });
 }

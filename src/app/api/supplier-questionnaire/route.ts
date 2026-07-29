@@ -1,6 +1,50 @@
 import { prisma } from "@/lib/db";
-import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { NextRequest, NextResponse } from "next/server";
+import { sendEmail, SUPPLIER_QUESTIONNAIRE_RECIPIENTS } from "@/lib/email";
+
+// IP-based rate limiter per hour. Unauthenticated public form feeding the
+// ISO 9001 clause 8.4 supplier approval record.
+const ipSubmissions = new Map<string, { count: number; windowStart: number }>();
+const RATE_LIMIT = 20;
+const WINDOW_MS = 60 * 60 * 1000;
+
+function checkIpRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = ipSubmissions.get(ip);
+  if (!record || now - record.windowStart > WINDOW_MS) {
+    ipSubmissions.set(ip, { count: 1, windowStart: now });
+    return true;
+  }
+  if (record.count >= RATE_LIMIT) return false;
+  record.count += 1;
+  return true;
+}
+
+const YES_NO = ["Yes", "No"];
+const ISO_9001 = ["Yes", "No", "Working towards"];
+
+function toText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, maxLength) : null;
+}
+
+function toChoice(value: unknown, allowed: string[]): string | null {
+  return typeof value === "string" && allowed.includes(value) ? value : null;
+}
+
+function toDate(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+interface TradeReference {
+  company: string | null;
+  contact: string | null;
+  email: string | null;
+  phone: string | null;
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -17,21 +61,26 @@ function yesNoBadge(val: string): string {
   return `<span style="color:#f59e0b;font-weight:600;">${escapeHtml(val)}</span>`;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+
+  if (!checkIpRateLimit(ip)) {
+    return NextResponse.json(
+      { error: "Too many submissions. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
 
-    const {
-      companyName, tradingName, companyRegNo, vatNumber, registeredAddress,
-      mainContactName, contactEmail, contactPhone, website,
-      goodsServices, numberOfEmployees, yearsInBusiness,
-      iso9001, otherCertifications,
-      publicLiability, publicLiabilityAmount,
-      employersLiability, employersLiabilityAmount,
-      professionalIndemnity, professionalIndemnityAmount,
-      healthSafetyPolicy, environmentalPolicy, equalityPolicy,
-      references, additionalInfo, declaration, signature, submittedDate,
-    } = body;
+    const companyName = toText(body.companyName, 200);
+    const mainContactName = toText(body.mainContactName, 200);
+    const contactEmail = toText(body.contactEmail, 200);
+    const goodsServices = toText(body.goodsServices, 2000);
 
     if (!companyName || !mainContactName || !contactEmail || !goodsServices) {
       return NextResponse.json(
@@ -40,39 +89,117 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!declaration) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+      return NextResponse.json(
+        { error: "A valid contact email address is required" },
+        { status: 400 }
+      );
+    }
+
+    if (body.declaration !== true) {
       return NextResponse.json(
         { error: "You must confirm the declaration" },
         { status: 400 }
       );
     }
 
-    // Save to ActivityLog
+    const tradingName = toText(body.tradingName, 200);
+    const companyRegNo = toText(body.companyRegNo, 50);
+    const vatNumber = toText(body.vatNumber, 50);
+    const registeredAddress = toText(body.registeredAddress, 500);
+    const contactPhone = toText(body.contactPhone, 50);
+    const website = toText(body.website, 300);
+    const numberOfEmployees = toText(body.numberOfEmployees, 50);
+    const yearsInBusiness = toText(body.yearsInBusiness, 50);
+    const iso9001 = toChoice(body.iso9001, ISO_9001);
+    const otherCertifications = toText(body.otherCertifications, 1000);
+    const publicLiability = toChoice(body.publicLiability, YES_NO);
+    const publicLiabilityAmount = toText(body.publicLiabilityAmount, 50);
+    const employersLiability = toChoice(body.employersLiability, YES_NO);
+    const employersLiabilityAmount = toText(body.employersLiabilityAmount, 50);
+    const professionalIndemnity = toChoice(body.professionalIndemnity, YES_NO);
+    const professionalIndemnityAmount = toText(body.professionalIndemnityAmount, 50);
+    const healthSafetyPolicy = toChoice(body.healthSafetyPolicy, YES_NO);
+    const environmentalPolicy = toChoice(body.environmentalPolicy, YES_NO);
+    const equalityPolicy = toChoice(body.equalityPolicy, YES_NO);
+    const additionalInfo = toText(body.additionalInfo, 5000);
+    const signature = toText(body.signature, 200);
+    const submittedDate = toDate(body.submittedDate) ?? new Date();
+
+    // The model stores two flattened trade references; anything beyond the
+    // first two submitted is discarded.
+    const rawRefs: unknown[] = Array.isArray(body.references) ? body.references : [];
+    const refs: TradeReference[] = rawRefs.slice(0, 2).map((raw) => {
+      const r = (raw ?? {}) as Record<string, unknown>;
+      return {
+        company: toText(r.company, 200),
+        contact: toText(r.contact, 200),
+        email: toText(r.email, 200),
+        phone: toText(r.phone, 50),
+      };
+    });
+
+    const questionnaire = await prisma.supplierQuestionnaire.create({
+      data: {
+        companyName,
+        tradingName,
+        companyRegNo,
+        vatNumber,
+        registeredAddress,
+        mainContactName,
+        contactEmail,
+        contactPhone,
+        website,
+        goodsServices,
+        numberOfEmployees,
+        yearsInBusiness,
+        iso9001,
+        otherCertifications,
+        publicLiability,
+        publicLiabilityAmount,
+        employersLiability,
+        employersLiabilityAmount,
+        professionalIndemnity,
+        professionalIndemnityAmount,
+        healthSafetyPolicy,
+        environmentalPolicy,
+        equalityPolicy,
+        ref1Company: refs[0]?.company ?? null,
+        ref1Contact: refs[0]?.contact ?? null,
+        ref1Email: refs[0]?.email ?? null,
+        ref1Phone: refs[0]?.phone ?? null,
+        ref2Company: refs[1]?.company ?? null,
+        ref2Contact: refs[1]?.contact ?? null,
+        ref2Email: refs[1]?.email ?? null,
+        ref2Phone: refs[1]?.phone ?? null,
+        additionalInfo,
+        declaration: true,
+        signature,
+        submittedDate,
+      },
+    });
+
+    // Audit trail. SupplierQuestionnaire is the source of truth; this row only
+    // records that the submission happened — never the raw request body.
     await prisma.activityLog.create({
       data: {
         userName: mainContactName,
         userEmail: contactEmail,
         action: "SUPPLIER_QUESTIONNAIRE",
         entityType: "SupplierQuestionnaire",
-        details: JSON.stringify(body),
+        entityId: questionnaire.id,
+        details: `Supplier questionnaire submitted by ${companyName}`,
       },
     });
 
     // Send email notification
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
-
-    if (apiKey) {
-      const resend = new Resend(apiKey);
-
-      const refs = references || [];
       const refsHtml = refs
-        .filter((r: { company: string }) => r.company)
+        .filter((r) => r.company)
         .map(
-          (r: { company: string; contact: string; email: string; phone: string }, i: number) => `
+          (r, i) => `
           <h3 style="font-size:13px;color:#005f8c;margin:12px 0 6px;">Reference ${i + 1}</h3>
           <table style="width:100%;font-size:13px;">
-            <tr><td style="padding:2px 0;color:#666;width:120px;">Company:</td><td style="padding:2px 0;">${escapeHtml(r.company)}</td></tr>
+            <tr><td style="padding:2px 0;color:#666;width:120px;">Company:</td><td style="padding:2px 0;">${escapeHtml(r.company!)}</td></tr>
             ${r.contact ? `<tr><td style="padding:2px 0;color:#666;">Contact:</td><td style="padding:2px 0;">${escapeHtml(r.contact)}</td></tr>` : ""}
             ${r.email ? `<tr><td style="padding:2px 0;color:#666;">Email:</td><td style="padding:2px 0;"><a href="mailto:${escapeHtml(r.email)}" style="color:#005f8c;">${escapeHtml(r.email)}</a></td></tr>` : ""}
             ${r.phone ? `<tr><td style="padding:2px 0;color:#666;">Phone:</td><td style="padding:2px 0;">${escapeHtml(r.phone)}</td></tr>` : ""}
@@ -142,7 +269,7 @@ export async function POST(request: Request) {
 
             ${signature ? `
               <div style="margin-top:16px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;">
-                <p style="font-size:12px;color:#666;margin:0;">Signed by: <strong>${escapeHtml(signature)}</strong> on ${submittedDate ? new Date(submittedDate).toLocaleDateString("en-GB") : new Date().toLocaleDateString("en-GB")}</p>
+                <p style="font-size:12px;color:#666;margin:0;">Signed by: <strong>${escapeHtml(signature)}</strong> on ${submittedDate.toLocaleDateString("en-GB")}</p>
               </div>
             ` : ""}
 
@@ -161,22 +288,21 @@ export async function POST(request: Request) {
         </div>
       `;
 
-      try {
-        await resend.emails.send({
-          from: fromEmail,
-          to: [
-            "adella@prlsitesolutions.co.uk",
-            "helen@prlsitesolutions.co.uk",
-          ],
-          subject: `Supplier Questionnaire: ${escapeHtml(companyName)} — ${escapeHtml(mainContactName)}`,
-          html: emailHtml,
-        });
-      } catch (emailErr) {
-        console.error("Failed to send supplier questionnaire notification email:", emailErr);
-      }
-    }
+      const emailResult = await sendEmail({
+        to: SUPPLIER_QUESTIONNAIRE_RECIPIENTS,
+        subject: `Supplier Questionnaire: ${escapeHtml(companyName)} — ${escapeHtml(mainContactName)}`,
+        html: emailHtml,
+        template: "supplier-questionnaire",
+      });
 
-    return NextResponse.json({ success: true, message: "Questionnaire submitted successfully" });
+      if (!emailResult.success) {
+        console.error(
+          `Failed to send supplier questionnaire notification email for ${companyName} (questionnaire ${questionnaire.id}):`,
+          emailResult.error
+        );
+      }
+
+    return NextResponse.json({ success: true, id: questionnaire.id, message: "Questionnaire submitted successfully" });
   } catch (error) {
     console.error("Supplier questionnaire submission error:", error);
     return NextResponse.json(

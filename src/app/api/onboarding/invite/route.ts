@@ -1,10 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
-
-const apiKey = process.env.RESEND_API_KEY;
-const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
+import { sendEmail } from "@/lib/email";
 
 function escapeHtml(str: string): string {
   return str
@@ -80,9 +77,7 @@ export async function POST(request: Request) {
     },
   });
 
-  if (apiKey) {
-    const resend = new Resend(apiKey);
-    const ratesData = (rates || []) as Array<{ description: string; rate: string; basis: string }>;
+  const ratesData = (rates || []) as Array<{ description: string; rate: string; basis: string }>;
     const breakdownData = (breakdown || []) as string[];
 
     const ratesRowsHtml = ratesData
@@ -240,19 +235,19 @@ export async function POST(request: Request) {
       recipients.push(sessionEmail);
     }
 
-    try {
-      await resend.emails.send({
-        from: fromEmail,
-        to: recipients,
-        subject: `Supply Agreement — ${escapeHtml(companyName)} (${escapeHtml(contactName)})`,
-        html: contractorHtml,
-      });
-    } catch (err) {
-      console.error("[onboarding/invite] Failed to send invite email:", err);
+    const emailResult = await sendEmail({
+      to: recipients,
+      subject: `Supply Agreement — ${escapeHtml(companyName)} (${escapeHtml(contactName)})`,
+      html: contractorHtml,
+      template: "supply-agreement-invite",
+    });
+
+    if (!emailResult.success) {
+      console.error(
+        `[onboarding/invite] Failed to send invite email for ${companyName} (agreement ${agreement.id}) to ${recipients.join(", ")}:`,
+        emailResult.error
+      );
     }
-  } else {
-    console.warn("[onboarding/invite] RESEND_API_KEY not set — emails skipped");
-  }
 
   return NextResponse.json({ success: true, id: agreement.id });
 }

@@ -71,6 +71,7 @@ export default function OnboardingPage() {
           emergencyContactName: emergencyName,
           emergencyContactPhone: emergencyPhone,
           emergencyContactRelation: emergencyRelation,
+          consentGiven,
         }),
       });
 

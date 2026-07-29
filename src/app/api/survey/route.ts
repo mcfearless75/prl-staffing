@@ -1,6 +1,41 @@
 import { prisma } from "@/lib/db";
-import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { NextRequest, NextResponse } from "next/server";
+import { sendEmail, SURVEY_RECIPIENTS } from "@/lib/email";
+
+// IP-based rate limiter per hour. This is an unauthenticated public form and
+// the scores feed the QMS satisfaction averages, so spam skews reported quality.
+const ipSubmissions = new Map<string, { count: number; windowStart: number }>();
+const RATE_LIMIT = 20;
+const WINDOW_MS = 60 * 60 * 1000;
+
+function checkIpRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = ipSubmissions.get(ip);
+  if (!record || now - record.windowStart > WINDOW_MS) {
+    ipSubmissions.set(ip, { count: 1, windowStart: now });
+    return true;
+  }
+  if (record.count >= RATE_LIMIT) return false;
+  record.count += 1;
+  return true;
+}
+
+function toText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, maxLength) : null;
+}
+
+function toRating(value: unknown): number | null {
+  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
+}
+
+function toDateOnly(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -17,42 +52,97 @@ function renderStars(count: number): string {
   return `<span style="color:#f59e0b;font-size:18px;">${filled.repeat(count)}${empty.repeat(5 - count)}</span>`;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+
+  if (!checkIpRateLimit(ip)) {
+    return NextResponse.json(
+      { error: "Too many submissions. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
 
-    const {
-      companyName, contactName, contactEmail, dateOfService,
-      overallSatisfaction, qualityOfWorkers, communication,
-      compliance, valueForMoney, recommend,
-      whatDidWell, whatToImprove, otherComments,
-    } = body;
+    const companyName = toText(body.companyName, 200);
+    const contactName = toText(body.contactName, 200);
+    const contactEmail = toText(body.contactEmail, 200);
 
-    if (!companyName || !contactName || !contactEmail || !overallSatisfaction) {
+    if (!companyName || !contactName || !contactEmail) {
       return NextResponse.json(
-        { error: "Company name, contact name, email, and overall satisfaction are required" },
+        { error: "Company name, contact name, and contact email are required" },
         { status: 400 }
       );
     }
 
-    // Save to ActivityLog
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+      return NextResponse.json(
+        { error: "A valid contact email address is required" },
+        { status: 400 }
+      );
+    }
+
+    const overallSatisfaction = toRating(body.overallSatisfaction);
+    if (!overallSatisfaction) {
+      return NextResponse.json(
+        { error: "Overall satisfaction must be a whole number between 1 and 5" },
+        { status: 400 }
+      );
+    }
+
+    const dateOfService = toDateOnly(body.dateOfService);
+    const qualityOfWorkers = toRating(body.qualityOfWorkers);
+    const communication = toRating(body.communication);
+    const compliance = toRating(body.compliance);
+    const valueForMoney = toRating(body.valueForMoney);
+    const recommend = toText(body.recommend, 10);
+    const validRecommend = recommend && ["Yes", "No", "Maybe"].includes(recommend) ? recommend : null;
+    const whatDidWell = toText(body.whatDidWell, 5000);
+    const whatToImprove = toText(body.whatToImprove, 5000);
+    const otherComments = toText(body.otherComments, 5000);
+
+    const survey = await prisma.customerSurvey.create({
+      data: {
+        companyName,
+        contactName,
+        contactEmail,
+        dateOfService,
+        overallSatisfaction,
+        qualityOfWorkers,
+        communication,
+        compliance,
+        valueForMoney,
+        recommend: validRecommend,
+        whatDidWell,
+        whatToImprove,
+        otherComments,
+      },
+    });
+
+    // Audit trail. CustomerSurvey is the source of truth; this row only records
+    // that the submission happened.
     await prisma.activityLog.create({
       data: {
         userName: contactName,
         userEmail: contactEmail,
         action: "SURVEY",
         entityType: "CustomerSurvey",
+        entityId: survey.id,
         details: JSON.stringify({
           companyName,
           contactName,
           contactEmail,
-          dateOfService: dateOfService || null,
+          dateOfService,
           overallSatisfaction,
           qualityOfWorkers,
           communication,
           compliance,
           valueForMoney,
-          recommend,
+          recommend: validRecommend,
           whatDidWell,
           whatToImprove,
           otherComments,
@@ -61,14 +151,8 @@ export async function POST(request: Request) {
     });
 
     // Send email notification
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
-
-    if (apiKey) {
-      const resend = new Resend(apiKey);
-
       const avgScore = [overallSatisfaction, qualityOfWorkers, communication, compliance, valueForMoney]
-        .filter((s) => s > 0)
+        .filter((s): s is number => typeof s === "number" && s > 0)
         .reduce((sum, s, _, arr) => sum + s / arr.length, 0)
         .toFixed(1);
 
@@ -103,9 +187,9 @@ export async function POST(request: Request) {
               ${valueForMoney ? `<tr><td style="padding:4px 0;color:#666;">Value for Money:</td><td style="padding:4px 0;">${renderStars(valueForMoney)} (${valueForMoney}/5)</td></tr>` : ""}
             </table>
 
-            ${recommend ? `
+            ${validRecommend ? `
               <h2 style="font-size:15px;color:#005f8c;border-bottom:2px solid #005f8c;padding-bottom:4px;margin:20px 0 12px;">Recommendation</h2>
-              <p style="font-size:14px;font-weight:600;color:${recommend === "Yes" ? "#16a34a" : recommend === "No" ? "#dc2626" : "#f59e0b"};">${escapeHtml(recommend)}</p>
+              <p style="font-size:14px;font-weight:600;color:${validRecommend === "Yes" ? "#16a34a" : validRecommend === "No" ? "#dc2626" : "#f59e0b"};">${escapeHtml(validRecommend)}</p>
             ` : ""}
 
             ${whatDidWell || whatToImprove || otherComments ? `
@@ -130,19 +214,21 @@ export async function POST(request: Request) {
         </div>
       `;
 
-      try {
-        await resend.emails.send({
-          from: fromEmail,
-          to: ["adella@prlsitesolutions.co.uk"],
-          subject: `Customer Survey: ${escapeHtml(companyName)} — ${overallSatisfaction}/5`,
-          html: emailHtml,
-        });
-      } catch (emailErr) {
-        console.error("Failed to send survey notification email:", emailErr);
-      }
-    }
+      const emailResult = await sendEmail({
+        to: SURVEY_RECIPIENTS,
+        subject: `Customer Survey: ${escapeHtml(companyName)} — ${overallSatisfaction}/5`,
+        html: emailHtml,
+        template: "customer-survey",
+      });
 
-    return NextResponse.json({ success: true, message: "Survey submitted successfully" });
+      if (!emailResult.success) {
+        console.error(
+          `Failed to send survey notification email for ${companyName} (survey ${survey.id}):`,
+          emailResult.error
+        );
+      }
+
+    return NextResponse.json({ success: true, id: survey.id, message: "Survey submitted successfully" });
   } catch (error) {
     console.error("Survey submission error:", error);
     return NextResponse.json(

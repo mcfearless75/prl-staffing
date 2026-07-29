@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
+import { sendEmail, GRIEVANCE_RECIPIENTS } from "@/lib/email";
 import { Prisma } from "@prisma/client";
 import { nextTicketNumber } from "@/lib/ticket-number";
 
@@ -113,12 +113,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Send email to Adella and Keenan
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
     const baseUrl = process.env.NEXTAUTH_URL || "https://www.prismworkforce.online";
-
-    if (apiKey) {
-      const resend = new Resend(apiKey);
 
       const safeName = escapeHtml(name);
       const safeEmail = escapeHtml(email);
@@ -132,10 +127,10 @@ export async function POST(request: NextRequest) {
       const safeWitnesses = witnesses ? escapeHtml(witnesses) : null;
       const safeSignature = escapeHtml(signature);
 
-      await resend.emails.send({
-        from: fromEmail,
-        to: ["adella@prlsitesolutions.co.uk", "keenan@prlsitesolutions.co.uk"],
+      const emailResult = await sendEmail({
+        to: GRIEVANCE_RECIPIENTS,
         subject: `Grievance ${ticketNumber}: ${safeName} — ${safeType}`,
+        template: "grievance-submitted",
         html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
           <div style="background:#7c3aed;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0;">
             <h1 style="margin:0;font-size:18px;">Grievance ${ticketNumber}</h1>
@@ -170,8 +165,14 @@ export async function POST(request: NextRequest) {
             <a href="${baseUrl}/grievances/${grievance.id}" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;margin-top:12px;">View in PRISM →</a>
           </div>
         </div>`,
-      }).catch(console.error);
-    }
+      });
+
+      if (!emailResult.success) {
+        console.error(
+          `Failed to send grievance notification email for ${ticketNumber} (${email}):`,
+          emailResult.error
+        );
+      }
 
     return NextResponse.json({ success: true, ticketNumber });
   } catch (error) {

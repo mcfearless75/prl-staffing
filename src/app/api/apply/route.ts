@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { sendEmail, APPLICATION_RECIPIENTS } from "@/lib/email";
 import { Prisma } from "@prisma/client";
 import { maskNI, maskPassportNumber, maskBankAccount, maskSortCode } from "@/lib/utils";
 
@@ -148,12 +148,6 @@ export async function POST(request: Request) {
     }
 
     // Send branded HTML email notification to PRL team
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
-
-    if (apiKey) {
-      const resend = new Resend(apiKey);
-
       const section = (title: string, rows: [string, string][]) => {
         const filtered = rows.filter(([, v]) => v);
         if (filtered.length === 0) return "";
@@ -257,20 +251,19 @@ export async function POST(request: Request) {
         </div>
       `;
 
-      try {
-        await resend.emails.send({
-          from: fromEmail,
-          to: [
-            "adella@prlsitesolutions.co.uk",
-            "helen@prlsitesolutions.co.uk",
-          ],
-          subject: `${isReapplication ? "Re-Application (existing record)" : "New Application"}: ${escapeHtml(body.firstName)} ${escapeHtml(body.lastName)} -- ${escapeHtml(body.positionsSought || "General")}`,
-          html: emailHtml,
-        });
-      } catch (emailErr) {
-        console.error("Failed to send application notification email:", emailErr);
+      const emailResult = await sendEmail({
+        to: APPLICATION_RECIPIENTS,
+        subject: `${isReapplication ? "Re-Application (existing record)" : "New Application"}: ${escapeHtml(body.firstName)} ${escapeHtml(body.lastName)} -- ${escapeHtml(body.positionsSought || "General")}`,
+        html: emailHtml,
+        template: "application-received",
+      });
+
+      if (!emailResult.success) {
+        console.error(
+          `Failed to send application notification email for ${email} (contractor ${contractorId}):`,
+          emailResult.error
+        );
       }
-    }
 
     return NextResponse.json({
       success: true,

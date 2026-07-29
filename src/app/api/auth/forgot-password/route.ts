@@ -61,8 +61,19 @@ export async function POST(request: Request) {
     // Send email
     const result = await sendPasswordResetEmail(email, name, resetUrl, false);
 
+    // The account-enumeration guard above already returned the generic message for
+    // unknown emails, so reaching here with a failed send means the account exists
+    // and its previous tokens have just been deleted — telling the user "sent" would
+    // leave them waiting on an email that will never arrive.
     if (!result.success) {
-      console.error("Failed to send reset email:", result.error);
+      console.error(`Failed to send reset email to ${email}:`, result.error);
+      return NextResponse.json(
+        {
+          error:
+            "The password reset service is temporarily unavailable. Please try again shortly, or contact infotech@prlsitesolutions.co.uk for help.",
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

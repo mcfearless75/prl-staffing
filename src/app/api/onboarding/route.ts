@@ -1,6 +1,24 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { sendEmail, ONBOARDING_RECIPIENTS } from "@/lib/email";
+
+// IP-based rate limiter per hour. Generous because whole sites often share one
+// NAT'd IP — a tight limit silently 429s legitimate submissions.
+const ipSubmissions = new Map<string, { count: number; windowStart: number }>();
+const RATE_LIMIT = 20;
+const WINDOW_MS = 60 * 60 * 1000;
+
+function checkIpRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = ipSubmissions.get(ip);
+  if (!record || now - record.windowStart > WINDOW_MS) {
+    ipSubmissions.set(ip, { count: 1, windowStart: now });
+    return true;
+  }
+  if (record.count >= RATE_LIMIT) return false;
+  record.count += 1;
+  return true;
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -12,6 +30,18 @@ function escapeHtml(str: string): string {
 }
 
 export async function POST(request: Request) {
+  const ipAddress =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+
+  if (!checkIpRateLimit(ipAddress)) {
+    return NextResponse.json(
+      { error: "Too many submissions. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
 
@@ -23,11 +53,19 @@ export async function POST(request: Request) {
       firstName, lastName, dateOfBirth, niNumber, utrNumber,
       address, postcode,
       emergencyContactName, emergencyContactPhone, emergencyContactRelation,
+      consentGiven,
     } = body;
 
     if (!companyName || !contactName || !contactEmail) {
       return NextResponse.json(
         { error: "Company name, contact name, and email are required" },
+        { status: 400 }
+      );
+    }
+
+    if (consentGiven !== true) {
+      return NextResponse.json(
+        { error: "You must consent to your data being processed before submitting this agreement." },
         { status: 400 }
       );
     }
@@ -61,17 +99,13 @@ export async function POST(request: Request) {
     });
 
     // GDPR: Record consent
-    const ipAddress =
-      request.headers.get("x-forwarded-for") ||
-      request.headers.get("x-real-ip") ||
-      "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
 
     await prisma.consentRecord.create({
       data: {
         email: contactEmail,
         consentType: "onboarding",
-        consentGiven: true,
+        consentGiven,
         ipAddress,
         userAgent,
         consentText:
@@ -81,11 +115,6 @@ export async function POST(request: Request) {
     });
 
     // Send branded HTML email to Adella & Helen
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
-
-    if (apiKey) {
-      const resend = new Resend(apiKey);
       const ratesData = rates || [];
       const breakdownData = breakdown || [];
 
@@ -196,21 +225,20 @@ export async function POST(request: Request) {
         </div>
       `;
 
-      try {
-        await resend.emails.send({
-          from: fromEmail,
-          to: [
-            "adella@prlsitesolutions.co.uk",
-            "helen@prlsitesolutions.co.uk",
-          ],
-          subject: `New Supply Agreement: ${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
-          html: emailHtml,
-        });
-      } catch (emailErr) {
-        console.error("Failed to send onboarding notification email:", emailErr);
-        // Don't fail the submission if email fails
+      // A failed send must not fail the submission — the agreement is already saved
+      const emailResult = await sendEmail({
+        to: ONBOARDING_RECIPIENTS,
+        subject: `New Supply Agreement: ${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
+        html: emailHtml,
+        template: "supply-agreement-submitted",
+      });
+
+      if (!emailResult.success) {
+        console.error(
+          `Failed to send onboarding notification email for ${companyName} (agreement ${agreement.id}):`,
+          emailResult.error
+        );
       }
-    }
 
     return NextResponse.json({
       success: true,

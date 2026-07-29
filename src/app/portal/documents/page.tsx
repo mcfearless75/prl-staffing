@@ -6,33 +6,44 @@ import { DocumentUploader } from "./document-uploader";
 import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { DownloadButton } from "./download-button";
+import { COMPLIANCE_TYPES } from "@/lib/compliance-types";
 
+// Prompted vault rows. Keys must be canonical compliance types — anything not in
+// COMPLIANCE_TYPES is filtered out below rather than sitting here as a row that
+// can never be satisfied, because the upload API rejects non-canonical types.
 // Required = must-have for compliance. Optional = nice-to-have.
-const DOC_TYPES = [
-  { type: "CV", label: "CV / Resume", icon: "📄", required: true },
-  { type: "CSCS", label: "CSCS Card", icon: "🏗️", required: true },
-  { type: "CCNSG", label: "CCNSG Safety Passport", icon: "🦺", required: true },
-  { type: "NPORS", label: "NPORS (Plant Operator)", icon: "🚜", required: false },
-  { type: "Passport", label: "Passport", icon: "🪪", required: true },
-  { type: "Share Code", label: "Share Code (Right to Work)", icon: "✅", required: false },
-  { type: "DBS", label: "DBS Check", icon: "🔍", required: false },
-  { type: "P45", label: "P45", icon: "📋", required: false },
-  { type: "P60", label: "P60", icon: "📋", required: false },
-  { type: "Insurance", label: "Insurance", icon: "🛡️", required: false },
-  { type: "Qualification", label: "Qualification / Cert", icon: "🎓", required: false },
-  { type: "Right to Work", label: "Right to Work", icon: "✅", required: false },
-  { type: "IR35 Assessment", label: "IR35 Assessment", icon: "📝", required: false },
-  { type: "Driving Licence", label: "Driving Licence", icon: "🚗", required: false },
-  { type: "First Aid", label: "First Aid Certificate", icon: "🏥", required: false },
-  { type: "IPAF", label: "IPAF (Powered Access)", icon: "🏗️", required: false },
-  { type: "PASMA", label: "PASMA (Scaffolding)", icon: "🪜", required: false },
-  { type: "Asbestos Awareness", label: "Asbestos Awareness", icon: "⚠️", required: false },
-  { type: "Manual Handling", label: "Manual Handling", icon: "📦", required: false },
-  { type: "Fire Safety", label: "Fire Safety", icon: "🔥", required: false },
-  { type: "Working at Height", label: "Working at Height", icon: "🧗", required: false },
-  { type: "Confined Spaces", label: "Confined Spaces", icon: "🚧", required: false },
-  { type: "Other", label: "Other", icon: "📎", required: false },
-];
+const PROMPTED_TYPES: Record<string, { label: string; icon: string; required?: boolean }> = {
+  "Right to Work": { label: "Right to Work", icon: "✅" },
+  Passport: { label: "Passport", icon: "🪪", required: true },
+  "Share Code": { label: "Share Code (Right to Work)", icon: "✅" },
+  CSCS: { label: "CSCS Card", icon: "🏗️", required: true },
+  CCNSG: { label: "CCNSG Safety Passport", icon: "🦺", required: true },
+  NPORS: { label: "NPORS (Plant Operator)", icon: "🚜" },
+  "IPAF (3a / 3b)": { label: "IPAF (Powered Access)", icon: "🏗️" },
+  PASMA: { label: "PASMA (Scaffolding)", icon: "🪜" },
+  "First Aid at Work": { label: "First Aid at Work", icon: "🏥" },
+  "Emergency First Aid at Work": { label: "Emergency First Aid at Work", icon: "🏥" },
+  "Fire Marshal / Warden": { label: "Fire Marshal / Warden", icon: "🔥" },
+  "Manual Handling": { label: "Manual Handling", icon: "📦" },
+  "Asbestos Awareness": { label: "Asbestos Awareness", icon: "⚠️" },
+  "Working at Height": { label: "Working at Height", icon: "🧗" },
+  "Confined Space": { label: "Confined Space", icon: "🚧" },
+  Qualification: { label: "Qualification / Cert", icon: "🎓" },
+  "UK Driving Licence": { label: "UK Driving Licence", icon: "🚗" },
+  "Driving Licence — Other Nationality": { label: "Driving Licence (Other Nationality)", icon: "🚗" },
+  P45: { label: "P45", icon: "📋" },
+  P60: { label: "P60", icon: "📋" },
+  DBS: { label: "DBS Check", icon: "🔍" },
+  Insurance: { label: "Insurance", icon: "🛡️" },
+  "IR35 Assessment": { label: "IR35 Assessment", icon: "📝" },
+  CV: { label: "CV / Resume", icon: "📄", required: true },
+  Other: { label: "Other", icon: "📎" },
+};
+
+const PROMPTED_ROWS = COMPLIANCE_TYPES.filter((type) => type in PROMPTED_TYPES).map((type) => ({
+  type,
+  ...PROMPTED_TYPES[type],
+}));
 
 export default async function PortalDocumentsPage() {
   const session = await auth();
@@ -54,6 +65,16 @@ export default async function PortalDocumentsPage() {
     if (!allByType[doc.type]) allByType[doc.type] = [];
     allByType[doc.type].push(doc);
   }
+
+  // Anything uploaded outside the prompted set still gets a row, so no document
+  // the contractor has sent in is hidden from them.
+  const vaultRows = [
+    ...PROMPTED_ROWS,
+    ...Object.keys(allByType)
+      .filter((type) => !(type in PROMPTED_TYPES))
+      .sort()
+      .map((type) => ({ type, label: type, icon: "📎", required: false })),
+  ];
 
   const uploadedCount = Object.keys(latestByType).length;
   const totalSize = documents.reduce((sum, d) => sum + d.fileSize, 0);
@@ -96,7 +117,7 @@ export default async function PortalDocumentsPage() {
           All your uploaded documents are stored securely. Download anytime.
         </p>
 
-        {DOC_TYPES.map((docType) => {
+        {vaultRows.map((docType) => {
           const doc = latestByType[docType.type];
           const versions = allByType[docType.type] || [];
           return (

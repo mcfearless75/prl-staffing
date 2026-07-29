@@ -959,3 +959,86 @@ model ContractorJobRole {
 
   @@unique([contractorId, jobRoleId])
 }
+
+// ─── Customer Satisfaction Survey (public /survey form) ───
+model CustomerSurvey {
+  id                   String   @id @default(cuid())
+  companyName          String
+  contactName          String
+  contactEmail         String
+  dateOfService        String?  // yyyy-mm-dd as submitted
+  overallSatisfaction  Int      // 1-5
+  qualityOfWorkers     Int?
+  communication        Int?
+  compliance           Int?
+  valueForMoney        Int?
+  recommend            String?  // Yes, No, Maybe
+  whatDidWell          String?
+  whatToImprove        String?
+  otherComments        String?
+  status               String   @default("New") // New, Reviewed, Actioned
+  createdAt            DateTime @default(now())
+
+  @@index([status, createdAt])
+}
+
+// ─── Supplier Questionnaire (ISO 9001 clause 8.4 supplier approval record) ───
+model SupplierQuestionnaire {
+  id                          String    @id @default(cuid())
+  companyName                 String
+  tradingName                 String?
+  companyRegNo                String?
+  vatNumber                   String?
+  registeredAddress           String?
+  mainContactName             String
+  contactEmail                String
+  contactPhone                String?
+  website                     String?
+  goodsServices               String
+  numberOfEmployees           String?
+  yearsInBusiness             String?
+  iso9001                     String?   // Yes, No, Working towards
+  otherCertifications         String?
+  publicLiability             String?
+  publicLiabilityAmount       String?
+  employersLiability          String?
+  employersLiabilityAmount    String?
+  professionalIndemnity       String?
+  professionalIndemnityAmount String?
+  healthSafetyPolicy          String?
+  environmentalPolicy         String?
+  equalityPolicy              String?
+  ref1Company                 String?
+  ref1Contact                 String?
+  ref1Email                   String?
+  ref1Phone                   String?
+  ref2Company                 String?
+  ref2Contact                 String?
+  ref2Email                   String?
+  ref2Phone                   String?
+  additionalInfo              String?
+  declaration                 Boolean   @default(false)
+  signature                   String?
+  submittedDate               DateTime?
+  status                      String    @default("New") // New, Approved, Rejected
+  reviewedBy                  String?
+  reviewedAt                  DateTime?
+  notes                       String?
+  createdAt                   DateTime  @default(now())
+
+  @@index([status, createdAt])
+}
+
+// ─── Outbound Email Log (every send recorded so failures cannot go silent) ───
+model EmailLog {
+  id         String   @id @default(cuid())
+  to         String   // comma-joined recipients
+  subject    String
+  template   String?  // send-site slug, e.g. "application-received"
+  status     String   // sent, failed
+  error      String?
+  providerId String?  // Resend message id
+  createdAt  DateTime @default(now())
+
+  @@index([status, createdAt])
+}

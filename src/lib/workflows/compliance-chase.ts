@@ -1,9 +1,8 @@
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/db";
 import { logAction, alreadyActedToday } from "./engine";
 import type { WorkflowResult } from "./engine";
 
-const FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
 const PORTAL_URL = "https://www.prismworkforce.online";
 
 function formatDate(date: Date) {
@@ -70,7 +69,6 @@ function buildEmail(firstName: string, docs: Array<{ type: string; expiryDate: D
 export const complianceChaseAgent = {
   name: "compliance-chase",
   async run(): Promise<WorkflowResult> {
-    const resend = new Resend(process.env.RESEND_API_KEY);
     const result: WorkflowResult = { workflow: "compliance-chase", acted: 0, skipped: 0, failed: 0, log: [] };
 
     const cutoff = new Date();
@@ -102,18 +100,20 @@ export const complianceChaseAgent = {
       }
 
       try {
-        await resend.emails.send({
-          from: FROM,
+        const emailResult = await sendEmail({
           to: contractor.email,
           subject: "Action Required: Compliance Documents Need Attention — PRL Site Solutions",
           html: buildEmail(contractor.firstName, docs),
+          template: "compliance-chase",
         });
+        if (!emailResult.success) throw new Error(emailResult.error ?? "Email send failed");
         await logAction("compliance-chase", "chase-email", "sent", contractor.id,
           `${docs.length} doc(s): ${docs.map(d => d.type).join(", ")}`);
         result.acted++;
         result.log.push(`✓ Chased ${contractor.firstName} ${contractor.lastName} (${docs.length} docs)`);
         await new Promise(r => setTimeout(r, 200));
       } catch (err) {
+        console.error(`[compliance-chase] Chase email failed for ${contractor.email}:`, err);
         await logAction("compliance-chase", "chase-email", "failed", contractor.id, String(err));
         result.failed++;
         result.log.push(`✗ Failed: ${contractor.email} — ${String(err)}`);

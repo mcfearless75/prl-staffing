@@ -31,6 +31,19 @@ export async function POST(request: Request) {
           ...(expiryDate ? { expiryDate: new Date(expiryDate) } : {}),
         },
       });
+    } else {
+      // No record yet (e.g. the document upload didn't create one) — create it
+      // so the reference / expiry the contractor entered isn't silently lost
+      await prisma.complianceRecord.create({
+        data: {
+          contractorId,
+          type,
+          status: "Pending",
+          ...(reference ? { reference } : {}),
+          ...(expiryDate ? { expiryDate: new Date(expiryDate) } : {}),
+          notes: `Details submitted by contractor on ${new Date().toISOString().split("T")[0]}. Awaiting verification.`,
+        },
+      });
     }
 
     return NextResponse.json({ success: true });

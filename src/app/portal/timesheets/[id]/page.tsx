@@ -7,7 +7,7 @@ import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { updateContractorTimesheetEntries, submitContractorTimesheet } from "../actions";
 import { getBankHolidaysInWeek } from "@/lib/uk-bank-holidays";
-import { DraftDayList } from "./draft-day-list";
+import { DraftDayList, SubmitTimesheetForm } from "./draft-day-list";
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -88,62 +88,47 @@ export default async function PortalTimesheetDetailPage({
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
         {isDraft ? (
           /* Editable form */
-          <form action={updateAction}>
-            <DraftDayList
-              entries={timesheet.entries.map((entry) => ({
-                id: entry.id,
-                dayOfWeek: entry.dayOfWeek,
-                hours: entry.hours,
-                status: entry.status,
-                absenceReason: entry.absenceReason,
-                assignmentId: entry.assignmentId,
-              }))}
-              dayNames={dayNames}
-              dayBadges={Object.fromEntries(
-                timesheet.entries.map((entry) => {
-                  const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
-                  const isWeekend = entry.dayOfWeek >= 5;
-                  const badge = bankHol
-                    ? { label: bankHol.name, className: "bg-purple-100 text-purple-700" }
-                    : isWeekend
-                    ? { label: "Weekend", className: "bg-orange-100 text-orange-700" }
-                    : null;
-                  return [entry.dayOfWeek, badge];
-                })
-              )}
-              rowBgClass={Object.fromEntries(
-                timesheet.entries.map((entry) => {
-                  const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
-                  const isWeekend = entry.dayOfWeek >= 5;
-                  return [entry.dayOfWeek, bankHol ? "bg-purple-50" : isWeekend ? "bg-orange-50/30" : ""];
-                })
-              )}
-              assignments={assignments.map((a) => ({
-                id: a.id,
-                role: a.role,
-                company: { name: a.company.name },
-                site: a.site ? { name: a.site.name } : null,
-                department: a.department ? { name: a.department.name } : null,
-              }))}
-              defaultAssignmentId={timesheet.assignmentId}
-            />
-
-            {/* Totals */}
-            <div className="border-t border-gray-200 px-4 py-3 bg-gray-50 flex justify-between items-center">
-              <div>
-                <p className="text-sm font-bold text-gray-900">{timesheet.totalHours}h total</p>
-                {timesheet.overtimeHours > 0 && (
-                  <p className="text-xs text-orange-600">{timesheet.overtimeHours}h overtime</p>
-                )}
-              </div>
-              <button
-                type="submit"
-                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 active:bg-blue-800 transition-colors"
-              >
-                Save Hours
-              </button>
-            </div>
-          </form>
+          <DraftDayList
+            action={updateAction}
+            entries={timesheet.entries.map((entry) => ({
+              id: entry.id,
+              dayOfWeek: entry.dayOfWeek,
+              hours: entry.hours,
+              status: entry.status,
+              absenceReason: entry.absenceReason,
+              assignmentId: entry.assignmentId,
+            }))}
+            dayNames={dayNames}
+            dayBadges={Object.fromEntries(
+              timesheet.entries.map((entry) => {
+                const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
+                const isWeekend = entry.dayOfWeek >= 5;
+                const badge = bankHol
+                  ? { label: bankHol.name, className: "bg-purple-100 text-purple-700" }
+                  : isWeekend
+                  ? { label: "Weekend", className: "bg-orange-100 text-orange-700" }
+                  : null;
+                return [entry.dayOfWeek, badge];
+              })
+            )}
+            rowBgClass={Object.fromEntries(
+              timesheet.entries.map((entry) => {
+                const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
+                const isWeekend = entry.dayOfWeek >= 5;
+                return [entry.dayOfWeek, bankHol ? "bg-purple-50" : isWeekend ? "bg-orange-50/30" : ""];
+              })
+            )}
+            assignments={assignments.map((a) => ({
+              id: a.id,
+              role: a.role,
+              company: { name: a.company.name },
+              site: a.site ? { name: a.site.name } : null,
+              department: a.department ? { name: a.department.name } : null,
+            }))}
+            defaultAssignmentId={timesheet.assignmentId}
+            totalHours={timesheet.totalHours}
+            overtimeHours={timesheet.overtimeHours}
+          />
         ) : (
           /* Read-only view */
           <>
@@ -202,16 +187,7 @@ export default async function PortalTimesheetDetailPage({
 
       {/* Actions */}
       <div className="flex gap-3">
-        {isDraft && timesheet.totalHours > 0 && (
-          <form action={submitAction} className="flex-1">
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-emerald-600 py-3 text-sm font-medium text-white hover:bg-emerald-700 active:bg-emerald-800 transition-colors"
-            >
-              Submit for Approval
-            </button>
-          </form>
-        )}
+        {isDraft && timesheet.totalHours > 0 && <SubmitTimesheetForm action={submitAction} />}
         <Link
           href="/portal/timesheets"
           className="rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors text-center flex-1"

@@ -1,9 +1,8 @@
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/db";
 import { logAction, everActed } from "./engine";
 import type { WorkflowResult } from "./engine";
 
-const FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
 const PORTAL_URL = "https://www.prismworkforce.online";
 
 function buildWelcomeEmail(firstName: string): string {
@@ -48,7 +47,6 @@ function buildWelcomeEmail(firstName: string): string {
 export const welcomeAgent = {
   name: "welcome-agent",
   async run(): Promise<WorkflowResult> {
-    const resend = new Resend(process.env.RESEND_API_KEY);
     const result: WorkflowResult = { workflow: "welcome-agent", acted: 0, skipped: 0, failed: 0, log: [] };
 
     // Find contractors approved in the last 24 hours
@@ -65,18 +63,20 @@ export const welcomeAgent = {
       }
 
       try {
-        await resend.emails.send({
-          from: FROM,
+        const emailResult = await sendEmail({
           to: contractor.email,
           subject: "You're approved — Welcome to PRL Site Solutions",
           html: buildWelcomeEmail(contractor.firstName),
+          template: "welcome",
         });
+        if (!emailResult.success) throw new Error(emailResult.error ?? "Email send failed");
         await logAction("welcome-agent", "welcome-email", "sent", contractor.id,
           `${contractor.firstName} ${contractor.lastName}`);
         result.acted++;
         result.log.push(`✓ Welcomed ${contractor.firstName} ${contractor.lastName} (${contractor.email})`);
         await new Promise(r => setTimeout(r, 200));
       } catch (err) {
+        console.error(`[welcome-agent] Welcome email failed for ${contractor.email}:`, err);
         await logAction("welcome-agent", "welcome-email", "failed", contractor.id, String(err));
         result.failed++;
         result.log.push(`✗ Failed: ${contractor.email} — ${String(err)}`);

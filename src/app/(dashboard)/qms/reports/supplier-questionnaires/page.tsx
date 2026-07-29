@@ -8,35 +8,50 @@ interface SupplierResponse {
   id: string;
   createdAt: string;
   companyName: string;
-  tradingName: string;
-  companyRegNo: string;
-  vatNumber: string;
-  registeredAddress: string;
+  tradingName: string | null;
+  companyRegNo: string | null;
+  vatNumber: string | null;
+  registeredAddress: string | null;
   mainContactName: string;
   contactEmail: string;
-  contactPhone: string;
-  website: string;
+  contactPhone: string | null;
+  website: string | null;
   goodsServices: string;
-  numberOfEmployees: string;
-  yearsInBusiness: string;
-  iso9001: string;
-  otherCertifications: string;
-  publicLiability: string;
-  publicLiabilityAmount: string;
-  employersLiability: string;
-  employersLiabilityAmount: string;
-  professionalIndemnity: string;
-  professionalIndemnityAmount: string;
-  healthSafetyPolicy: string;
-  environmentalPolicy: string;
-  equalityPolicy: string;
-  references: Array<{ company: string; contact: string; email: string; phone: string }>;
-  additionalInfo: string;
-  signature: string;
-  submittedDate: string;
+  numberOfEmployees: string | null;
+  yearsInBusiness: string | null;
+  iso9001: string | null;
+  otherCertifications: string | null;
+  publicLiability: string | null;
+  publicLiabilityAmount: string | null;
+  employersLiability: string | null;
+  employersLiabilityAmount: string | null;
+  professionalIndemnity: string | null;
+  professionalIndemnityAmount: string | null;
+  healthSafetyPolicy: string | null;
+  environmentalPolicy: string | null;
+  equalityPolicy: string | null;
+  ref1Company: string | null;
+  ref1Contact: string | null;
+  ref1Email: string | null;
+  ref1Phone: string | null;
+  ref2Company: string | null;
+  ref2Contact: string | null;
+  ref2Email: string | null;
+  ref2Phone: string | null;
+  additionalInfo: string | null;
+  signature: string | null;
+  submittedDate: string | null;
+  status: string;
 }
 
-function Badge({ value }: { value: string }) {
+function tradeReferences(r: SupplierResponse) {
+  return [
+    { company: r.ref1Company, contact: r.ref1Contact, email: r.ref1Email, phone: r.ref1Phone },
+    { company: r.ref2Company, contact: r.ref2Contact, email: r.ref2Email, phone: r.ref2Phone },
+  ].filter((ref) => ref.company);
+}
+
+function Badge({ value }: { value: string | null }) {
   if (value === "Yes") return <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">Yes</span>;
   if (value === "No") return <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700">No</span>;
   if (value === "Working towards") return <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-700">Working towards</span>;
@@ -172,7 +187,17 @@ export default function SupplierQuestionnairesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">Submitted</span>
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            r.status === "Approved"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : r.status === "Rejected"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
+                        >
+                          {r.status || "New"}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <button
@@ -235,11 +260,11 @@ export default function SupplierQuestionnairesPage() {
                           </div>
 
                           {/* References */}
-                          {r.references && r.references.some((ref) => ref.company) && (
+                          {tradeReferences(r).length > 0 && (
                             <div className="mt-4 pt-4 border-t border-gray-200">
                               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Trade References</h3>
                               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                {r.references.filter((ref) => ref.company).map((ref, i) => (
+                                {tradeReferences(r).map((ref, i) => (
                                   <div key={i} className="rounded-lg border border-gray-200 bg-white p-3">
                                     <p className="text-sm font-medium text-gray-900">{ref.company}</p>
                                     {ref.contact && <p className="text-xs text-gray-600">{ref.contact}</p>}

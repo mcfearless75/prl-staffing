@@ -1,9 +1,8 @@
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/db";
 import { logAction, alreadyActedToday } from "./engine";
 import type { WorkflowResult } from "./engine";
 
-const FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
 const PORTAL_URL = "https://www.prismworkforce.online";
 const STAFF_EMAIL = "infotech@prlsitesolutions.co.uk";
 const STALE_DAYS = 7;
@@ -61,7 +60,6 @@ function buildStaffAlertEmail(stale: Array<{ name: string; email: string; status
 export const staleApplicantAgent = {
   name: "stale-applicant",
   async run(): Promise<WorkflowResult> {
-    const resend = new Resend(process.env.RESEND_API_KEY);
     const result: WorkflowResult = { workflow: "stale-applicant", acted: 0, skipped: 0, failed: 0, log: [] };
 
     const cutoff = new Date(Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000);
@@ -92,17 +90,19 @@ export const staleApplicantAgent = {
     }));
 
     try {
-      await resend.emails.send({
-        from: FROM,
+      const emailResult = await sendEmail({
         to: STAFF_EMAIL,
         subject: `⚡ PRISM Agent: ${staleContractors.length} stale applicant(s) need review`,
         html: buildStaffAlertEmail(staleData),
+        template: "stale-applicant-escalation",
       });
+      if (!emailResult.success) throw new Error(emailResult.error ?? "Email send failed");
       await logAction("stale-applicant", "escalation-email", "escalated", "staff",
         `${staleContractors.length} stale: ${staleData.map(c => c.name).join(", ")}`);
       result.acted = staleContractors.length;
       result.log.push(`✓ Escalated ${staleContractors.length} stale applicant(s) to staff`);
     } catch (err) {
+      console.error(`[stale-applicant] Escalation email failed to ${STAFF_EMAIL}:`, err);
       await logAction("stale-applicant", "escalation-email", "failed", "staff", String(err));
       result.failed = 1;
       result.log.push(`✗ Failed to send escalation: ${String(err)}`);

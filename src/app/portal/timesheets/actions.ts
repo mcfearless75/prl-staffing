@@ -10,6 +10,8 @@ import { calculateOvertime, DEFAULT_OVERTIME_CONFIG } from "@/lib/overtime-calcu
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+export type TimesheetActionState = { error?: string; ok?: string } | null;
+
 /**
  * Resolves the logged-in contractor's own contractorId from the session.
  * Never trust a contractorId passed in from client input — the session is
@@ -68,7 +70,11 @@ export async function createContractorTimesheet(_contractorId: string, formData:
   redirect(`/portal/timesheets/${timesheet.id}`);
 }
 
-export async function updateContractorTimesheetEntries(timesheetId: string, formData: FormData) {
+export async function updateContractorTimesheetEntries(
+  timesheetId: string,
+  _prev: TimesheetActionState,
+  formData: FormData
+): Promise<TimesheetActionState> {
   const contractorId = await requireSessionContractorId();
 
   const timesheet = await prisma.timesheet.findFirst({
@@ -76,7 +82,12 @@ export async function updateContractorTimesheetEntries(timesheetId: string, form
     include: { entries: { orderBy: { dayOfWeek: "asc" } } },
   });
 
-  if (!timesheet || timesheet.status !== "Draft") return;
+  if (!timesheet) return { error: "Timesheet not found." };
+  if (timesheet.status !== "Draft") {
+    return {
+      error: `Nothing was saved — this timesheet is ${timesheet.status.toLowerCase()} and can no longer be edited. Contact the office if the hours are wrong.`,
+    };
+  }
 
   // Per-day assignment choices must be validated server-side against this
   // contractor's own Active/Placed assignments — never trust the client-side
@@ -127,7 +138,12 @@ export async function updateContractorTimesheetEntries(timesheetId: string, form
         });
       }
     } else {
-      const hours = parseFloat((formData.get(`hours_${day}`) as string) || "0");
+      const hours = parseFloat(((formData.get(`hours_${day}`) as string) || "0").trim());
+      // Rejected before any write so a bad value can never reach the Float
+      // column as NaN and take the whole save down mid-loop.
+      if (!Number.isFinite(hours) || hours < 0 || hours > 24) {
+        return { error: `${dayNames[day]}: enter a number of hours between 0 and 24.` };
+      }
       newEntries.push({ dayOfWeek: day, hours, absent: false, absenceReason: null, assignmentId });
 
       if (existingEntry?.status === "Absent") {
@@ -213,24 +229,46 @@ export async function updateContractorTimesheetEntries(timesheetId: string, form
   await logActivity("Updated Timesheet Hours", "Timesheet", timesheetId, `${totalHours}h total, ${overtimeResult.totalOvertimeHours}h OT`);
 
   revalidatePath(`/portal/timesheets/${timesheetId}`);
-  redirect(`/portal/timesheets/${timesheetId}`);
+  revalidatePath("/portal/timesheets");
+
+  return { ok: `Saved — ${totalHours}h total.` };
 }
 
-export async function submitContractorTimesheet(timesheetId: string) {
+export async function submitContractorTimesheet(
+  timesheetId: string,
+  _prev: TimesheetActionState,
+  _formData: FormData
+): Promise<TimesheetActionState> {
   const contractorId = await requireSessionContractorId();
 
+  // status is part of the filter, not just the button's render condition —
+  // server actions are directly invocable, so only a Draft may ever transition
+  // to Submitted (otherwise an Approved sheet would be un-approved and its
+  // submittedAt restamped).
   const { count } = await prisma.timesheet.updateMany({
-    where: { id: timesheetId, contractorId },
+    where: { id: timesheetId, contractorId, status: "Draft" },
     data: {
       status: "Submitted",
       submittedAt: new Date(),
     },
   });
 
-  if (count === 0) return;
+  if (count === 0) {
+    const existing = await prisma.timesheet.findFirst({
+      where: { id: timesheetId, contractorId },
+      select: { status: true },
+    });
+    return {
+      error: existing
+        ? `This timesheet is already ${existing.status.toLowerCase()} and cannot be submitted again.`
+        : "Timesheet not found.",
+    };
+  }
 
   await logActivity("Submitted Timesheet", "Timesheet", timesheetId, "Contractor self-service submission");
 
   revalidatePath(`/portal/timesheets/${timesheetId}`);
   revalidatePath("/portal/timesheets");
+
+  return { ok: "Timesheet submitted for approval." };
 }

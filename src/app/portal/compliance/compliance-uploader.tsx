@@ -46,7 +46,7 @@ export function ComplianceUploader({
 
       // Now update compliance record with reference and expiry if provided
       if (reference || expiryDate) {
-        await fetch("/api/portal/compliance", {
+        const detailsRes = await fetch("/api/portal/compliance", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -56,6 +56,13 @@ export function ComplianceUploader({
             expiryDate: expiryDate || null,
           }),
         });
+
+        if (!detailsRes.ok) {
+          const data = await detailsRes.json().catch(() => ({}));
+          throw new Error(
+            data.error || "File uploaded, but the reference / expiry date could not be saved."
+          );
+        }
       }
 
       setMessage({ type: "success", text: `${label} uploaded! Awaiting verification.` });

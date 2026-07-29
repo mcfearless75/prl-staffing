@@ -57,9 +57,15 @@ export function ProfileForm({
     formData.emergencyContactRelation !== emergencyContactRelation;
 
   async function handleSave() {
+    setSaved(false);
+    // There is no <form> around these inputs, so the required attribute never
+    // fires on its own — this is what actually blocks the empty submit.
+    if (!formData.email.trim()) {
+      setError("Email address is required — it is how you sign in to the portal.");
+      return;
+    }
     setSaving(true);
     setError("");
-    setSaved(false);
     try {
       const res = await fetch("/api/portal/profile", {
         method: "PUT",
@@ -97,6 +103,7 @@ export function ProfileForm({
             </label>
             <input
               type="email"
+              required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className={inputClass}

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { parseAssignmentRateFields } from "@/lib/assignment-rates";
 
 type AssignResult = { type: "ok" | "moved" | "duplicate" | "error"; message: string } | null;
@@ -198,8 +198,9 @@ export async function createContractor(
     });
 
     // Auto-create contractor portal login (password set via forgot-password flow)
-    const tempHash = await bcrypt.hash(`temp-${Date.now()}`, 10);
+    let loginCreateFailed = false;
     try {
+      const tempHash = await bcrypt.hash(`temp-${Date.now()}`, 10);
       await prisma.contractorLogin.create({
         data: {
           contractorId: contractor.id,
@@ -207,11 +208,29 @@ export async function createContractor(
           passwordHash: tempHash,
         },
       });
-    } catch {
-      // ContractorLogin may already exist if email was reused — safe to ignore
+    } catch (loginError) {
+      // Only P2002 is genuinely ignorable — a ContractorLogin already exists
+      // for this email because it was reused. Any other failure (bcrypt, DB
+      // outage) leaves a contractor who can never sign in, so it has to be
+      // surfaced rather than swallowed.
+      const alreadyExists =
+        loginError instanceof Prisma.PrismaClientKnownRequestError &&
+        loginError.code === "P2002";
+      if (!alreadyExists) {
+        console.error("Failed to create contractor portal login:", loginError);
+        loginCreateFailed = true;
+      }
     }
 
     revalidatePath("/contractors");
+    if (loginCreateFailed) {
+      // Deliberately no redirect: the contractor record was created, but
+      // staying on the form is the only way to get this in front of staff.
+      return {
+        error:
+          "Contractor saved, but their portal login could not be created — they will not be able to sign in. Do not resubmit; report this so the login can be set up manually.",
+      };
+    }
     redirect("/contractors");
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;

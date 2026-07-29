@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
+import { sendEmail, PAY_QUERY_RECIPIENTS } from "@/lib/email";
 import { Prisma } from "@prisma/client";
 import { nextTicketNumber } from "@/lib/ticket-number";
 
@@ -105,11 +105,6 @@ export async function POST(request: NextRequest) {
     });
 
     // Send email
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
-
-    if (apiKey) {
-      const resend = new Resend(apiKey);
       // Sanitise all user-supplied values before embedding in HTML
       const safeOperativeName = escapeHtml(operativeName);
       const safeEmail = escapeHtml(email);
@@ -127,10 +122,10 @@ export async function POST(request: NextRequest) {
         `<tr><td style="border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;">${escapeHtml(String(h.date))}</td><td style="border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;text-align:center;">${h.start ? escapeHtml(String(h.start)) : ""}</td><td style="border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;text-align:center;">${h.finish ? escapeHtml(String(h.finish)) : ""}</td><td style="border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;text-align:center;">${escapeHtml(String(h.hoursClaimed || "0"))}</td><td style="border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;text-align:center;">${escapeHtml(String(h.hoursPaid || "0"))}</td></tr>`
       ).join("");
 
-      await resend.emails.send({
-        from: fromEmail,
-        to: ["jenni@prlsitesolutions.co.uk"],
+      const emailResult = await sendEmail({
+        to: PAY_QUERY_RECIPIENTS,
         subject: `Payment Query ${ticketNumber}: ${safeOperativeName} — Week ending ${safeWeekEnding}`,
+        template: "payment-query",
         html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
           <div style="background:#005f8c;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0;">
             <h1 style="margin:0;font-size:18px;">Payment Query ${ticketNumber}</h1>
@@ -152,8 +147,14 @@ export async function POST(request: NextRequest) {
             <p style="font-size:12px;color:#666;margin-top:12px;">Signed: <strong>${safeSignature}</strong></p>
             <a href="${process.env.NEXTAUTH_URL || "https://www.prismworkforce.online"}/payment-queries/${query.id}" style="display:inline-block;background:#005f8c;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;margin-top:12px;">View in PRISM →</a>
           </div></div>`,
-      }).catch(console.error);
-    }
+      });
+
+      if (!emailResult.success) {
+        console.error(
+          `Failed to send payment query notification email for ${ticketNumber} (${email}):`,
+          emailResult.error
+        );
+      }
 
     return NextResponse.json({ success: true, ticketNumber });
   } catch (error) {

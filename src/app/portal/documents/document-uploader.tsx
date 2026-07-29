@@ -3,34 +3,9 @@
 import { useState, useRef } from "react";
 import { Camera, Upload, FileText, Check, AlertCircle, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { COMPLIANCE_TYPE_GROUPS } from "@/lib/compliance-types";
 
-const DOC_TYPES = [
-  "CV",
-  "CSCS",
-  "CCNSG",
-  "NPORS",
-  "Passport",
-  "Driving Licence",
-  "Share Code",
-  "DBS",
-  "P45",
-  "P60",
-  "Insurance",
-  "Qualification",
-  "Right to Work",
-  "IR35 Assessment",
-  "First Aid",
-  "IPAF",
-  "PASMA",
-  "Asbestos Awareness",
-  "Manual Handling",
-  "Fire Safety",
-  "Working at Height",
-  "Confined Spaces",
-  "Other",
-];
-
-const REQUIRES_DESCRIPTION = ["Qualification", "First Aid", "Other"];
+const REQUIRES_DESCRIPTION = ["Qualification", "Other"];
 
 export function DocumentUploader({ contractorId }: { contractorId: string }) {
   const [selectedType, setSelectedType] = useState("");
@@ -151,8 +126,12 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
           className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         >
           <option value="">Select type...</option>
-          {DOC_TYPES.map((type) => (
-            <option key={type} value={type}>{type}</option>
+          {COMPLIANCE_TYPE_GROUPS.map((group) => (
+            <optgroup key={group.category} label={group.category}>
+              {group.types.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </div>
@@ -170,8 +149,6 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
             placeholder={
               selectedType === "Other"
                 ? "e.g. Site Induction Certificate, Lifting Operations..."
-                : selectedType === "First Aid"
-                ? "e.g. Emergency First Aid at Work (3 day)"
                 : "e.g. NVQ Level 3 Electrical Installation"
             }
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"

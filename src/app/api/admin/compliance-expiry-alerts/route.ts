@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireStaff } from "@/lib/require-staff";
 import { prisma } from "@/lib/db";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 
-const FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
 const PORTAL_URL = "https://www.prismworkforce.online";
 
 function formatDate(date: Date): string {
@@ -89,7 +88,6 @@ function buildEmailHtml(
 }
 
 export async function POST(req: NextRequest) {
-  const resend = new Resend(process.env.RESEND_API_KEY);
   const guard = await requireStaff();
   if (!guard.ok) return NextResponse.json({ error: "Unauthorised" }, { status: guard.reason === "forbidden" ? 403 : 401 });
 
@@ -138,17 +136,21 @@ export async function POST(req: NextRequest) {
     const firstName = contractor.firstName ?? "Contractor";
     const html = buildEmailHtml(firstName, docs);
 
-    try {
-      await resend.emails.send({
-        from: FROM,
-        to: email,
-        subject:
-          "Action Required: Your Compliance Documents Are Expiring Soon — PRL Site Solutions",
-        html,
-      });
+    const emailResult = await sendEmail({
+      to: email,
+      subject:
+        "Action Required: Your Compliance Documents Are Expiring Soon — PRL Site Solutions",
+      html,
+      template: "compliance-expiry-alert",
+    });
+
+    if (emailResult.success) {
       sent++;
-    } catch (err) {
-      console.error(`Failed to send expiry alert to ${email}:`, err);
+    } else {
+      console.error(
+        `Failed to send expiry alert to ${email} (contractor ${contractor.id}):`,
+        emailResult.error
+      );
       failed++;
     }
 

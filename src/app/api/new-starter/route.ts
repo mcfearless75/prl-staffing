@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { sendEmail, NEW_STARTER_RECIPIENTS } from "@/lib/email";
 import { maskNI } from "@/lib/utils";
 
 function escapeHtml(str: string): string {
@@ -82,12 +82,6 @@ export async function POST(request: Request) {
     });
 
     // Send branded HTML email
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
-
-    if (apiKey) {
-      const resend = new Resend(apiKey);
-
       const statementLabels: Record<string, string> = {
         A: "Statement A - First job since 6 April, no JSA/ESA/IB received",
         B: "Statement B - Had another job since 6 April, no P45, and/or received JSA/ESA/IB",
@@ -145,20 +139,19 @@ export async function POST(request: Request) {
         </div>
       `;
 
-      try {
-        await resend.emails.send({
-          from: fromEmail,
-          to: [
-            "helen@prlsitesolutions.co.uk",
-            "adella@prlsitesolutions.co.uk",
-          ],
-          subject: `New Starter Checklist: ${escapeHtml(firstName)} ${escapeHtml(lastName)}`,
-          html: emailHtml,
-        });
-      } catch (emailErr) {
-        console.error("Failed to send new starter notification email:", emailErr);
+      const emailResult = await sendEmail({
+        to: NEW_STARTER_RECIPIENTS,
+        subject: `New Starter Checklist: ${escapeHtml(firstName)} ${escapeHtml(lastName)}`,
+        html: emailHtml,
+        template: "new-starter-checklist",
+      });
+
+      if (!emailResult.success) {
+        console.error(
+          `Failed to send new starter notification email for ${email} (submission ${submission.id}):`,
+          emailResult.error
+        );
       }
-    }
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,6 @@
 import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 
 function escapeHtml(str: string): string {
   return str
@@ -247,11 +247,6 @@ export async function POST(request: Request) {
 
   const data = body as MetlenInductionBody;
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail =
-    process.env.EMAIL_FROM ||
-    "PRL Site Solutions <noreply@prlsitesolutions.online>";
-
   const recipients: string[] = [contractorEmail];
   if (!recipients.includes("helen@prlsitesolutions.co.uk")) {
     recipients.push("helen@prlsitesolutions.co.uk");
@@ -264,20 +259,18 @@ export async function POST(request: Request) {
   const subject = `Metlen Induction — ${contractorName} — ${data.dayDate ?? ""}`;
   const html = buildEmailHtml(data);
 
-  if (apiKey) {
-    const resend = new Resend(apiKey);
-    try {
-      await resend.emails.send({
-        from: fromEmail,
-        to: recipients,
-        subject,
-        html,
-      });
-    } catch (err) {
-      console.error("[metlen-induction] Email send failed:", err);
-    }
-  } else {
-    console.error("[metlen-induction] RESEND_API_KEY not configured — email not sent");
+  const emailResult = await sendEmail({
+    to: recipients,
+    subject,
+    html,
+    template: "metlen-induction",
+  });
+
+  if (!emailResult.success) {
+    console.error(
+      `[metlen-induction] Email send failed for ${contractorName} to ${recipients.join(", ")}:`,
+      emailResult.error
+    );
   }
 
   return NextResponse.json({ success: true });
