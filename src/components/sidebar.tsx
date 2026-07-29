@@ -37,7 +37,7 @@ const navigation = [
   { name: "Intelligence", href: "/intelligence", icon: Brain, badgeKey: null },
   { name: "Campaign", href: "/campaign", icon: Send, badgeKey: null },
   { name: "Applicants", href: "/applicants", icon: UserCheck, badgeKey: "pendingApplicants" as const },
-  { name: "New Starters", href: "/new-starters", icon: UserPlus, badgeKey: null },
+  { name: "New Starters", href: "/new-starters", icon: UserPlus, badgeKey: "newStarters" as const },
   { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
   { name: "Subcontractors", href: "/contractors", icon: Users, badgeKey: null },
   { name: "Clients", href: "/companies", icon: Building2, badgeKey: null },
@@ -65,13 +65,14 @@ type Counts = {
   pendingApplicants: number;
   openQueries: number;
   openGrievances: number;
+  newStarters: number;
 };
 
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
-  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0 });
+  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0 });
 
   // Fetch badge counts on mount and every 30 seconds
   useEffect(() => {

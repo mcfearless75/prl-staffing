@@ -537,7 +537,7 @@ model Grievance {
 
 // ─── New Starter Checklist submissions (public /new-starter form) ───
 model NewStarterSubmission {
-  id                  String   @id @default(cuid())
+  id                  String    @id @default(cuid())
   firstName           String
   lastName            String
   email               String
@@ -552,7 +552,13 @@ model NewStarterSubmission {
   employmentStartDate String
   employeeStatement   String   // A, B or C (HMRC starter declaration)
   signature           String
-  createdAt           DateTime @default(now())
+  status              String    @default("New") // New, Processed, Rejected
+  notes               String?   // staff review notes
+  contractorId        String?   // set once converted into a Subcontractor record
+  processedAt         DateTime?
+  processedBy         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 // ─── Policy Documents ───
