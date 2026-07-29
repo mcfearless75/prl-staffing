@@ -48,11 +48,32 @@ export async function POST(request: Request) {
       request.headers.get("x-real-ip") ||
       "unknown";
 
+    // Create the submission record — this is the entry staff see in PRISM
+    const submission = await prisma.newStarterSubmission.create({
+      data: {
+        firstName,
+        lastName,
+        email: typeof email === "string" ? email.toLowerCase().trim() : email,
+        phone,
+        gender: gender || null,
+        dob: dob || null,
+        country: country || null,
+        address: address || null,
+        city: city || null,
+        postcode: postcode || null,
+        niNumber: niNumber || null,
+        employmentStartDate,
+        employeeStatement,
+        signature,
+      },
+    });
+
     // Save to ActivityLog
     await prisma.activityLog.create({
       data: {
         action: "NEW_STARTER_SUBMITTED",
         entityType: "NewStarter",
+        entityId: submission.id,
         userName: `${firstName} ${lastName}`,
         userEmail: email,
         details: JSON.stringify({ ...body, niNumber: maskNI(body.niNumber) }),
@@ -141,6 +162,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
+      id: submission.id,
       message: "Starter checklist submitted successfully",
     });
   } catch (error) {

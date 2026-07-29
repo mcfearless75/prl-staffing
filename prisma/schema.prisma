@@ -535,6 +535,26 @@ model Grievance {
   updatedAt       DateTime  @updatedAt
 }
 
+// ─── New Starter Checklist submissions (public /new-starter form) ───
+model NewStarterSubmission {
+  id                  String   @id @default(cuid())
+  firstName           String
+  lastName            String
+  email               String
+  phone               String
+  gender              String?
+  dob                 String?  // yyyy-mm-dd as submitted
+  country             String?
+  address             String?
+  city                String?
+  postcode            String?
+  niNumber            String?
+  employmentStartDate String
+  employeeStatement   String   // A, B or C (HMRC starter declaration)
+  signature           String
+  createdAt           DateTime @default(now())
+}
+
 // ─── Policy Documents ───
 model Policy {
   id          String   @id @default(cuid())

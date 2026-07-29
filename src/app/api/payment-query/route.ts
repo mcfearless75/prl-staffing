@@ -1,12 +1,13 @@
-"use server";
-
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { Prisma } from "@prisma/client";
+import { nextTicketNumber } from "@/lib/ticket-number";
 
-// IP-based rate limiter: 5 submissions per IP per hour
+// IP-based rate limiter per hour. Generous because whole sites often share one
+// NAT'd IP — a tight limit silently 429s legitimate operatives.
 const ipSubmissions = new Map<string, { count: number; windowStart: number }>();
-const RATE_LIMIT = 5;
+const RATE_LIMIT = 20;
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 function checkIpRateLimit(ip: string): boolean {
@@ -55,32 +56,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Generate ticket number
-    const count = await prisma.paymentQuery.count();
-    const ticketNumber = `PQ-${String(count + 1).padStart(3, "0")}`;
-
     const queryTypes = Array.isArray(queryType) ? queryType.join(", ") : queryType || "";
     const fullQueryType = queryOther ? `${queryTypes} (${queryOther})` : queryTypes;
 
-    // Create PaymentQuery record
-    const query = await prisma.paymentQuery.create({
-      data: {
-        ticketNumber,
-        operativeName,
-        email,
-        phone: phone || null,
-        role: role || null,
-        weekEnding,
-        queryType: fullQueryType,
-        totalHoursClaimed: totalHoursClaimed || null,
-        totalOvertimeClaimed: totalOvertimeClaimed || null,
-        totalHoursPaid: totalHoursPaid || null,
-        hours: hours ? JSON.stringify(hours) : null,
-        explanation,
-        signature,
-        status: "Open",
-      },
-    });
+    // Create PaymentQuery record. Ticket number is derived from the highest
+    // existing suffix; retry on a P2002 collision from a concurrent submission.
+    let query;
+    for (let attempt = 0; ; attempt++) {
+      const existing = await prisma.paymentQuery.findMany({ select: { ticketNumber: true } });
+      try {
+        query = await prisma.paymentQuery.create({
+          data: {
+            ticketNumber: nextTicketNumber("PQ", existing),
+            operativeName,
+            email,
+            phone: phone || null,
+            role: role || null,
+            weekEnding,
+            queryType: fullQueryType,
+            totalHoursClaimed: totalHoursClaimed || null,
+            totalOvertimeClaimed: totalOvertimeClaimed || null,
+            totalHoursPaid: totalHoursPaid || null,
+            hours: hours ? JSON.stringify(hours) : null,
+            explanation,
+            signature,
+            status: "Open",
+          },
+        });
+        break;
+      } catch (e) {
+        const isCollision =
+          e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
+        if (!isCollision || attempt >= 2) throw e;
+      }
+    }
+    const ticketNumber = query.ticketNumber;
 
     // Log to activity
     await prisma.activityLog.create({

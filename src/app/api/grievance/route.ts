@@ -1,12 +1,13 @@
-"use server";
-
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { Prisma } from "@prisma/client";
+import { nextTicketNumber } from "@/lib/ticket-number";
 
-// IP-based rate limiter: 5 submissions per IP per hour
+// IP-based rate limiter per hour. Generous because whole sites often share one
+// NAT'd IP — a tight limit silently 429s legitimate operatives.
 const ipSubmissions = new Map<string, { count: number; windowStart: number }>();
-const RATE_LIMIT = 5;
+const RATE_LIMIT = 20;
 const WINDOW_MS = 60 * 60 * 1000;
 
 function checkIpRateLimit(ip: string): boolean {
@@ -64,31 +65,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Generate ticket number
-    const count = await prisma.grievance.count();
-    const ticketNumber = `GRV-${String(count + 1).padStart(3, "0")}`;
-
     const types = Array.isArray(grievanceType) ? grievanceType.join(", ") : grievanceType || "";
     const fullType = grievanceOther ? `${types} (${grievanceOther})` : types;
 
-    const grievance = await prisma.grievance.create({
-      data: {
-        ticketNumber,
-        name,
-        email,
-        phone: phone || null,
-        role: role || null,
-        site: site || null,
-        incidentDate: incidentDate || null,
-        grievanceType: fullType,
-        description,
-        desiredOutcome: desiredOutcome || null,
-        raisedInformally: raisedInformally || null,
-        witnesses: witnesses || null,
-        signature,
-        status: "Open",
-      },
-    });
+    // Create Grievance record. Ticket number is derived from the highest
+    // existing suffix; retry on a P2002 collision from a concurrent submission.
+    let grievance;
+    for (let attempt = 0; ; attempt++) {
+      const existing = await prisma.grievance.findMany({ select: { ticketNumber: true } });
+      try {
+        grievance = await prisma.grievance.create({
+          data: {
+            ticketNumber: nextTicketNumber("GRV", existing),
+            name,
+            email,
+            phone: phone || null,
+            role: role || null,
+            site: site || null,
+            incidentDate: incidentDate || null,
+            grievanceType: fullType,
+            description,
+            desiredOutcome: desiredOutcome || null,
+            raisedInformally: raisedInformally || null,
+            witnesses: witnesses || null,
+            signature,
+            status: "Open",
+          },
+        });
+        break;
+      } catch (e) {
+        const isCollision =
+          e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
+        if (!isCollision || attempt >= 2) throw e;
+      }
+    }
+    const ticketNumber = grievance.ticketNumber;
 
     await prisma.activityLog.create({
       data: {

@@ -37,6 +37,7 @@ const navigation = [
   { name: "Intelligence", href: "/intelligence", icon: Brain, badgeKey: null },
   { name: "Campaign", href: "/campaign", icon: Send, badgeKey: null },
   { name: "Applicants", href: "/applicants", icon: UserCheck, badgeKey: "pendingApplicants" as const },
+  { name: "New Starters", href: "/new-starters", icon: UserPlus, badgeKey: null },
   { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
   { name: "Subcontractors", href: "/contractors", icon: Users, badgeKey: null },
   { name: "Clients", href: "/companies", icon: Building2, badgeKey: null },

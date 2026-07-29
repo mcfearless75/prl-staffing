@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { Prisma } from "@prisma/client";
 import { maskNI, maskPassportNumber, maskBankAccount, maskSortCode } from "@/lib/utils";
 
 function escapeHtml(str: string): string {
@@ -34,19 +35,7 @@ export async function POST(request: Request) {
       request.headers.get("x-real-ip") ||
       "unknown";
 
-    let contractorId: string | undefined;
-    try {
-      const contractor = await prisma.contractor.create({
-        data: {
-          firstName,
-          lastName,
-          email,
-          phone: phone || null,
-          status: "Applied",
-          address: body.address || null,
-          postcode: body.postcode || null,
-          niNumber: body.niNumber || null,
-          notes: JSON.stringify({
+    const applicationNotes = JSON.stringify({
             country: body.country,
             city: body.city,
             nonBritishNational: body.nonBritishNational,
@@ -84,13 +73,55 @@ export async function POST(request: Request) {
             waiverDecision: body.waiverDecision,
             signature: body.signature,
             references: body.references,
-          }),
+          });
+
+    let contractorId: string | undefined;
+    let isReapplication = false;
+    try {
+      const contractor = await prisma.contractor.create({
+        data: {
+          firstName,
+          lastName,
+          email,
+          phone: phone || null,
+          status: "Applied",
+          address: body.address || null,
+          postcode: body.postcode || null,
+          niNumber: body.niNumber || null,
+          notes: applicationNotes,
         },
       });
       contractorId = contractor.id;
     } catch (dbErr) {
-      console.error("Failed to create contractor record:", dbErr);
-      // Continue with email even if DB fails (e.g. duplicate email)
+      const isDuplicateEmail =
+        dbErr instanceof Prisma.PrismaClientKnownRequestError && dbErr.code === "P2002";
+      if (!isDuplicateEmail) {
+        console.error("Failed to create contractor record:", dbErr);
+        return NextResponse.json(
+          { error: "Failed to submit. Please try again." },
+          { status: 500 }
+        );
+      }
+      // Applicant already exists in PRISM — attach the re-application to their
+      // record instead of silently dropping it and claiming success.
+      const existing = await prisma.contractor.findUnique({ where: { email } });
+      if (existing) {
+        contractorId = existing.id;
+        isReapplication = true;
+        const stamp = new Date().toISOString().slice(0, 10);
+        await prisma.contractor.update({
+          where: { id: existing.id },
+          data: {
+            notes: [
+              existing.notes,
+              `--- Re-application received ${stamp} ---`,
+              applicationNotes,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          },
+        });
+      }
     }
 
     // Create activity log entry
@@ -233,7 +264,7 @@ export async function POST(request: Request) {
             "adella@prlsitesolutions.co.uk",
             "helen@prlsitesolutions.co.uk",
           ],
-          subject: `New Application: ${escapeHtml(body.firstName)} ${escapeHtml(body.lastName)} -- ${escapeHtml(body.positionsSought || "General")}`,
+          subject: `${isReapplication ? "Re-Application (existing record)" : "New Application"}: ${escapeHtml(body.firstName)} ${escapeHtml(body.lastName)} -- ${escapeHtml(body.positionsSought || "General")}`,
           html: emailHtml,
         });
       } catch (emailErr) {
@@ -244,6 +275,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       id: contractorId,
+      reapplication: isReapplication || undefined,
       message: "Application submitted successfully",
     });
   } catch (error) {
