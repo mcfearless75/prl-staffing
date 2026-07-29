@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { prisma } from "@/lib/db";
+import { getGraphConfig, sendViaGraph } from "@/lib/email-graph";
 
 export const DEFAULT_EMAIL_FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
 
@@ -58,11 +59,17 @@ export const SUPPLIER_QUESTIONNAIRE_RECIPIENTS = recipientList(
   ["adella@prlsitesolutions.co.uk", "helen@prlsitesolutions.co.uk"]
 );
 
+export const COMPLIANCE_RECIPIENTS = recipientList(process.env.COMPLIANCE_RECIPIENTS, [
+  "adella@prlsitesolutions.co.uk",
+  "helen@prlsitesolutions.co.uk",
+]);
+
 async function logEmail(entry: {
   to: string;
   subject: string;
   template?: string;
   status: string;
+  provider?: string;
   error?: string;
   providerId?: string;
 }) {
@@ -73,6 +80,7 @@ async function logEmail(entry: {
         subject: entry.subject,
         template: entry.template ?? null,
         status: entry.status,
+        provider: entry.provider ?? null,
         error: entry.error ?? null,
         providerId: entry.providerId ?? null,
       },
@@ -84,8 +92,11 @@ async function logEmail(entry: {
 
 /**
  * Single send path for all outbound email. Never throws — always returns a result.
- * The Resend SDK resolves with { data, error } on API-level failures rather than
- * rejecting, so the error branch below is the only way those surface.
+ *
+ * Transport is Microsoft 365 Graph when its credentials are configured, otherwise
+ * Resend. There is deliberately NO cross-fallback on send failure: quietly rerouting
+ * a failed Graph send through Resend would hide a broken mail configuration, which is
+ * the exact silent-failure class this helper exists to eliminate.
  */
 export async function sendEmail(opts: {
   to: string | string[];
@@ -98,10 +109,36 @@ export async function sendEmail(opts: {
   const recipients = Array.isArray(opts.to) ? opts.to : [opts.to];
   const toLabel = recipients.join(", ");
 
+  const graphConfig = getGraphConfig();
+  if (graphConfig) {
+    const result = await sendViaGraph(graphConfig, {
+      to: recipients,
+      subject: opts.subject,
+      html: opts.html,
+      replyTo: opts.replyTo,
+      from: getEmailFrom(),
+    });
+
+    if (!result.success) {
+      console.error("Graph email send failed:", result.error);
+    }
+
+    await logEmail({
+      to: toLabel,
+      subject: opts.subject,
+      template: opts.template,
+      status: result.success ? "sent" : "failed",
+      provider: "graph",
+      error: result.error,
+    });
+
+    return result.success ? { success: true } : { success: false, error: result.error };
+  }
+
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    const error = "RESEND_API_KEY not configured";
-    console.warn("RESEND_API_KEY not set. Email not sent to:", toLabel);
+    const error = "No email transport configured (set GRAPH_* vars or RESEND_API_KEY)";
+    console.warn("No email transport configured. Email not sent to:", toLabel);
     await logEmail({
       to: toLabel,
       subject: opts.subject,
@@ -130,6 +167,7 @@ export async function sendEmail(opts: {
         subject: opts.subject,
         template: opts.template,
         status: "failed",
+        provider: "resend",
         error: error.message || String(error),
       });
       return { success: false, error: error.message || String(error) };
@@ -140,6 +178,7 @@ export async function sendEmail(opts: {
       subject: opts.subject,
       template: opts.template,
       status: "sent",
+      provider: "resend",
       providerId: data?.id,
     });
     return { success: true, id: data?.id };
@@ -151,6 +190,7 @@ export async function sendEmail(opts: {
       subject: opts.subject,
       template: opts.template,
       status: "failed",
+      provider: "resend",
       error,
     });
     return { success: false, error };

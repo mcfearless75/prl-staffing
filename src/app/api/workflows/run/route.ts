@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { runAllWorkflows } from "@/lib/workflows/engine";
 import { complianceChaseAgent } from "@/lib/workflows/compliance-chase";
+import { complianceDigestAgent } from "@/lib/workflows/compliance-digest";
 import { welcomeAgent } from "@/lib/workflows/welcome-agent";
 import { staleApplicantAgent } from "@/lib/workflows/stale-applicant";
 
-const agents = [complianceChaseAgent, welcomeAgent, staleApplicantAgent];
+const agents = [
+  complianceChaseAgent,
+  complianceDigestAgent,
+  welcomeAgent,
+  staleApplicantAgent,
+];
 
 /**
  * POST /api/workflows/run

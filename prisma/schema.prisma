@@ -1036,8 +1036,9 @@ model EmailLog {
   subject    String
   template   String?  // send-site slug, e.g. "application-received"
   status     String   // sent, failed
+  provider   String?  // graph (Microsoft 365) or resend
   error      String?
-  providerId String?  // Resend message id
+  providerId String?  // Resend message id; Graph sendMail returns 202 with no id
   createdAt  DateTime @default(now())
 
   @@index([status, createdAt])
