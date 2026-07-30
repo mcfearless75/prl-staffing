@@ -106,8 +106,25 @@ if (!requirements.length) {
   }
 }
 
+// The canonical JobRole list vs the free-text roles actually typed onto
+// assignments. The gap between these two numbers IS the normalisation problem:
+// requirements match on assignment.role, but only JobRole is curated.
+const [jobRolesTotal, jobRolesActive] = await Promise.all([
+  prisma.jobRole.count(),
+  prisma.jobRole.count({ where: { active: true } }),
+]);
+console.log("\n----------------------------------------------");
+console.log(`curated JobRole rows: ${jobRolesTotal} (${jobRolesActive} active)`);
+
 // Distinct assignment roles in use — the list that would need requirements.
 const roles = [...new Set(assignments.map((a) => a.role).filter(Boolean))].sort();
+const jobRoleNames = new Set(
+  (await prisma.jobRole.findMany({ select: { name: true } })).map((r) => r.name.toLowerCase())
+);
+const unmatched = roles.filter((r) => !jobRoleNames.has(r.toLowerCase()));
+console.log(`assignment roles NOT matching any JobRole: ${unmatched.length} of ${roles.length}`);
+if (unmatched.length) console.log("  e.g. " + unmatched.slice(0, 8).join(" | "));
+
 console.log(`\ndistinct roles on active assignments: ${roles.length}`);
 roles.slice(0, 40).forEach((r) => console.log("  - " + r));
 

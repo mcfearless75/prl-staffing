@@ -93,6 +93,10 @@ export async function POST(request: Request) {
             nameOnAccount: body.nameOnAccount,
             accountInYourName: body.accountInYourName,
             positionsSought: body.positionsSought,
+            // Recorded separately as well as merged into positionsSought: a
+            // non-empty value here means the applicant wanted a trade that is
+            // not in the JobRole list, which is the prompt to add one.
+            positionsSoughtOther: body.positionsSoughtOther,
             salaryRequired: body.salaryRequired,
             hoursPreferred: body.hoursPreferred,
             daysPreferred: body.daysPreferred,
@@ -145,6 +149,27 @@ export async function POST(request: Request) {
         },
       });
       contractorId = contractor.id;
+
+      // Link the selected roles properly via ContractorJobRole. The readable
+      // names stay in the application blob too, but these ids are what lets
+      // role-based reporting and compliance requirements actually match —
+      // matching on a typed string is what produced "360 Operator" and "360
+      // Excavator Operator" as separate roles in the first place.
+      const jobRoleIds: unknown = body.jobRoleIds;
+      if (Array.isArray(jobRoleIds) && jobRoleIds.length) {
+        const ids = jobRoleIds.filter((id): id is string => typeof id === "string");
+        // Only ids that really exist — the payload is public and unauthenticated.
+        const valid = await prisma.jobRole.findMany({
+          where: { id: { in: ids } },
+          select: { id: true },
+        });
+        if (valid.length) {
+          await prisma.contractorJobRole.createMany({
+            data: valid.map((r) => ({ contractorId: contractor.id, jobRoleId: r.id })),
+            skipDuplicates: true,
+          });
+        }
+      }
     } catch (dbErr) {
       const isDuplicateEmail =
         dbErr instanceof Prisma.PrismaClientKnownRequestError && dbErr.code === "P2002";

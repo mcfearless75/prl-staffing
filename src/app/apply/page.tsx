@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { RolePicker } from "@/components/role-picker";
 
 /* ---------- tiny helpers ---------- */
 const inputCls =
@@ -77,6 +78,7 @@ interface FormState {
   sortCode: string;
   /* Section 3 */
   positionsSought: string;
+  positionsSoughtOther: string;
   salaryRequired: string;
   hoursPreferred: string[];
   daysPreferred: string[];
@@ -136,6 +138,7 @@ const INITIAL: FormState = {
   accountNumber: "",
   sortCode: "",
   positionsSought: "",
+  positionsSoughtOther: "",
   salaryRequired: "",
   hoursPreferred: [],
   daysPreferred: [],
@@ -192,6 +195,31 @@ export default function ApplyPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // Live job roles for the picker. If this fetch fails the field degrades to a
+  // free-text box rather than blocking the application — losing a tidy role name
+  // is far cheaper than losing the applicant.
+  const [jobRoles, setJobRoles] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+  const [rolesError, setRolesError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/job-roles")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        if (cancelled) return;
+        const roles = Array.isArray(d?.roles) ? d.roles : [];
+        if (roles.length === 0) setRolesError(true);
+        setJobRoles(roles);
+      })
+      .catch(() => {
+        if (!cancelled) setRolesError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   /* helpers */
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -224,6 +252,19 @@ export default function ApplyPage() {
         emergencyContactName: form.nokName,
         emergencyContactRelation: form.nokRelationship,
         emergencyContactPhone: form.nokPhone,
+        // Canonical ids, so the roles can be linked properly rather than
+        // matched on a typed string.
+        jobRoleIds: selectedRoleIds,
+        // Human-readable version kept for the application record and for anyone
+        // reading it without resolving ids. Falls back to whatever was typed if
+        // the picker degraded to free text.
+        positionsSought:
+          [
+            ...jobRoles.filter((r) => selectedRoleIds.includes(r.id)).map((r) => r.name),
+            form.positionsSoughtOther.trim(),
+          ]
+            .filter(Boolean)
+            .join(", ") || form.positionsSought,
       };
 
       const res = await fetch("/api/apply", {
@@ -542,12 +583,46 @@ export default function ApplyPage() {
         <div className={sectionCls}>
           <h2 className={headingCls}>Section 3: Work Requirements</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
+            {/* Roles come from the JobRole table via /api/job-roles, so this
+                list tracks PRISM automatically as roles are added, renamed or
+                deactivated. This was previously a free-text box, which is how
+                the same trade ended up recorded as "360 Operator", "360
+                Excavator Operator" and so on. */}
+            <div className="sm:col-span-2">
               <label className={labelCls}>Positions Sought</label>
+              {rolesError ? (
+                <input
+                  type="text"
+                  value={form.positionsSought}
+                  onChange={(e) => set("positionsSought", e.target.value)}
+                  placeholder="Type the role(s) you are applying for"
+                  className={inputCls}
+                />
+              ) : jobRoles.length === 0 ? (
+                <p className="text-sm text-gray-500">Loading roles…</p>
+              ) : (
+                <RolePicker
+                  options={jobRoles}
+                  selectedIds={selectedRoleIds}
+                  name="jobRoleIds"
+                  onSelectionChange={setSelectedRoleIds}
+                />
+              )}
+              {rolesError && (
+                <p className="mt-1 text-xs text-amber-700">
+                  Could not load the role list — please type the role(s) instead.
+                </p>
+              )}
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelCls}>
+                Other role (if it is not in the list above)
+              </label>
               <input
                 type="text"
-                value={form.positionsSought}
-                onChange={(e) => set("positionsSought", e.target.value)}
+                value={form.positionsSoughtOther}
+                onChange={(e) => set("positionsSoughtOther", e.target.value)}
+                placeholder="e.g. Scaffolder — tell us and we will add it"
                 className={inputCls}
               />
             </div>

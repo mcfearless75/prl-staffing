@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 /**
  * RolePicker — shared searchable multi-select for JobRole assignment.
@@ -26,11 +26,28 @@ interface RolePickerProps {
   options: RolePickerOption[];
   selectedIds: string[];
   name: string;
+  /**
+   * Optional. The hidden-input contract above only reaches the server for
+   * consumers that submit a <form> (server actions / FormData). The public
+   * /apply form is a client component that POSTs JSON via fetch, so it needs
+   * the selection in React state instead. Existing consumers omit this and are
+   * unaffected.
+   */
+  onSelectionChange?: (ids: string[]) => void;
 }
 
-export function RolePicker({ options, selectedIds, name }: RolePickerProps) {
+export function RolePicker({ options, selectedIds, name, onSelectionChange }: RolePickerProps) {
   const [selected, setSelected] = useState<string[]>(selectedIds);
   const [filter, setFilter] = useState("");
+
+  // In an effect rather than inside the toggle handlers, so the parent is never
+  // updated during this component's render.
+  useEffect(() => {
+    onSelectionChange?.(selected);
+    // onSelectionChange is intentionally not a dependency — callers commonly
+    // pass an inline arrow, which would re-fire this on every parent render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   const optionsById = useMemo(() => {
     const map = new Map<string, string>();
