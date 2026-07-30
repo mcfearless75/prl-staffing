@@ -14,6 +14,7 @@ import {
 import { ComplianceScoreRing } from "./compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
 import { getComplianceGaps } from "@/lib/compliance-gaps";
+import { getComplianceScore } from "@/lib/compliance-score";
 import { ComplianceCharts } from "./compliance-charts";
 import { BackfillButton, AutoVerifyBackfillButton } from "./compliance-actions";
 import BulkVerifyButton from "./bulk-verify-button";
@@ -66,7 +67,7 @@ export default async function CompliancePage({
   // Sync statuses based on expiry dates before fetching
   await syncComplianceStatuses();
 
-  const [records, allRecords, gaps, totalContractors, assignedContractors] = await Promise.all([
+  const [records, allRecords, gaps, totalContractors, assignedContractors, complianceStats] = await Promise.all([
     prisma.complianceRecord.findMany({
       where,
       include: { contractor: true },
@@ -84,6 +85,7 @@ export default async function CompliancePage({
       select: { contractorId: true },
       distinct: ["contractorId"],
     }),
+    getComplianceScore(),
   ]);
 
   const assignedContractorIds = new Set(assignedContractors.map((a) => a.contractorId));
@@ -110,8 +112,9 @@ export default async function CompliancePage({
   );
 
   // ── Contractor-centric metrics ──────────────────────────────────────────────
-  // Score is scoped to the assigned workforce: group only records for
-  // contractors currently on a Placed/Active/Ending assignment.
+  // Score is scoped to the assigned workforce and comes from the one shared
+  // calculation, so this page cannot drift from the dashboard the way it has
+  // before. See src/lib/compliance-score.ts for the definition.
   const assignedRecords = allRecords.filter((r) => assignedContractorIds.has(r.contractorId));
   const recordsByContractor = new Map<
     string,
@@ -135,26 +138,16 @@ export default async function CompliancePage({
   }
 
   const contractorsWithRecords = recordsByContractor.size;
-  let fullyCompliant = 0;
-  let contractorExpiring = 0;
-  let actionRequired = 0;
-  let pendingReview = 0;
 
-  for (const recs of recordsByContractor.values()) {
-    const worst = worstStatus(recs.map((r) => r.status));
-    if (worst === "Verified") fullyCompliant++;
-    else if (worst === "Expiring") contractorExpiring++;
-    else if (worst === "Non-Compliant") actionRequired++;
-    else pendingReview++;
-  }
+  const fullyCompliant = complianceStats.fullyCompliant;
+  const contractorExpiring = complianceStats.expiring;
+  // Contractors whose role has no checklist can never pass, so they belong with
+  // the people needing action rather than being quietly dropped.
+  const actionRequired = complianceStats.actionRequired + complianceStats.noRequirements;
+  const pendingReview = complianceStats.pendingReview;
 
-  const noRecords = assignedTotal - contractorsWithRecords;
-  // Score is against the assigned workforce only — matches how PRL actually
-  // tracks certs (people no longer placed anywhere aren't chased for docs).
-  const riskScore =
-    assignedTotal > 0
-      ? Math.round((fullyCompliant / assignedTotal) * 100)
-      : 0;
+  const noRecords = complianceStats.noRecords;
+  const riskScore = complianceStats.score;
   // Whole-book number kept as a secondary audit stat (includes anyone not
   // currently assigned, e.g. between placements).
   const wholeWorkforceScore =
@@ -317,16 +310,34 @@ export default async function CompliancePage({
       {/* Risk Score + Summary Cards — Requidex Style */}
       <div className="rounded-xl border border-gray-200 bg-white p-6">
         <div className="flex items-start justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Compliance Overview
-          </h2>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Compliance Overview</h2>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Measured against the documents required for each subcontractor&apos;s role.{" "}
+              <Link href="/compliance/requirements" className="font-medium text-blue-600 hover:underline">
+                Manage requirements
+              </Link>
+            </p>
+          </div>
           <div className="flex flex-col items-center gap-1">
             <ComplianceScoreRing score={riskScore} />
             <p className="text-[10px] text-gray-400 text-center leading-tight max-w-[72px]">
-              of assigned workforce
+              hold all required docs
             </p>
           </div>
         </div>
+
+        {complianceStats.noRequirements > 0 && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+            <strong>{complianceStats.noRequirements}</strong> assigned subcontractors have no
+            requirements configured for their role, so they cannot register as compliant. They are
+            counted under Action Required.{" "}
+            <Link href="/compliance/requirements" className="font-medium underline">
+              Configure the remaining roles
+            </Link>
+            .
+          </div>
+        )}
 
         {/* Summary Cards — scoped to subcontractors on an active assignment.
             Each card links to the matching filtered list below. */}

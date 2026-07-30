@@ -14,6 +14,7 @@
  */
 
 import { getComplianceGapSummary, loadRequirementMatcher } from "../src/lib/compliance-gaps";
+import { getComplianceScore } from "../src/lib/compliance-score";
 import { prisma } from "../src/lib/db";
 
 if (process.env.DATABASE_PUBLIC_URL) process.env.DATABASE_URL = process.env.DATABASE_PUBLIC_URL;
@@ -85,6 +86,19 @@ async function main() {
   for (const [r, n] of [...byRole].sort((a, b) => b[1] - a[1]).slice(0, 8)) {
     console.log(`    ${String(n).padStart(4)}  ${r}`);
   }
+
+  // The headline number, from the same function the dashboard calls.
+  const score = await getComplianceScore();
+  console.log(`\n=== HEADLINE SCORE (src/lib/compliance-score.ts) ===`);
+  console.log(`  assigned workforce:  ${score.assignedTotal}`);
+  console.log(`  fully compliant:     ${score.fullyCompliant}`);
+  console.log(`  action required:     ${score.actionRequired}`);
+  console.log(`  pending review:      ${score.pendingReview}`);
+  console.log(`  expiring:            ${score.expiring}`);
+  console.log(`  no records at all:   ${score.noRecords}`);
+  console.log(`  no requirements set: ${score.noRequirements}`);
+  console.log(`  unknown role:        ${score.unknownRole}`);
+  console.log(`  SCORE:               ${score.score}%`);
 
   // The failure mode this whole exercise exists to prevent.
   const roleSpecific = summary.gaps.filter((g) => g.assignmentRole !== "Unknown");

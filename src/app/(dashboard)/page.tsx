@@ -5,6 +5,7 @@ import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/badge";
 import { PageHeader } from "@/components/page-header";
 import { formatDate, getInitials } from "@/lib/utils";
+import { getComplianceScore } from "@/lib/compliance-score";
 import {
   Users,
   Building2,
@@ -127,46 +128,20 @@ export default async function DashboardPage({
       ? Math.round((verifiedComplianceRecords / totalComplianceRecords) * 100)
       : 0;
 
-  const [allComplianceRecords, totalContractorCount, activeAssignmentContractors] = await Promise.all([
-    prisma.complianceRecord.findMany({ select: { contractorId: true, status: true } }),
+  // Single shared calculation — see src/lib/compliance-score.ts. Measures
+  // whether each contractor holds the documents REQUIRED for their role, not
+  // merely whether the documents they happen to hold are verified.
+  const [complianceStats, totalContractorCount] = await Promise.all([
+    getComplianceScore(),
     prisma.contractor.count({ where: { status: { notIn: ["Left", "Inactive"] } } }),
-    // Score is scoped to subcontractors actively assigned to a client — same
-    // rule as the /compliance dashboard.
-    prisma.assignment.findMany({
-      where: { status: { in: ["Placed", "Active", "Ending"] } },
-      select: { contractorId: true },
-      distinct: ["contractorId"],
-    }),
   ]);
 
-  const assignedContractorIds = new Set(activeAssignmentContractors.map((a) => a.contractorId));
-  const assignedTotal = assignedContractorIds.size;
-  const assignedComplianceRecords = allComplianceRecords.filter((r) => assignedContractorIds.has(r.contractorId));
-
-  const contractorIdsWithRecords = new Set(assignedComplianceRecords.map((r) => r.contractorId));
-  const byContractor = new Map<string, string[]>();
-  for (const r of assignedComplianceRecords) {
-    const existing = byContractor.get(r.contractorId) ?? [];
-    existing.push(r.status);
-    byContractor.set(r.contractorId, existing);
-  }
-  function worstStatus(statuses: string[]) {
-    if (statuses.some((s) => s === "Expired" || s === "Non-Compliant")) return "Non-Compliant";
-    if (statuses.some((s) => s === "Expiring")) return "Expiring";
-    if (statuses.some((s) => s === "Pending")) return "Pending";
-    return "Verified";
-  }
-  let complianceFullyCompliant = 0, compliancePending = 0, complianceActionRequired = 0;
-  for (const statuses of byContractor.values()) {
-    const w = worstStatus(statuses);
-    if (w === "Verified") complianceFullyCompliant++;
-    else if (w === "Pending") compliancePending++;
-    else complianceActionRequired++;
-  }
-  const complianceNoRecords = assignedTotal - contractorIdsWithRecords.size;
-  const workforceScore = assignedTotal > 0
-    ? Math.round((complianceFullyCompliant / assignedTotal) * 100)
-    : 0;
+  const assignedTotal = complianceStats.assignedTotal;
+  const complianceFullyCompliant = complianceStats.fullyCompliant;
+  const compliancePending = complianceStats.pendingReview;
+  const complianceActionRequired = complianceStats.actionRequired + complianceStats.noRequirements;
+  const complianceNoRecords = complianceStats.noRecords;
+  const workforceScore = complianceStats.score;
 
   // Demo mode — explicit ?demo=true only.
   //
@@ -284,10 +259,21 @@ export default async function DashboardPage({
           >
             {displayWorkforceScore}%
           </span>
-          <p className="mt-1 text-sm text-gray-500">of assigned workforce fully compliant</p>
+          <p className="mt-1 text-sm text-gray-500">
+            hold every document required for their role
+          </p>
           <p className="mt-0.5 text-xs text-gray-400">
             {assignedTotal} of {totalContractorCount} subcontractors currently assigned
           </p>
+          {complianceStats.noRequirements > 0 && (
+            <p className="mt-2 text-center text-xs text-amber-600">
+              {complianceStats.noRequirements} have no requirements set for their role and
+              cannot pass.{" "}
+              <Link href="/compliance/requirements" className="font-medium underline">
+                Configure roles
+              </Link>
+            </p>
+          )}
         </div>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">

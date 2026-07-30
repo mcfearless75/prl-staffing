@@ -47,11 +47,20 @@ type Seed = {
 const SEEDS: Seed[] = [
   {
     role: "All",
-    note: "Baseline — legally required of everyone regardless of trade.",
+    note:
+      "Baseline for everyone regardless of trade. CSCS is here rather than on " +
+      "each trade so that collection does not narrow while the remaining roles " +
+      "are still being configured — the contractor portal asks for whatever the " +
+      "checklist says, so an empty baseline would mean asking most people for " +
+      "almost nothing. Move it onto specific roles once they are set up.",
     types: [
       {
         type: "Right to Work",
         description: "Passport, share code, or other proof of eligibility to work in the UK",
+      },
+      {
+        type: "CSCS",
+        description: "Valid CSCS card — specific colour depends on the role",
       },
     ],
   },
