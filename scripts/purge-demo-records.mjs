@@ -32,6 +32,13 @@ const TARGETS = [
   { model: "grievance",    label: "Grievance",    tickets: ["GRV-001", "GRV-002"] },
 ];
 
+// Records identified by primary key rather than ticket number, also recorded in
+// the 2026-07-29 audit as deliberately-created test data.
+const TARGETS_BY_ID = [
+  { model: "contractor",           label: "Contractor (TEST applicant)", id: "cms68bbys001cs501y76pwl3c" },
+  { model: "newStarterSubmission", label: "NewStarterSubmission (TEST)", id: "cms68vtoh0002lg01tfo1pdtd" },
+];
+
 const prisma = new PrismaClient();
 
 console.log("\n==============================================");
@@ -66,6 +73,38 @@ for (const t of TARGETS) {
       // Most likely a foreign-key constraint from a related comment/assignment
       // row. Report it rather than cascading blindly through live data.
       console.log(`   -> DELETE FAILED: ${err.message.split("\n")[0]}`);
+    }
+  }
+  console.log();
+}
+
+// Records targeted by id. Deleting a Contractor can trip foreign-key constraints
+// from compliance docs, assignments or logins; report that rather than cascading
+// blindly through live data.
+for (const t of TARGETS_BY_ID) {
+  const row = await prisma[t.model]
+    .findUnique({ where: { id: t.id }, select: { id: true, name: true, createdAt: true } })
+    .catch(() => null);
+
+  if (!row) {
+    console.log(`${t.label}: not present (already removed)\n`);
+    continue;
+  }
+
+  found++;
+  // Name shown ONLY so the operator can confirm this really is test data before
+  // it is deleted. Nothing else about the record is printed.
+  console.log(`${t.label}: id=${row.id}`);
+  console.log(`   name="${row.name}"  created=${row.createdAt.toISOString().slice(0, 10)}`);
+
+  if (CONFIRM) {
+    try {
+      await prisma[t.model].delete({ where: { id: t.id } });
+      removed++;
+      console.log("   -> deleted");
+    } catch (err) {
+      console.log(`   -> DELETE FAILED: ${err.message.split("\n")[0]}`);
+      console.log("      (likely related rows — clear those first, or leave it)");
     }
   }
   console.log();
