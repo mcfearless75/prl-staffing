@@ -1,3 +1,5 @@
+import { PrintButton } from "@/app/(dashboard)/compliance/report/print-button";
+
 export const dynamic = "force-dynamic";
 
 const TODAY = new Date().toLocaleDateString("en-GB", {
@@ -272,14 +274,14 @@ export default function ContractPage() {
             </div>
           </section>
 
-          {/* Print button — hidden when printing */}
+          {/* Print button — hidden when printing. Must be the shared client
+              component: an inline onClick here is an event handler crossing the
+              server/client boundary, which threw at render and 500'd the page. */}
           <div className="mt-8 flex gap-3 print:hidden">
-            <button
-              onClick={() => window.print()}
+            <PrintButton
+              label="Print / Save as PDF"
               className="flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-700 transition-colors"
-            >
-              Print / Save as PDF
-            </button>
+            />
             <a
               href="/"
               className="flex items-center gap-2 rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
