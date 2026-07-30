@@ -71,6 +71,14 @@ model Contractor {
   payRate      Float?             // hourly pay rate
   chargeRate   Float?             // hourly charge rate
   status       String             @default("Inactive") // Active, Inactive, On Hold
+  // When staff explicitly approved this applicant. Set ONLY by a deliberate
+  // individual approval — never by bulk import, onboarding create, or a
+  // contractor going back to work. welcomeAgent keys off this; `updatedAt` was
+  // used before and bumped on every write, so a backfill script read as a wave
+  // of approvals and emailed contractors who had been on site for months.
+  // Null means "not approved through PRISM", which is correct for everyone
+  // predating this column and for imported records.
+  approvedAt   DateTime?
   supplierId   String?
   supplier     Supplier?          @relation(fields: [supplierId], references: [id])
   niNumber     String?

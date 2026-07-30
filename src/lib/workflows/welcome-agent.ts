@@ -45,15 +45,14 @@ function buildWelcomeEmail(firstName: string): string {
 }
 
 /**
- * Above this many matches in one run, send nothing and escalate instead.
+ * Above this many approvals in one run, send nothing and escalate instead.
  *
- * Genuine approvals arrive as a trickle. A large batch means something touched
- * many contractor rows at once — a backfill, an import, a bulk edit — and
- * `updatedAt` cannot tell that apart from an approval (see below). On
- * 2026-07-30 a right-to-work backfill bumped 59 rows and this agent emailed 12
- * long-standing contractors, some placed for months, to tell them their
- * application had been approved. ~375 Active contractors have still never been
- * welcomed, so the next bulk write would have mailed all of them at once.
+ * Belt and braces now that the agent keys off `approvedAt` rather than
+ * `updatedAt`: the original fault is fixed at source, and this only fires if
+ * something starts stamping approvals in bulk. Kept because the failure it
+ * guards against is contractor-facing email that cannot be recalled — on
+ * 2026-07-30 this agent told 12 people who had been on site for months that
+ * their application had just been approved. Genuine approvals are a trickle.
  */
 const MAX_PER_RUN = 5;
 
@@ -62,16 +61,17 @@ export const welcomeAgent = {
   async run(): Promise<WorkflowResult> {
     const result: WorkflowResult = { workflow: "welcome-agent", acted: 0, skipped: 0, failed: 0, log: [] };
 
-    // Contractors who look newly approved.
+    // Contractors approved in the last 24 hours.
     //
-    // NB `updatedAt` is a proxy, and a poor one: Prisma bumps it on ANY write to
-    // the row, so this cannot distinguish "was just approved" from "was touched
-    // by a script". There is no `approvedAt` column and no status-change audit
-    // trail to key off instead. The cap below is what makes that safe; the real
-    // fix is to record approval explicitly.
+    // Keyed on `approvedAt`, which is stamped only by a deliberate individual
+    // staff approval. This previously used `updatedAt`, which Prisma bumps on
+    // ANY write, so a backfill script was indistinguishable from a wave of
+    // approvals — that misfire is what the column was added for. Records with a
+    // null approvedAt (everyone predating the column, plus every bulk import)
+    // are correctly never welcomed.
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const candidates = await prisma.contractor.findMany({
-      where: { status: "Active", updatedAt: { gte: since } },
+      where: { status: "Active", approvedAt: { gte: since } },
     });
 
     // Anyone already welcomed is not a new send, so they don't count towards

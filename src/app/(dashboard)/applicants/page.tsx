@@ -12,7 +12,14 @@ async function approveApplicant(id: string) {
   "use server";
   const session = await auth();
   if (!session?.user) redirect("/login");
-  await prisma.contractor.update({ where: { id }, data: { status: "Active" } });
+  // approvedAt is what welcomeAgent keys off. This is the canonical approval —
+  // a deliberate, individual staff decision — so it is one of the only two
+  // places that stamps it. Bulk imports and onboarding creates deliberately do
+  // not, or an import would welcome everyone in the file at once.
+  await prisma.contractor.update({
+    where: { id },
+    data: { status: "Active", approvedAt: new Date() },
+  });
   revalidatePath("/applicants");
   revalidatePath("/");
 }

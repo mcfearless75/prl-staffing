@@ -24,9 +24,19 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
+  // Stamp the approval only on a real transition INTO Active, and only if it
+  // has not been stamped before — re-saving Active on someone already approved
+  // is not a new approval, and would put them back in welcomeAgent's window.
+  const existing = await prisma.contractor.findUnique({
+    where: { id },
+    select: { status: true, approvedAt: true },
+  });
+  const isNewApproval =
+    status === "Active" && existing?.status !== "Active" && !existing?.approvedAt;
+
   const contractor = await prisma.contractor.update({
     where: { id },
-    data: { status },
+    data: { status, ...(isNewApproval ? { approvedAt: new Date() } : {}) },
     select: { id: true, firstName: true, lastName: true, status: true },
   });
 
