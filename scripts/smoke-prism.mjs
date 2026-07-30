@@ -122,7 +122,14 @@ async function checkRoutes() {
 // Each public form must land a row in its own table. A form that 200s but writes
 // nothing is the exact failure the client reported as "forms aren't working".
 const FORMS = [
-  { form: "/apply",                  model: "contractor",           label: "Applications",          staffPage: "/applicants",                             template: "application-received" },
+  // Contractor rows are created by /apply, by staff on /contractors/new, and by
+  // bulk import. Only /apply should produce an application email, so parity has
+  // to count submissions rather than every new contractor — otherwise a normal
+  // day of staff data entry reads as "submissions with nobody notified".
+  // /apply is the only path that writes a JSON application blob into notes and
+  // sets status "Applied".
+  { form: "/apply",                  model: "contractor",           label: "Applications",          staffPage: "/applicants",                             template: "application-received",
+    submissionWhere: { OR: [{ status: "Applied" }, { notes: { startsWith: "{" } }] } },
   { form: "/new-starter",            model: "newStarterSubmission", label: "New starters",          staffPage: "/new-starters",                           template: "new-starter-checklist" },
   { form: "/payment-query",          model: "paymentQuery",         label: "Payment queries",       staffPage: "/payment-queries",                        template: "payment-query" },
   { form: "/grievance",              model: "grievance",            label: "Grievances",            staffPage: "/grievances",                             template: "grievance-submitted" },
@@ -240,7 +247,9 @@ async function checkNotificationParity() {
     const delegate = prisma[f.model];
     if (!delegate) continue;
     try {
-      const submissions = await delegate.count({ where: { createdAt: { gte: from } } });
+      const submissions = await delegate.count({
+        where: { createdAt: { gte: from }, ...(f.submissionWhere ?? {}) },
+      });
       if (submissions === 0) continue;
 
       const notified = await prisma.emailLog.count({
