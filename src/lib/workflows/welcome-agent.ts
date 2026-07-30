@@ -44,24 +44,65 @@ function buildWelcomeEmail(firstName: string): string {
 </body></html>`;
 }
 
+/**
+ * Above this many matches in one run, send nothing and escalate instead.
+ *
+ * Genuine approvals arrive as a trickle. A large batch means something touched
+ * many contractor rows at once — a backfill, an import, a bulk edit — and
+ * `updatedAt` cannot tell that apart from an approval (see below). On
+ * 2026-07-30 a right-to-work backfill bumped 59 rows and this agent emailed 12
+ * long-standing contractors, some placed for months, to tell them their
+ * application had been approved. ~375 Active contractors have still never been
+ * welcomed, so the next bulk write would have mailed all of them at once.
+ */
+const MAX_PER_RUN = 5;
+
 export const welcomeAgent = {
   name: "welcome-agent",
   async run(): Promise<WorkflowResult> {
     const result: WorkflowResult = { workflow: "welcome-agent", acted: 0, skipped: 0, failed: 0, log: [] };
 
-    // Find contractors approved in the last 24 hours
+    // Contractors who look newly approved.
+    //
+    // NB `updatedAt` is a proxy, and a poor one: Prisma bumps it on ANY write to
+    // the row, so this cannot distinguish "was just approved" from "was touched
+    // by a script". There is no `approvedAt` column and no status-change audit
+    // trail to key off instead. The cap below is what makes that safe; the real
+    // fix is to record approval explicitly.
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const newlyApproved = await prisma.contractor.findMany({
+    const candidates = await prisma.contractor.findMany({
       where: { status: "Active", updatedAt: { gte: since } },
     });
 
-    for (const contractor of newlyApproved) {
-      const alreadyWelcomed = await everActed("welcome-agent", contractor.id, "welcome-email");
-      if (alreadyWelcomed) {
+    // Anyone already welcomed is not a new send, so they don't count towards
+    // the cap — otherwise a busy day of edits would trip it for no reason.
+    const newlyApproved: typeof candidates = [];
+    for (const c of candidates) {
+      if (await everActed("welcome-agent", c.id, "welcome-email")) {
         result.skipped++;
-        continue;
+      } else {
+        newlyApproved.push(c);
       }
+    }
 
+    if (newlyApproved.length > MAX_PER_RUN) {
+      await logAction(
+        "welcome-agent",
+        "bulk-guard",
+        "escalated",
+        "staff",
+        `${newlyApproved.length} contractors matched (cap ${MAX_PER_RUN}) — no welcome emails sent. Likely a bulk data change, not ${newlyApproved.length} approvals.`
+      );
+      result.skipped += newlyApproved.length;
+      result.log.push(
+        `⚠ ${newlyApproved.length} contractors matched, over the ${MAX_PER_RUN} cap — sent nothing. ` +
+          `This is almost certainly a bulk data change rather than real approvals. Review, then welcome them by hand if genuine.`
+      );
+      return result;
+    }
+
+    // Already filtered for "never welcomed" above, so no dedupe check here.
+    for (const contractor of newlyApproved) {
       try {
         const emailResult = await sendEmail({
           to: contractor.email,
