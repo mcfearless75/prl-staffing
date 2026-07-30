@@ -128,7 +128,7 @@ const FORMS = [
   { form: "/grievance",              model: "grievance",            label: "Grievances",            staffPage: "/grievances",                             template: "grievance-submitted" },
   // Added 2026-07-29 (migration 20260729_survey_questionnaire_emaillog) and not
   // linked from anywhere in the app — reachable only by typing the URL directly.
-  { form: "/survey",                 model: "customerSurvey",       label: "Customer surveys",      staffPage: "(no staff page)",                         template: "customer-survey",         unlinked: true },
+  { form: "/survey",                 model: "customerSurvey",       label: "Customer surveys",      staffPage: "/qms/reports/customer-feedback",          template: "customer-survey",         unlinked: true },
   { form: "/supplier-questionnaire", model: "supplierQuestionnaire",label: "Supplier questionnaires",staffPage: "/qms/reports/supplier-questionnaires",   template: "supplier-questionnaire",  unlinked: true },
 ];
 
