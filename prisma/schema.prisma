@@ -88,6 +88,18 @@ model Contractor {
   geocodedAt               DateTime? // last successful/attempted geocode, avoids re-querying on every backfill
   nextOfKin                String?
   medicalNotes             String?   // allergies, conditions (confidential)
+  // ─── Right to work ───
+  // Collected by /apply since launch but only ever written into the notes JSON
+  // blob, so it was queryable by nobody and invisible to every screen. Promoted
+  // to real columns because the expiry dates are exactly what complianceChase
+  // needs to alert on. notes still keeps the full raw blob as the audit trail,
+  // so a date that fails to parse is degraded, never lost.
+  nonBritishNational       String?   // Yes / No as submitted
+  requiresWorkPermit       String?   // Yes / No as submitted
+  passportNumber           String?
+  passportExpiry           DateTime?
+  visaNumber               String?
+  visaExpiry               DateTime?
   notes        String?
   ref          String?            @unique // human-readable reference, e.g. C00001
   inviteSentAt              DateTime?

@@ -200,6 +200,14 @@ export default async function ContractorDetailPage({
           crVerified={crVerified}
           crPending={crPending}
           crActionRequired={crActionRequired}
+          declared={{
+            nonBritishNational: contractor.nonBritishNational,
+            requiresWorkPermit: contractor.requiresWorkPermit,
+            passportNumber: contractor.passportNumber,
+            passportExpiry: contractor.passportExpiry,
+            visaNumber: contractor.visaNumber,
+            visaExpiry: contractor.visaExpiry,
+          }}
         />
       )}
       {activeTab === "Comps & Certs" && (
