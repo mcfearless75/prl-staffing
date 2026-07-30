@@ -634,44 +634,29 @@ export default function ApplyPage() {
           </div>
         </div>
 
-        {/* ===================== SECTION 4: Documents ===================== */}
+        {/* ===================== SECTION 4: Documents =====================
+            This section previously offered four file inputs (CV, Photo ID,
+            Passport/Visa, Other) above the text "Please upload any relevant
+            documents". None of them worked: they had no onChange handler, were
+            never bound to state, and this page sends JSON with no FormData
+            anywhere. Applicants attached files, saw a success message, and the
+            files were discarded silently.
+
+            Rather than add an unauthenticated public upload endpoint, documents
+            are collected through the existing portal compliance upload once the
+            application is accepted and the applicant has a login. Removing the
+            inputs removes a promise the form could not keep. */}
         <div className={sectionCls}>
           <h2 className={headingCls}>Section 4: Documents</h2>
-          <p className="text-xs text-gray-500 mb-4">
-            Please upload any relevant documents. Accepted formats: PDF, DOC, DOCX, JPG, PNG.
+          <p className="text-sm text-gray-600">
+            You do not need to attach anything now. Once your application has been
+            reviewed we will email you a secure link to your PRL portal, where you
+            can upload your CV, photo ID, passport or visa, and any certificates.
           </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelCls}>CV</label>
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx"
-                className="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-[#005f8c] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#004a6b] file:cursor-pointer"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Current Photo ID</label>
-              <input
-                type="file"
-                accept="image/*"
-                className="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-[#005f8c] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#004a6b] file:cursor-pointer"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Passport / Visa</label>
-              <input
-                type="file"
-                className="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-[#005f8c] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#004a6b] file:cursor-pointer"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Other Supporting Docs</label>
-              <input
-                type="file"
-                className="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-[#005f8c] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#004a6b] file:cursor-pointer"
-              />
-            </div>
-          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Uploading there keeps your documents encrypted and lets you replace them
+            when they expire, so you only ever send them once.
+          </p>
         </div>
 
         {/* ===================== SECTION 5: Criminal Record & Security ===================== */}
