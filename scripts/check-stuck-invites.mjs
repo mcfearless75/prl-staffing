@@ -26,16 +26,26 @@ if (!process.env.DATABASE_URL) {
 
 const prisma = new PrismaClient();
 const day = (d) => (d ? d.toISOString().slice(0, 10) : "—");
+const LIST = process.argv.includes("--list");
+
+// Partially masked so the list can be reviewed and approved for a resend without
+// putting 42 full contractor email addresses into a terminal or a chat log.
+const maskEmail = (e) => {
+  if (!e || !e.includes("@")) return "(no email)";
+  const [u, d] = e.split("@");
+  return (u.length <= 2 ? u[0] + "*" : u.slice(0, 2) + "*".repeat(Math.min(u.length - 2, 6))) + "@" + d;
+};
 
 const invited = await prisma.contractor.findMany({
   where: { inviteSentAt: { not: null } },
   select: {
     id: true,
     status: true,
+    email: true,
     inviteSentAt: true,
     inviteOpenedAt: true,
     inviteToken: true,
-    contractorLogin: { select: { id: true } },
+    contractorLogin: { select: { id: true, email: true } },
   },
   orderBy: { inviteSentAt: "asc" },
 });
@@ -74,6 +84,29 @@ if (stuck.length) {
   console.log("\nstuck invites by contractor status:");
   for (const s of Object.keys(byStatus).sort((a, b) => byStatus[b] - byStatus[a])) {
     console.log(`  ${s.padEnd(12)} ${String(byStatus[s]).padStart(4)}`);
+  }
+
+  // The resend candidates: live contractors only. Re-inviting the Inactive ones
+  // (dormant sweep, 2026-07-27) would be noise and could confuse people who were
+  // deliberately stood down.
+  const candidates = stuck.filter((c) => c.status === "Active" || c.status === "New");
+  console.log(`\nRESEND CANDIDATES (Active + New only): ${candidates.length}`);
+  const withoutEmail = candidates.filter((c) => !(c.contractorLogin?.email || c.email));
+  if (withoutEmail.length) {
+    console.log(`  ${withoutEmail.length} have NO email address and cannot be resent to.`);
+  }
+
+  if (LIST) {
+    console.log("\n  id                          status   invited     email");
+    console.log("  " + "-".repeat(72));
+    for (const c of candidates.sort((a, b) => a.inviteSentAt - b.inviteSentAt)) {
+      const em = c.contractorLogin?.email || c.email;
+      console.log(
+        `  ${c.id.padEnd(27)} ${c.status.padEnd(8)} ${day(c.inviteSentAt)}  ${maskEmail(em)}`
+      );
+    }
+  } else {
+    console.log("  Re-run with --list to see the individual candidates.");
   }
 
   console.log("\nEach still holds a valid, non-expiring token. If their email");
