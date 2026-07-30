@@ -156,10 +156,28 @@ export function CompaniesTable({ companies }: { companies: Company[] }) {
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{company.contactName || "—"}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{company.contactEmail || "—"}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{company.contactPhone || "—"}</td>
+                {/* The badge IS the control — clicking the status to change the
+                    status is where people look first, rather than hunting for a
+                    link in the actions column. */}
                 <td className="whitespace-nowrap px-6 py-4">
-                  <Badge variant={company.isActive ? "Active" : "Inactive"}>
-                    {company.isActive ? "Active" : "Inactive"}
-                  </Badge>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => toggleActive(company)}
+                    title={
+                      company.isActive
+                        ? "Click to deactivate this client"
+                        : "Click to reactivate this client"
+                    }
+                    className="group inline-flex items-center gap-1.5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                  >
+                    <Badge variant={company.isActive ? "Active" : "Inactive"}>
+                      {company.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                    <span className="text-xs text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">
+                      {company.isActive ? "deactivate" : "reactivate"}
+                    </span>
+                  </button>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-3">
