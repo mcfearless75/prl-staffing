@@ -30,10 +30,16 @@ export default async function CompaniesPage({
   // Active clients first, then alphabetical within each group. When "show
   // inactive too" is on, the ones still being worked stay at the top rather than
   // being scattered through the list alphabetically.
-  const companies = await prisma.company.findMany({
-    where,
-    orderBy: [{ isActive: "desc" }, { name: "asc" }],
-  });
+  const [companies, inactiveCount] = await Promise.all([
+    prisma.company.findMany({
+      where,
+      orderBy: [{ isActive: "desc" }, { name: "asc" }],
+    }),
+    // Surfaced in the toggle so deactivated clients are discoverable. A bare
+    // "show inactive too" link gives no reason to click it, which made a
+    // deactivated client look deleted rather than hidden.
+    prisma.company.count({ where: { isActive: false } }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -80,7 +86,11 @@ export default async function CompaniesPage({
           href={toggleHref}
           className="text-xs font-medium text-blue-600 hover:text-blue-800"
         >
-          {showAll ? "Show active clients only" : "Show inactive clients too"}
+          {showAll
+            ? "Show active clients only"
+            : inactiveCount > 0
+              ? `Show ${inactiveCount} inactive client${inactiveCount === 1 ? "" : "s"} too`
+              : "Show inactive clients too"}
         </Link>
       </div>
 

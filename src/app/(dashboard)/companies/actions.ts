@@ -174,29 +174,81 @@ export async function setCompanyActive(id: string, active: boolean) {
   if (!session?.user) redirect("/login");
 
   try {
+    const company = await prisma.company.findUnique({
+      where: { id },
+      select: { name: true },
+    });
+    if (!company) return { type: "error" as const, message: "Client not found." };
+
+    let closed = 0;
+    let deactivated = 0;
+    let unbilled = 0;
+
     if (!active) {
       const live = await prisma.assignment.findMany({
         where: { companyId: id, status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
         select: { id: true, contractorId: true },
       });
 
+      // Approved work not yet on an invoice. Deactivating does not block billing
+      // (the generate screen deliberately lists inactive clients too), but staff
+      // should be told it is outstanding rather than discover it later.
+      // InvoiceLine.timesheetId is a plain column with no Prisma relation, so
+      // "not yet invoiced" has to be worked out by difference rather than a
+      // nested filter.
+      const approved = await prisma.timesheet.findMany({
+        where: { status: "Approved", assignment: { companyId: id } },
+        select: { id: true },
+      });
+      if (approved.length > 0) {
+        const invoiced = await prisma.invoiceLine.findMany({
+          where: { timesheetId: { in: approved.map((t) => t.id) } },
+          select: { timesheetId: true },
+        });
+        const billed = new Set(invoiced.map((l) => l.timesheetId));
+        unbilled = approved.filter((t) => !billed.has(t.id)).length;
+      }
+
       if (live.length > 0) {
         await prisma.assignment.updateMany({
           where: { id: { in: live.map((a) => a.id) } },
           data: { status: "Completed" },
         });
-        await deactivateContractorsWithNoLiveWork(live.map((a) => a.contractorId));
+        closed = live.length;
+        deactivated = await deactivateContractorsWithNoLiveWork(
+          live.map((a) => a.contractorId)
+        );
       }
     }
 
     await prisma.company.update({ where: { id }, data: { isActive: active } });
+
+    // One click here closes assignments and changes contractor statuses in bulk.
+    // That was previously invisible — companies/actions.ts wrote no audit trail
+    // at all, which is untenable in a system carrying ISO 9001 evidence.
+    await prisma.activityLog.create({
+      data: {
+        userId: (session.user as { id?: string }).id,
+        userName: session.user.name,
+        userEmail: session.user.email,
+        action: active ? "Reactivated Client" : "Deactivated Client",
+        entityType: "Company",
+        entityId: id,
+        details: active
+          ? `Reactivated ${company.name}. Contractors were not reinstated.`
+          : `Deactivated ${company.name}. Closed ${closed} live assignment(s); ` +
+            `${deactivated} contractor(s) set Inactive; ` +
+            `${unbilled} approved timesheet(s) still uninvoiced.`,
+      },
+    });
 
     revalidatePath("/companies");
     revalidatePath(`/companies/${id}`);
     revalidatePath("/assignments");
     revalidatePath("/contractors");
     revalidatePath("/compliance");
-    return { type: "success" as const };
+    revalidatePath("/billing");
+    return { type: "success" as const, closed, deactivated, unbilled };
   } catch (error) {
     console.error("Failed to change client status:", error);
     return {

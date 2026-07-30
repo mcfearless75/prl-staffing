@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/badge";
 import { setCompanyActive } from "./actions";
@@ -17,9 +17,11 @@ type Company = {
 
 export function CompaniesTable({ companies }: { companies: Company[] }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const allChecked = companies.length > 0 && selected.size === companies.length;
   const someChecked = selected.size > 0 && !allChecked;
@@ -48,10 +50,44 @@ export function CompaniesTable({ companies }: { companies: Company[] }) {
     }
 
     setError(null);
+    setNotice(null);
+    const deactivating = company.isActive;
+
     startTransition(async () => {
       const result = await setCompanyActive(company.id, !company.isActive);
-      if (result?.type === "error") setError(result.message);
-      else router.refresh();
+      if (result?.type === "error") {
+        setError(result.message);
+        return;
+      }
+
+      // Say what actually happened. Closing assignments and flipping contractor
+      // statuses is a lot to do behind one click without reporting it back.
+      if (deactivating) {
+        const parts = [`${company.name} deactivated`];
+        if (result.closed) parts.push(`${result.closed} assignment(s) closed`);
+        if (result.deactivated) parts.push(`${result.deactivated} contractor(s) set Inactive`);
+        if (result.unbilled) {
+          parts.push(
+            `${result.unbilled} approved timesheet(s) still need invoicing — ` +
+              `raise them from Billing, which lists inactive clients too`
+          );
+        }
+        setNotice(parts.join(" · "));
+      } else {
+        setNotice(`${company.name} reactivated. Contractors were not put back to work.`);
+      }
+
+      // The default list shows active clients only, so deactivating would make
+      // the row vanish — which looks like a deletion and hides the way back.
+      // Switch to the all-clients view so the client stays on screen, now marked
+      // Inactive and one click from being reactivated.
+      if (deactivating && searchParams.get("all") !== "true") {
+        const next = new URLSearchParams(searchParams.toString());
+        next.set("all", "true");
+        router.push(`/companies?${next.toString()}`);
+      } else {
+        router.refresh();
+      }
     });
   }
 
@@ -112,6 +148,20 @@ export function CompaniesTable({ companies }: { companies: Company[] }) {
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          <span>{notice}</span>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            aria-label="Dismiss"
+            className="shrink-0 text-blue-500 hover:text-blue-800"
+          >
+            ×
+          </button>
         </div>
       )}
 

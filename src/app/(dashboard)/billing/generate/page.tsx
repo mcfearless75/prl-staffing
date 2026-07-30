@@ -17,9 +17,13 @@ export default async function GenerateInvoicesPage({
   const params = searchParams ? await searchParams : {};
   const error = params?.error;
 
+  // Deliberately NOT filtered to active clients. Work already done for a client
+  // still has to be invoiced after they are deactivated — filtering here meant
+  // deactivating a client with approved, uninvoiced timesheets silently removed
+  // the only way to bill them. Active clients sort first so the common case is
+  // still at the top.
   const companies = await prisma.company.findMany({
-    where: { isActive: true },
-    orderBy: { name: "asc" },
+    orderBy: [{ isActive: "desc" }, { name: "asc" }],
   });
 
   // Approved timesheets not yet on any invoice — the actual "ready to bill"
