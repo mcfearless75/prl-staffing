@@ -6,6 +6,10 @@
 
 import { prisma } from "@/lib/db";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
+import {
+  LIVE_ASSIGNMENT_STATUSES,
+  IN_PROGRESS_ASSIGNMENT_STATUSES,
+} from "@/lib/assignment-statuses";
 
 // ─── Types ───
 
@@ -78,7 +82,7 @@ export async function generateInsights(): Promise<Insight[]> {
   // contractors currently on an active assignment, not the whole book.
   const assignedContractorIds = (
     await prisma.assignment.findMany({
-      where: { status: { in: ["Placed", "Active", "Ending"] } },
+      where: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
       select: { contractorId: true },
       distinct: ["contractorId"],
     })
@@ -464,7 +468,7 @@ export async function assessRisks(): Promise<RiskItem[]> {
     }),
     prisma.assignment.findMany({
       where: {
-        status: { in: ["Active", "Ending"] },
+        status: { in: [...IN_PROGRESS_ASSIGNMENT_STATUSES] },
         endDate: { gte: now, lte: new Date(now.getTime() + 30 * 86400000) },
       },
       include: { contractor: true, company: true },

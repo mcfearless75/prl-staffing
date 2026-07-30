@@ -5,8 +5,12 @@ import { complianceChaseAgent } from "@/lib/workflows/compliance-chase";
 import { complianceDigestAgent } from "@/lib/workflows/compliance-digest";
 import { welcomeAgent } from "@/lib/workflows/welcome-agent";
 import { staleApplicantAgent } from "@/lib/workflows/stale-applicant";
+import { placedToActiveAgent } from "@/lib/workflows/placed-to-active";
 
 const agents = [
+  // Runs first: the status flips it makes are read by the compliance agents
+  // below, so a contractor starting today is chased as working, not as pending.
+  placedToActiveAgent,
   complianceChaseAgent,
   complianceDigestAgent,
   welcomeAgent,

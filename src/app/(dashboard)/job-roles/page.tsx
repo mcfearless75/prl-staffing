@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
-import { Plus, Search, X, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Search, X, ArrowUp, ArrowDown, AlertTriangle, ShieldCheck } from "lucide-react";
 
 type JobRolesSearchParams = {
   q?: string;
@@ -39,10 +39,27 @@ export default async function JobRolesPage({
     ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
   };
 
-  const jobRoles = await prisma.jobRole.findMany({
-    where,
-    orderBy: nameSort ? [{ name: nameSort }] : [{ sortOrder: "asc" }, { name: "asc" }],
-  });
+  const [jobRoles, requirements] = await Promise.all([
+    prisma.jobRole.findMany({
+      where,
+      orderBy: nameSort ? [{ name: nameSort }] : [{ sortOrder: "asc" }, { name: "asc" }],
+    }),
+    // Which documents each role requires is configured on /compliance/requirements.
+    // Surfaced here rather than duplicated: one screen stays the source of truth,
+    // but staff adding a role can see at a glance whether its checklist exists.
+    prisma.complianceRequirement.findMany({ select: { role: true } }),
+  ]);
+
+  // Requirement rows store the canonical role name, which is what JobRole.name
+  // resolves to, but match case-insensitively so a stray capitalisation doesn't
+  // read as "no checklist configured".
+  const requirementsByRole = new Map<string, number>();
+  for (const req of requirements) {
+    const key = req.role.trim().toLowerCase();
+    requirementsByRole.set(key, (requirementsByRole.get(key) ?? 0) + 1);
+  }
+  // The "All" rule applies on top of every role's own checklist.
+  const baselineCount = requirementsByRole.get("all") ?? 0;
 
   const current: JobRolesSearchParams = {
     ...(q ? { q } : {}),
@@ -65,6 +82,22 @@ export default async function JobRolesPage({
           </Link>
         }
       />
+
+      {/* Signpost to where a role's document checklist is actually set. The
+          tick-box picker lives on /compliance/requirements and stays the single
+          source of truth; this is here because staff look for it on this page. */}
+      <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+        <p className="text-sm text-blue-900">
+          To choose which documents a role requires — CSCS, Safety Passport, NPORS,
+          Right to Work and so on — use{" "}
+          <Link href="/compliance/requirements" className="font-semibold underline hover:text-blue-700">
+            Compliance → Requirements
+          </Link>
+          . Tick the documents against the role there and the compliance score, the
+          contractor portal and the gap report all follow automatically.
+        </p>
+      </div>
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-3">
@@ -130,6 +163,9 @@ export default async function JobRolesPage({
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Status
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Required documents
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                     Actions
                   </th>
@@ -145,6 +181,30 @@ export default async function JobRolesPage({
                       <Badge variant={role.active ? "Active" : "Inactive"}>
                         {role.active ? "Active" : "Archived"}
                       </Badge>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      {(() => {
+                        const own = requirementsByRole.get(role.name.trim().toLowerCase()) ?? 0;
+                        const href = `/compliance/requirements#role-${encodeURIComponent(role.name)}`;
+                        if (own === 0) {
+                          return (
+                            <Link
+                              href="/compliance/requirements/new"
+                              className="inline-flex items-center gap-1.5 font-medium text-amber-700 hover:text-amber-900"
+                              title="No document checklist has been set for this role yet"
+                            >
+                              <AlertTriangle className="h-4 w-4" />
+                              Not set{baselineCount > 0 ? ` — baseline only (${baselineCount})` : ""}
+                            </Link>
+                          );
+                        }
+                        return (
+                          <Link href={href} className="font-medium text-blue-600 hover:text-blue-800">
+                            {own} document{own === 1 ? "" : "s"}
+                            {baselineCount > 0 ? ` + ${baselineCount} baseline` : ""}
+                          </Link>
+                        );
+                      })()}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right">
                       <Link

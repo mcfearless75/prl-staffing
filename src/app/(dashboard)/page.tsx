@@ -19,6 +19,10 @@ import {
 } from "lucide-react";
 import { ComplianceScoreRing } from "./compliance/compliance-score-ring";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
+import {
+  LIVE_ASSIGNMENT_STATUSES,
+  IN_PROGRESS_ASSIGNMENT_STATUSES,
+} from "@/lib/assignment-statuses";
 import { CampaignActivityFeed } from "@/components/campaign-activity-feed";
 
 export default async function DashboardPage({
@@ -36,7 +40,7 @@ export default async function DashboardPage({
 
   const [
     totalContractors,
-    activeAssignments,
+    assignedContractorRows,
     pendingTimesheets,
     complianceAlerts,
     totalCompanies,
@@ -56,7 +60,16 @@ export default async function DashboardPage({
     pendingExpenses,
   ] = await Promise.all([
     prisma.contractor.count(),
-    prisma.assignment.count({ where: { status: "Active" } }),
+    // Distinct CONTRACTORS on live work — deliberately not a count of assignment
+    // rows. Counting rows with status exactly "Active" reported 394 while
+    // /compliance reported 416 for what staff read as the same thing: it missed
+    // everyone on Ending or Placed, and double-counted anyone holding two
+    // assignments. Same filter as the compliance page, so the two agree.
+    prisma.assignment.findMany({
+      where: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
+      select: { contractorId: true },
+      distinct: ["contractorId"],
+    }),
     prisma.timesheet.count({
       where: { status: { in: ["Draft", "Submitted"] } },
     }),
@@ -107,9 +120,13 @@ export default async function DashboardPage({
     prisma.contractor.count({ where: { status: "Applied" } }),
     // Open payment queries
     prisma.paymentQuery.count({ where: { status: { in: ["Open", "Assigned"] } } }),
-    // Assignments ending soon
+    // Assignments ending soon — counted across all started work, not just
+    // "Active", so holiday cover and wind-downs aren't missed.
     prisma.assignment.count({
-      where: { status: "Active", endDate: { gte: now, lte: in14Days } },
+      where: {
+        status: { in: [...IN_PROGRESS_ASSIGNMENT_STATUSES] },
+        endDate: { gte: now, lte: in14Days },
+      },
     }),
     // Assignments starting soon
     prisma.assignment.count({
@@ -117,11 +134,14 @@ export default async function DashboardPage({
     }),
     // Assignments overdue completion
     prisma.assignment.count({
-      where: { status: { in: ["Active", "Ending"] }, endDate: { lt: now } },
+      where: { status: { in: [...IN_PROGRESS_ASSIGNMENT_STATUSES] }, endDate: { lt: now } },
     }),
     // Pending expenses awaiting approval
     prisma.expense.count({ where: { status: "Pending" } }),
   ]);
+
+  // Head count of people, not of assignment rows — see the query above.
+  const assignedContractors = assignedContractorRows.length;
 
   const complianceScore =
     totalComplianceRecords > 0
@@ -193,8 +213,8 @@ export default async function DashboardPage({
           href="/contractors"
         />
         <StatCard
-          title="Active Assignments"
-          value={activeAssignments}
+          title="Assigned Subcontractors"
+          value={assignedContractors}
           icon={TrendingUp}
           href="/assignments"
         />

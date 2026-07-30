@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate, getInitials } from "@/lib/utils";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import {
   Plus,
   ShieldCheck,
@@ -81,7 +82,7 @@ export default async function CompliancePage({
     // Score is scoped to subcontractors actively assigned to a client — we
     // can't sensibly chase certs for people not currently working for us.
     prisma.assignment.findMany({
-      where: { status: { in: ["Placed", "Active", "Ending"] } },
+      where: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
       select: { contractorId: true },
       distinct: ["contractorId"],
     }),
@@ -387,7 +388,7 @@ export default async function CompliancePage({
           <p className="text-xs text-gray-400">
             {contractorsWithRecords} of {assignedTotal} have at least one record
             &nbsp;·&nbsp;
-            whole book ({totalContractors} subcontractors): {wholeWorkforceScore}%
+            on the books, excluding dormant &amp; leavers ({totalContractors} subcontractors): {wholeWorkforceScore}%
           </p>
         </div>
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { loadRequirementMatcher } from "@/lib/compliance-gaps";
 import { resolveRole } from "@/lib/role-normalisation";
 
@@ -25,7 +26,7 @@ import { resolveRole } from "@/lib/role-normalisation";
 // regression in the workforce.
 
 export type ComplianceScore = {
-  /** Distinct contractors on Placed/Active/Ending assignments. */
+  /** Distinct contractors on a live assignment — see LIVE_ASSIGNMENT_STATUSES. */
   assignedTotal: number;
   /** Every mandatory required document present and Verified. */
   fullyCompliant: number;
@@ -47,7 +48,7 @@ export type ComplianceScore = {
   requirementsConfigured: boolean;
 };
 
-const ACTIVE_STATUSES = ["Placed", "Active", "Ending"];
+const ACTIVE_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
 export async function getComplianceScore(): Promise<ComplianceScore> {
   const [assignments, matcher] = await Promise.all([

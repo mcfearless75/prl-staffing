@@ -5,12 +5,22 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { parseAssignmentRateFields } from "@/lib/assignment-rates";
+import { ASSIGNMENT_STATUSES, LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
+import {
+  activateContractorIfInactive as activateContractor,
+  deactivateContractorIfNoLiveWork,
+} from "@/lib/contractor-status";
 
 export type AssignmentFormState = { error?: string } | null;
 
 // Statuses that require the contractor to hold verified mandatory compliance
 // before the assignment can be saved.
-const GATED_STATUSES = new Set(["Placed", "Active"]);
+//
+// "Holiday" is gated alongside Placed/Active because it puts someone new onto a
+// site — without it, picking Holiday would be a way to bypass the compliance
+// check entirely. "Ending" is not gated: that work was already checked when it
+// started, and blocking a wind-down would strand the assignment.
+const GATED_STATUSES = new Set(["Placed", "Active", "Holiday"]);
 
 export interface ComplianceRequirementCheck {
   type: string;
@@ -84,36 +94,28 @@ export async function checkComplianceForAssignment(params: {
  * below for the reverse transition.
  */
 async function activateContractorIfInactive(contractorId: string, status: string): Promise<void> {
-  if (!GATED_STATUSES.has(status)) return;
+  // Gated on the LIVE set, not GATED_STATUSES. Those answer different questions:
+  // GATED_STATUSES is "does this need a compliance check?", this is "is this
+  // person working?". Using the compliance gate here meant saving an assignment
+  // as "Ending" left an Inactive contractor Inactive while they were still on
+  // site.
+  if (!(LIVE_ASSIGNMENT_STATUSES as readonly string[]).includes(status)) return;
 
-  await prisma.contractor.updateMany({
-    where: { id: contractorId, status: "Inactive" },
-    data: { status: "Active" },
-  });
+  await activateContractor(contractorId);
 }
 
 /**
- * When an assignment moves out of Placed/Active (or is deleted), the
- * contractor may no longer be working anywhere. Only flips a contractor
- * from "Active" to "Inactive" when they have zero remaining assignments
- * with status in {Placed, Active} — never touches "On Hold" (a deliberate
- * staff flag) or a contractor who already has other active/placed work.
+ * When an assignment stops being live (or is deleted), the contractor may no
+ * longer be working anywhere.
+ *
+ * Now a thin alias over the shared helper. It used to carry its own copy of the
+ * live-status list, which is exactly how a contractor once ended up Inactive and
+ * "currently placed" at the same time — the copy here and the headcount queries
+ * elsewhere disagreed about "Ending". Kept as a named wrapper only so the call
+ * sites below read the same as before.
  */
 async function deactivateContractorIfNoActiveAssignments(contractorId: string): Promise<void> {
-  // Must match the set the headcount and compliance queries treat as live
-  // ({Placed, Active, Ending}). This previously omitted "Ending", so a
-  // contractor whose last assignment was winding down got marked Inactive here
-  // while /compliance still counted them as currently placed — the same person
-  // simultaneously not working and in the assigned workforce.
-  const remaining = await prisma.assignment.count({
-    where: { contractorId, status: { in: ["Placed", "Active", "Ending"] } },
-  });
-  if (remaining > 0) return;
-
-  await prisma.contractor.updateMany({
-    where: { id: contractorId, status: "Active" },
-    data: { status: "Inactive" },
-  });
+  await deactivateContractorIfNoLiveWork(contractorId);
 }
 
 function isRedirectError(error: unknown): boolean {
@@ -331,7 +333,7 @@ export async function updateAssignmentStatus(id: string, status: string) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
-    const validStatuses = ["Placed", "Active", "Ending", "Completed"];
+    const validStatuses: readonly string[] = ASSIGNMENT_STATUSES;
     if (!validStatuses.includes(status)) {
       throw new Error("Invalid status");
     }

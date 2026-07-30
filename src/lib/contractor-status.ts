@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 
 /**
  * Contractor working-status transitions, in one place.
@@ -14,11 +15,13 @@ import { prisma } from "@/lib/db";
  */
 
 /**
- * Assignment statuses that mean the contractor is still working. Must stay in
- * step with the headcount queries in /compliance and the dashboard — if these
- * two ever disagree, the same person is both placed and not placed.
+ * Assignment statuses that mean the contractor is still working. Re-exported so
+ * every existing caller keeps importing it from here, but DEFINED in
+ * `assignment-statuses.ts` — that file imports nothing, so client components can
+ * use the same constant without pulling Prisma into the browser bundle. There is
+ * still exactly one definition; see that file for why.
  */
-export const LIVE_ASSIGNMENT_STATUSES = ["Placed", "Active", "Ending"] as const;
+export { LIVE_ASSIGNMENT_STATUSES };
 
 /**
  * Flips a contractor Inactive -> Active when they are put back to work.

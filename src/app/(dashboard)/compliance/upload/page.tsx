@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import { loadRequirementMatcher } from "@/lib/compliance-gaps";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 
-const ACTIVE_ASSIGNMENT_STATUSES = ["Placed", "Active", "Ending"];
+const ACTIVE_ASSIGNMENT_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
 /**
  * Fallback checklist, used only when no ComplianceRequirement rows exist at all.

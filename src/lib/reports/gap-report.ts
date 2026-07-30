@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { loadRequirementMatcher } from "@/lib/compliance-gaps";
 import { resolveRole } from "@/lib/role-normalisation";
 
@@ -44,7 +45,7 @@ export interface GapReportSummary {
   contractorsWithoutChecklist: number;
 }
 
-const ACTIVE_ASSIGNMENT_STATUSES = ["Placed", "Active", "Ending"];
+const ACTIVE_ASSIGNMENT_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
 /**
  * Per-contractor document gap report.

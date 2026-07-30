@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import {
   DndContext,
   DragOverlay,
@@ -30,12 +31,13 @@ type Assignment = {
   company: { name: string } | null;
 };
 
-const STATUSES = ["Placed", "Active", "Ending", "Completed"] as const;
+const STATUSES = ASSIGNMENT_STATUSES;
 
 const statusColors: Record<string, { border: string; header: string; dropBorder: string; dropBg: string; dot: string }> = {
   Placed: { border: "border-l-blue-500", header: "bg-blue-50 text-blue-700", dropBorder: "border-blue-400", dropBg: "bg-blue-50/50", dot: "bg-blue-500" },
   Active: { border: "border-l-emerald-500", header: "bg-emerald-50 text-emerald-700", dropBorder: "border-emerald-400", dropBg: "bg-emerald-50/50", dot: "bg-emerald-500" },
   Ending: { border: "border-l-orange-500", header: "bg-orange-50 text-orange-700", dropBorder: "border-orange-400", dropBg: "bg-orange-50/50", dot: "bg-orange-500" },
+  Holiday: { border: "border-l-violet-500", header: "bg-violet-50 text-violet-700", dropBorder: "border-violet-400", dropBg: "bg-violet-50/50", dot: "bg-violet-500" },
   Completed: { border: "border-l-gray-400", header: "bg-gray-50 text-gray-600", dropBorder: "border-gray-400", dropBg: "bg-gray-50/50", dot: "bg-gray-400" },
 };
 
@@ -229,12 +231,11 @@ export function KanbanBoard({
     return matchesSearch && matchesCompany;
   });
 
-  const grouped: Record<string, Assignment[]> = {
-    Placed: filtered.filter((a) => a.status === "Placed"),
-    Active: filtered.filter((a) => a.status === "Active"),
-    Ending: filtered.filter((a) => a.status === "Ending"),
-    Completed: filtered.filter((a) => a.status === "Completed"),
-  };
+  // Built from STATUSES so a new status gets a column automatically — the
+  // hardcoded version silently dropped any assignment whose status wasn't listed.
+  const grouped: Record<string, Assignment[]> = Object.fromEntries(
+    STATUSES.map((s) => [s, filtered.filter((a) => a.status === s)])
+  );
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const assignment = event.active.data.current?.assignment as Assignment | undefined;

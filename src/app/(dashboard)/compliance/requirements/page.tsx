@@ -6,8 +6,9 @@ import { Badge } from "@/components/badge";
 import { Plus, Trash2, Building2, Briefcase, AlertTriangle, Users } from "lucide-react";
 import { deleteRequirement, toggleMandatory } from "./actions";
 import { resolveRole } from "@/lib/role-normalisation";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 
-const ACTIVE_STATUSES = ["Placed", "Active", "Ending"];
+const ACTIVE_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
 /** How many assigned subcontractors resolve to each canonical role today. */
 async function getRoleUsage() {
@@ -183,7 +184,11 @@ export default async function RequirementsPage() {
             return (
               <div
                 key={role}
-                className="overflow-hidden rounded-xl border border-gray-200 bg-white"
+                // Deep-link target for the "Required documents" column on
+                // /job-roles, so staff land on the right checklist rather than
+                // the top of a long page.
+                id={`role-${encodeURIComponent(role)}`}
+                className="overflow-hidden rounded-xl border border-gray-200 bg-white scroll-mt-24"
               >
                 <div className="flex items-center gap-3 border-b border-gray-200 bg-gray-50 px-6 py-3">
                   <Briefcase className="h-5 w-5 text-gray-500" />

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { resolveRole, requirementAppliesToRole, type ResolvedRole } from "@/lib/role-normalisation";
 
 export type ComplianceGap = {
@@ -27,7 +28,7 @@ export type ComplianceGapSummary = {
   rolesWithoutRequirements: { role: string; contractors: number }[];
 };
 
-const ACTIVE_STATUSES = ["Placed", "Active", "Ending"];
+const ACTIVE_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
 /**
  * Finds compliance gaps: requirements not met by contractors on active/placed

@@ -3,6 +3,11 @@
 import { useEffect, useState, useActionState } from "react";
 import Link from "next/link";
 import type { AssignmentFormState } from "./actions";
+import {
+  ASSIGNMENT_STATUSES,
+  ASSIGNMENT_STATUS_DESCRIPTIONS,
+  type AssignmentStatus,
+} from "@/lib/assignment-statuses";
 
 type Dept = { id: string; name: string };
 type Site = { id: string; name: string; departments: Dept[] };
@@ -274,11 +279,13 @@ export function AssignmentForm({
             onChange={(e) => setStatus(e.target.value)}
             className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            <option value="Placed">Placed</option>
-            <option value="Active">Active</option>
-            <option value="Ending">Ending</option>
-            <option value="Completed">Completed</option>
+            {ASSIGNMENT_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
           </select>
+          <p className="mt-1 text-xs text-gray-500">{ASSIGNMENT_STATUS_DESCRIPTIONS[status as AssignmentStatus] ?? ""}</p>
         </div>
 
         {/* PO Number */}

@@ -6,8 +6,9 @@ import { AlertTriangle } from "lucide-react";
 import { createRequirement } from "../actions";
 import { TypePicker } from "../type-picker";
 import { CANONICAL_ROLES, resolveRole } from "@/lib/role-normalisation";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 
-const ACTIVE_STATUSES = ["Placed", "Active", "Ending"];
+const ACTIVE_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
 /**
  * Roles are offered from the canonical vocabulary, annotated with how many

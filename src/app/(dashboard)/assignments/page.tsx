@@ -6,8 +6,9 @@ import { Badge } from "@/components/badge";
 import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { KanbanBoard } from "./kanban-board";
+import { ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 
-const STATUSES = ["Placed", "Active", "Ending", "Completed"] as const;
+const STATUSES = ASSIGNMENT_STATUSES;
 
 export default async function AssignmentsPage({
   searchParams,

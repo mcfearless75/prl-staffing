@@ -224,7 +224,7 @@ model Assignment {
   location       String?
   startDate      DateTime
   endDate        DateTime?
-  status         String      @default("Active") // Placed, Active, Ending, Completed
+  status         String      @default("Active") // See src/lib/assignment-statuses.ts — Placed, Active, Ending, Holiday, Completed
   poNumber       String?
   notes          String?
   chargeRate     Float?      // client charge rate for this assignment

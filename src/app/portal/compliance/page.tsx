@@ -7,8 +7,9 @@ import { formatDate } from "@/lib/utils";
 import { ComplianceUploader } from "./compliance-uploader";
 import { loadRequirementMatcher } from "@/lib/compliance-gaps";
 import { categoryForType } from "@/lib/compliance-types";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 
-const ACTIVE_ASSIGNMENT_STATUSES = ["Placed", "Active", "Ending"];
+const ACTIVE_ASSIGNMENT_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
 /**
  * Shown only when no requirements are configured at all. Without a fallback the
