@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/badge";
+import { setCompanyActive } from "./actions";
 
 type Company = {
   id: string;
@@ -29,6 +30,29 @@ export function CompaniesTable({ companies }: { companies: Company[] }) {
     } else {
       setSelected(new Set(companies.map((c) => c.id)));
     }
+  }
+
+  function toggleActive(company: Company) {
+    // Deactivating is not just a label change — it closes the client's live
+    // assignments and takes their contractors off the books, so it is worth a
+    // confirmation. Reactivating is harmless and does not reinstate anyone.
+    if (company.isActive) {
+      const ok = window.confirm(
+        `Deactivate ${company.name}?\n\n` +
+          "This closes their current assignments. Any contractor left without " +
+          "work anywhere else will be set to Inactive. Contractors placed with " +
+          "another client are not affected.\n\n" +
+          "Reactivating later will not put those contractors back to work."
+      );
+      if (!ok) return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const result = await setCompanyActive(company.id, !company.isActive);
+      if (result?.type === "error") setError(result.message);
+      else router.refresh();
+    });
   }
 
   function toggleOne(id: string) {
@@ -138,12 +162,26 @@ export function CompaniesTable({ companies }: { companies: Company[] }) {
                   </Badge>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  <Link
-                    href={`/companies/${company.id}`}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                  >
-                    View
-                  </Link>
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => toggleActive(company)}
+                      className={`text-sm font-medium disabled:opacity-50 ${
+                        company.isActive
+                          ? "text-gray-600 hover:text-gray-900"
+                          : "text-green-600 hover:text-green-800"
+                      }`}
+                    >
+                      {company.isActive ? "Deactivate" : "Reactivate"}
+                    </button>
+                    <Link
+                      href={`/companies/${company.id}`}
+                      className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                    >
+                      View
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}

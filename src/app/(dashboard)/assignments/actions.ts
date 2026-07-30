@@ -100,8 +100,13 @@ async function activateContractorIfInactive(contractorId: string, status: string
  * staff flag) or a contractor who already has other active/placed work.
  */
 async function deactivateContractorIfNoActiveAssignments(contractorId: string): Promise<void> {
+  // Must match the set the headcount and compliance queries treat as live
+  // ({Placed, Active, Ending}). This previously omitted "Ending", so a
+  // contractor whose last assignment was winding down got marked Inactive here
+  // while /compliance still counted them as currently placed — the same person
+  // simultaneously not working and in the assigned workforce.
   const remaining = await prisma.assignment.count({
-    where: { contractorId, status: { in: ["Placed", "Active"] } },
+    where: { contractorId, status: { in: ["Placed", "Active", "Ending"] } },
   });
   if (remaining > 0) return;
 

@@ -27,9 +27,12 @@ export default async function CompaniesPage({
     where.isActive = true;
   }
 
+  // Active clients first, then alphabetical within each group. When "show
+  // inactive too" is on, the ones still being worked stay at the top rather than
+  // being scattered through the list alphabetically.
   const companies = await prisma.company.findMany({
     where,
-    orderBy: { name: "asc" },
+    orderBy: [{ isActive: "desc" }, { name: "asc" }],
   });
 
   return (
