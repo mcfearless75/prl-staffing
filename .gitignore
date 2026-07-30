@@ -67,3 +67,8 @@ contractor-data.json
 # get misread as arbitrary-value class candidates) — excluded from scanning.
 public/*.eps
 public/*.docx
+
+# Contains a hardcoded production Postgres connection string. Superseded by
+# scripts/smoke-prism.mjs, which takes the credential from the environment
+# (run it via `railway run --service Postgres`) instead of storing one.
+scripts/smoke-timesheets.mjs
