@@ -168,10 +168,14 @@ export default async function DashboardPage({
     ? Math.round((complianceFullyCompliant / assignedTotal) * 100)
     : 0;
 
-  // Demo mode — URL param OR today-only date override (reverts automatically at midnight)
-  const todayUK = new Date().toLocaleDateString("en-GB", { timeZone: "Europe/London" }); // "18/05/2026"
-  const demoDate = "18/05/2026";
-  const isDemoActive = isDemo || todayUK === demoDate;
+  // Demo mode — explicit ?demo=true only.
+  //
+  // There used to be a second trigger here: a hardcoded date ("18/05/2026")
+  // that silently forced these figures to a perfect 100% for anyone viewing the
+  // dashboard on that day, with nothing on screen to say so. Removed — a
+  // compliance number that can lie without disclosing it is worse than no
+  // number. The URL param survives for demos and now renders a visible banner.
+  const isDemoActive = isDemo;
 
   const displayWorkforceScore = isDemoActive ? 100 : workforceScore;
   const displayComplianceScore = isDemoActive ? 100 : complianceScore;
@@ -186,6 +190,24 @@ export default async function DashboardPage({
         title="Dashboard"
         description="Overview of your subcontractor workforce and compliance status."
       />
+
+      {/* Demo mode must never be mistakable for live data. */}
+      {isDemoActive && (
+        <div className="rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 px-5 py-4">
+          <p className="text-sm font-semibold text-amber-900">
+            Demo mode — compliance figures on this page are not real.
+          </p>
+          <p className="mt-1 text-sm text-amber-800">
+            Scores are forced to 100% for demonstration. The live workforce score is{" "}
+            <strong>{workforceScore}%</strong> ({complianceFullyCompliant} fully compliant of{" "}
+            {assignedTotal} assigned, {complianceNoRecords} with no records).{" "}
+            <Link href="/" className="font-medium underline">
+              Show real figures
+            </Link>
+            .
+          </p>
+        </div>
+      )}
 
       {/* KPI Cards - all clickable */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

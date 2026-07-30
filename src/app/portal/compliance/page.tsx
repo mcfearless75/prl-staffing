@@ -5,30 +5,80 @@ import { redirect } from "next/navigation";
 import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { ComplianceUploader } from "./compliance-uploader";
+import { loadRequirementMatcher } from "@/lib/compliance-gaps";
+import { categoryForType } from "@/lib/compliance-types";
 
-const REQUIRED_TYPES = [
-  { type: "CSCS", label: "CSCS Card", description: "Construction Skills Certification Scheme card", icon: "🏗️" },
-  { type: "Right to Work", label: "Right to Work", description: "Passport, visa, or share code proving eligibility to work in UK", icon: "✅" },
-  { type: "DBS", label: "DBS Check", description: "Disclosure and Barring Service certificate", icon: "🔍" },
-  { type: "Insurance", label: "Insurance", description: "Public liability or professional indemnity insurance", icon: "🛡️" },
-  { type: "Qualification", label: "Qualification / Cert", description: "Trade qualifications, NVQs, or professional certificates", icon: "🎓" },
-  { type: "IR35 Assessment", label: "IR35 Assessment", description: "Status Determination Statement for off-payroll working", icon: "📝" },
-];
+const ACTIVE_ASSIGNMENT_STATUSES = ["Placed", "Active", "Ending"];
+
+/**
+ * Shown only when no requirements are configured at all. Without a fallback the
+ * portal would tell a contractor holding nothing that they need nothing.
+ */
+const FALLBACK_TYPES = ["Right to Work", "CSCS"];
+
+/** One emoji per document family, so the list stays scannable on a phone. */
+const CATEGORY_ICONS: Record<string, string> = {
+  "Right to Work": "✅",
+  CSCS: "🏗️",
+  CCNSG: "🦺",
+  NPORS: "🚜",
+  CPCS: "🏗️",
+  "Plant & Lifting": "🏗️",
+  Medical: "🩺",
+  "Health & Safety": "⛑️",
+  Rail: "🚆",
+  "Utilities & Streetworks": "🚧",
+  "Trade Qualifications": "🎓",
+  Driving: "🚗",
+  "Identity & Payroll": "💷",
+  DBS: "🔍",
+  "Insurance & Legal": "🛡️",
+  General: "📄",
+};
 
 export default async function PortalCompliancePage() {
   const session = await auth();
   const contractorId = (session?.user as { contractorId?: string })?.contractorId;
   if (!contractorId) redirect("/login");
 
-  const records = await prisma.complianceRecord.findMany({
-    where: { contractorId },
-    orderBy: [{ status: "asc" }, { expiryDate: "asc" }],
-  });
+  const [records, documents, contractor, matcher] = await Promise.all([
+    prisma.complianceRecord.findMany({
+      where: { contractorId },
+      orderBy: [{ status: "asc" }, { expiryDate: "asc" }],
+    }),
+    prisma.document.findMany({
+      where: { contractorId },
+      orderBy: { version: "desc" },
+    }),
+    prisma.contractor.findUnique({
+      where: { id: contractorId },
+      select: {
+        jobTitle: true,
+        assignments: {
+          where: { status: { in: ACTIVE_ASSIGNMENT_STATUSES } },
+          select: { role: true, companyId: true },
+        },
+      },
+    }),
+    loadRequirementMatcher(),
+  ]);
 
-  const documents = await prisma.document.findMany({
-    where: { contractorId },
-    orderBy: { version: "desc" },
-  });
+  // The checklist is the one configured for this contractor's role, so the
+  // portal now asks for the same documents the Gap Report chases them for.
+  const assignment =
+    contractor?.assignments.find((a) => a.role?.trim()) ?? contractor?.assignments[0];
+  const checklist = matcher.forRole(assignment?.role, contractor?.jobTitle, assignment?.companyId);
+
+  const requiredTypes = (
+    checklist.length > 0
+      ? checklist.map((c) => ({ type: c.type, description: c.description, isMandatory: c.isMandatory }))
+      : FALLBACK_TYPES.map((type) => ({ type, description: null, isMandatory: true }))
+  ).map((c) => ({
+    ...c,
+    label: c.type,
+    icon: CATEGORY_ICONS[categoryForType(c.type)] ?? "📄",
+    description: c.description ?? `${categoryForType(c.type)} document`,
+  }));
 
   // Map records by type
   const recordByType: Record<string, typeof records[0]> = {};
@@ -42,11 +92,14 @@ export default async function PortalCompliancePage() {
     if (!docByType[d.type]) docByType[d.type] = d;
   }
 
-  const verified = records.filter((r) => r.status === "Verified").length;
-  const total = REQUIRED_TYPES.length;
-  const score = Math.round((verified / total) * 100);
+  // Count verified among the REQUIRED types only. Counting every verified
+  // record the contractor holds meant unrelated extras could push the bar to
+  // 100% while a required document was still missing.
+  const total = requiredTypes.length;
+  const verified = requiredTypes.filter((t) => recordByType[t.type]?.status === "Verified").length;
+  const score = total > 0 ? Math.round((verified / total) * 100) : 0;
 
-  const completedCount = REQUIRED_TYPES.filter((t) => recordByType[t.type]).length;
+  const completedCount = requiredTypes.filter((t) => recordByType[t.type]).length;
 
   return (
     <div className="space-y-4">
@@ -74,7 +127,7 @@ export default async function PortalCompliancePage() {
               className={`h-full rounded-full transition-all duration-500 ${
                 score >= 80 ? "bg-emerald-500" : score >= 50 ? "bg-amber-500" : "bg-red-500"
               }`}
-              style={{ width: `${Math.round((completedCount / total) * 100)}%` }}
+              style={{ width: `${total > 0 ? Math.round((completedCount / total) * 100) : 0}%` }}
             />
           </div>
         </div>
@@ -84,7 +137,7 @@ export default async function PortalCompliancePage() {
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-900">Required Documents</h2>
 
-        {REQUIRED_TYPES.map((reqType) => {
+        {requiredTypes.map((reqType) => {
           const record = recordByType[reqType.type];
           const doc = docByType[reqType.type];
           const status = record?.status || "Not Submitted";
@@ -119,7 +172,7 @@ export default async function PortalCompliancePage() {
                     <Badge variant={record.status}>{record.status}</Badge>
                   ) : (
                     <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-medium text-gray-500">
-                      Required
+                      {reqType.isMandatory ? "Required" : "Optional"}
                     </span>
                   )}
                 </div>
@@ -178,11 +231,11 @@ export default async function PortalCompliancePage() {
       </div>
 
       {/* Additional records not in required list */}
-      {records.filter((r) => !REQUIRED_TYPES.find((t) => t.type === r.type)).length > 0 && (
+      {records.filter((r) => !requiredTypes.find((t) => t.type === r.type)).length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-gray-900">Other Records</h2>
           {records
-            .filter((r) => !REQUIRED_TYPES.find((t) => t.type === r.type))
+            .filter((r) => !requiredTypes.find((t) => t.type === r.type))
             .map((record) => (
               <div key={record.id} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
                 <div className="flex items-center justify-between">

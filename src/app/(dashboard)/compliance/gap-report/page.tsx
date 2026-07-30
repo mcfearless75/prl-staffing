@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { getGapReport } from "@/lib/reports/gap-report";
 
 function DocPill({ status }: { status: string }) {
@@ -38,8 +38,51 @@ export default async function GapReportPage() {
       </Link>
       <PageHeader
         title="Compliance Gap Report"
-        description="Per-contractor breakdown of missing, pending and verified compliance documents — active workforce only."
+        description="Per-contractor breakdown of missing, pending and verified compliance documents — active workforce only. Each contractor is checked against the documents required for their role."
       />
+
+      {!summary.requirementsConfigured && (
+        <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div className="text-sm text-amber-900">
+            <p className="font-medium">No compliance requirements are configured.</p>
+            <p className="mt-1 text-amber-800">
+              Nothing is currently required of anyone, so this report has nothing to check
+              against and every figure below reads as zero. Set up role checklists first.
+            </p>
+            <Link
+              href="/compliance/requirements"
+              className="mt-2 inline-block font-medium text-amber-900 underline"
+            >
+              Configure requirements
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {summary.requirementsConfigured && summary.contractorsWithoutChecklist > 0 && (
+        <div className="flex gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+          <div className="text-sm text-blue-900">
+            <p className="font-medium">
+              {summary.contractorsWithoutChecklist} of {summary.totalActive} contractors have no
+              checklist to be measured against.
+            </p>
+            <p className="mt-1 text-blue-800">
+              {summary.contractorsWithoutRole > 0 && (
+                <>
+                  {summary.contractorsWithoutRole} have no role recorded at all.{" "}
+                </>
+              )}
+              They are excluded from the average rather than counted as compliant.{" "}
+              <Link href="/compliance/requirements" className="font-medium underline">
+                Review role coverage
+              </Link>
+              .
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -95,6 +138,7 @@ export default async function GapReportPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Contractor</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Role</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Completion</th>
                 {summary.docTypeBreakdown.map((d) => (
                   <th key={d.type} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -112,20 +156,53 @@ export default async function GapReportPage() {
                     <p className="text-xs text-gray-400">{c.email || "—"}</p>
                   </td>
                   <td className="whitespace-nowrap px-6 py-3">
-                    <span
-                      className={`text-sm font-semibold ${
-                        c.completionPct === 100 ? "text-emerald-600" : c.completionPct === 0 ? "text-red-600" : "text-amber-600"
-                      }`}
-                    >
-                      {c.completionPct}%
-                    </span>
-                    <span className="text-xs text-gray-400 ml-1">({c.requiredComplete}/{c.requiredTotal})</span>
+                    {c.role ? (
+                      <span className="text-sm text-gray-700">{c.role}</span>
+                    ) : (
+                      <span className="text-xs italic text-amber-600" title="No role on assignment or profile">
+                        not recorded
+                      </span>
+                    )}
                   </td>
-                  {c.required.map((r) => (
-                    <td key={r.type} className="whitespace-nowrap px-4 py-3">
-                      <DocPill status={r.status} />
-                    </td>
-                  ))}
+                  <td className="whitespace-nowrap px-6 py-3">
+                    {c.requiredTotal === 0 ? (
+                      <span className="text-xs italic text-gray-400" title="No requirements configured for this role">
+                        no checklist
+                      </span>
+                    ) : (
+                      <>
+                        <span
+                          className={`text-sm font-semibold ${
+                            c.completionPct === 100 ? "text-emerald-600" : c.completionPct === 0 ? "text-red-600" : "text-amber-600"
+                          }`}
+                        >
+                          {c.completionPct}%
+                        </span>
+                        <span className="text-xs text-gray-400 ml-1">({c.requiredComplete}/{c.requiredTotal})</span>
+                      </>
+                    )}
+                  </td>
+                  {/* Look each column's type up by name. Checklists are now
+                      per-role, so contractors have different required sets —
+                      rendering c.required in order would put one person's CSCS
+                      pill under another column's heading. */}
+                  {summary.docTypeBreakdown.map((d) => {
+                    const doc = c.required.find((r) => r.type === d.type);
+                    return (
+                      <td key={d.type} className="whitespace-nowrap px-4 py-3">
+                        {doc ? (
+                          <DocPill status={doc.status} />
+                        ) : (
+                          <span
+                            className="text-[10px] text-gray-300"
+                            title="Not required for this role"
+                          >
+                            n/a
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
                   <td className="whitespace-nowrap px-6 py-3 text-right">
                     <Link href={`/contractors/${c.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
                       View
@@ -135,7 +212,7 @@ export default async function GapReportPage() {
               ))}
               {contractors.length === 0 && (
                 <tr>
-                  <td colSpan={3 + summary.docTypeBreakdown.length} className="px-6 py-12 text-center text-sm text-gray-400">
+                  <td colSpan={4 + summary.docTypeBreakdown.length} className="px-6 py-12 text-center text-sm text-gray-400">
                     No active contractors found.
                   </td>
                 </tr>

@@ -1,6 +1,15 @@
 import { prisma } from "@/lib/db";
+import { loadRequirementMatcher } from "@/lib/compliance-gaps";
 
-const REQUIRED_TYPES = ["Right to Work", "CSCS", "Insurance"];
+const ACTIVE_ASSIGNMENT_STATUSES = ["Placed", "Active", "Ending"];
+
+/**
+ * Fallback checklist, used only when no ComplianceRequirement rows exist at all.
+ * Without it a contractor sent this link before requirements are configured
+ * would be told they need nothing — the page would congratulate them on being
+ * complete while holding no documents.
+ */
+const FALLBACK_TYPES = ["Right to Work", "CSCS"];
 
 interface PageProps {
   searchParams: Promise<{ contractorId?: string; success?: string }>;
@@ -23,7 +32,18 @@ export default async function ComplianceUploadPage({ searchParams }: PageProps) 
 
   const contractor = await prisma.contractor.findUnique({
     where: { id: contractorId },
-    select: { id: true, firstName: true, lastName: true, email: true, status: true },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      status: true,
+      jobTitle: true,
+      assignments: {
+        where: { status: { in: ACTIVE_ASSIGNMENT_STATUSES } },
+        select: { role: true, companyId: true },
+      },
+    },
   });
 
   if (!contractor) {
@@ -42,8 +62,18 @@ export default async function ComplianceUploadPage({ searchParams }: PageProps) 
     select: { type: true, status: true },
   });
 
+  // What this contractor needs comes from their role's checklist, not a fixed
+  // list — a Joiner and a Groundworker are asked for different cards.
+  const matcher = await loadRequirementMatcher();
+  const assignment =
+    contractor.assignments.find((a) => a.role?.trim()) ?? contractor.assignments[0];
+  const checklist = matcher.forRole(assignment?.role, contractor.jobTitle, assignment?.companyId);
+
+  const requiredTypes =
+    checklist.length > 0 ? checklist.filter((c) => c.isMandatory).map((c) => c.type) : FALLBACK_TYPES;
+
   const existingTypes = new Set(existing.map((r) => r.type));
-  const missingTypes = REQUIRED_TYPES.filter((t) => !existingTypes.has(t));
+  const missingTypes = requiredTypes.filter((t) => !existingTypes.has(t));
   const allCovered = missingTypes.length === 0;
 
   return (
