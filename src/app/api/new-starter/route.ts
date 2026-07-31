@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendEmail, NEW_STARTER_RECIPIENTS } from "@/lib/email";
 import { maskNI } from "@/lib/utils";
+import { checkPublicFormRateLimit } from "@/lib/rate-limit";
 
 function escapeHtml(str: string): string {
   return str
@@ -13,6 +14,15 @@ function escapeHtml(str: string): string {
 }
 
 export async function POST(request: Request) {
+  // Stores NI number, DOB, address and a signature — same 20/hr/IP cap as the
+  // other public forms.
+  if (!checkPublicFormRateLimit(request, "new-starter")) {
+    return NextResponse.json(
+      { error: "Too many submissions. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
 

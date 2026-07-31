@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { sendEmail, APPLICATION_RECIPIENTS } from "@/lib/email";
 import { Prisma } from "@prisma/client";
 import { maskNI, maskPassportNumber, maskBankAccount, maskSortCode } from "@/lib/utils";
+import { checkPublicFormRateLimit } from "@/lib/rate-limit";
 
 function escapeHtml(str: string): string {
   return str
@@ -50,6 +51,16 @@ function parseDate(value: unknown): Date | null {
 }
 
 export async function POST(request: Request) {
+  // This endpoint stores passport, visa and NI numbers, DOB, address and bank
+  // details, so it must not be an uncapped public write. Same 20/hr/IP as the
+  // other public forms.
+  if (!checkPublicFormRateLimit(request, "apply")) {
+    return NextResponse.json(
+      { error: "Too many submissions. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
 
