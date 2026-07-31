@@ -37,6 +37,34 @@ export async function activateContractorIfInactive(contractorId: string): Promis
 }
 
 /**
+ * Applies the activation rule when an assignment is SAVED at a given status —
+ * the "someone has just been put to work" entry point.
+ *
+ * Gated on the LIVE set, not on the compliance gate: those answer different
+ * questions. Saving an assignment as "Ending" still means the contractor is on
+ * site, and gating on the compliance set previously left such a contractor
+ * Inactive while they were working.
+ *
+ * This lived privately inside assignments/actions.ts, so the three OTHER paths
+ * that put someone to work — quick-assign from the contractor page, assigning
+ * to a site, and moving an existing assignment — never activated anybody. That
+ * stranded contractors with live work but an Inactive status, which matters
+ * because every compliance denominator uses `notIn ["Left","Inactive"]`: those
+ * people were on site and excluded from compliance scoring entirely.
+ *
+ * Deliberately still cannot rescue a "Left" contractor — see
+ * activateContractorIfInactive. Someone marked Left while holding live work is
+ * a contradiction that staff must resolve, not one automation should paper over.
+ */
+export async function activateContractorForAssignment(
+  contractorId: string,
+  status: string
+): Promise<void> {
+  if (!(LIVE_ASSIGNMENT_STATUSES as readonly string[]).includes(status)) return;
+  await activateContractorIfInactive(contractorId);
+}
+
+/**
  * Flips a contractor Active -> Inactive when they have no live assignment left.
  *
  * Checks for OTHER live work first, so someone placed with two clients does not

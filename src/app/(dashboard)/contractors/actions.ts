@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { parseAssignmentRateFields } from "@/lib/assignment-rates";
+import { activateContractorForAssignment } from "@/lib/contractor-status";
 
 type AssignResult = { type: "ok" | "moved" | "duplicate" | "error"; message: string } | null;
 
@@ -50,6 +51,7 @@ export async function quickAssignContractorFromProfile(
           rateBasis: rateBasis || existing.rateBasis,
         },
       });
+      await activateContractorForAssignment(contractorId, status);
       revalidatePath(`/contractors/${contractorId}`);
       return { type: "moved", message: "Assignment updated with new site/department." };
     }
@@ -75,6 +77,7 @@ export async function quickAssignContractorFromProfile(
     },
   });
 
+  await activateContractorForAssignment(contractorId, status);
   revalidatePath(`/contractors/${contractorId}`);
   return { type: "ok", message: "Assigned successfully." };
 }

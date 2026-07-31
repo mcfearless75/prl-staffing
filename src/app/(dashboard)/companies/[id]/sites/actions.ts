@@ -4,6 +4,14 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+// This file writes assignments directly, so it owns both halves of the
+// contractor working-status rule. It previously did neither: assigning someone
+// here left an Inactive contractor Inactive while they were on site, and ending
+// their last assignment left them Active with nothing to do.
+import {
+  activateContractorForAssignment,
+  deactivateContractorIfNoLiveWork,
+} from "@/lib/contractor-status";
 
 // ── Sites ─────────────────────────────────────────────────────────────────────
 
@@ -114,20 +122,24 @@ export async function endAssignment(
 ) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  await prisma.assignment.update({
+  const ended = await prisma.assignment.update({
     where: { id: assignmentId },
     data: { status: "Completed", endDate: new Date() },
+    select: { contractorId: true },
   });
+  await deactivateContractorIfNoLiveWork(ended.contractorId);
   revalidatePath(`/companies/${companyId}/sites/${siteId}`);
 }
 
 export async function endAssignmentById(assignmentId: string, companyId: string) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  await prisma.assignment.update({
+  const ended = await prisma.assignment.update({
     where: { id: assignmentId },
     data: { status: "Completed", endDate: new Date() },
+    select: { contractorId: true },
   });
+  await deactivateContractorIfNoLiveWork(ended.contractorId);
   revalidatePath(`/companies/${companyId}`);
 }
 
@@ -243,6 +255,7 @@ export async function quickAssignContractor(
         status,
       },
     });
+    await activateContractorForAssignment(contractorId, status);
     revalidatePath(`/companies/${companyId}/sites/${siteId ?? ""}`);
     revalidatePath(`/companies/${companyId}`);
     return { type: "moved", message: "Existing assignment updated to this site and department." };
@@ -260,6 +273,7 @@ export async function quickAssignContractor(
     },
   });
 
+  await activateContractorForAssignment(contractorId, status);
   revalidatePath(`/companies/${companyId}/sites/${siteId ?? ""}`);
   revalidatePath(`/companies/${companyId}`);
   return { type: "ok", message: "Assigned successfully." };

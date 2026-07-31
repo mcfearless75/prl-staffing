@@ -11,7 +11,7 @@ import {
   COMPLIANCE_GATED_STATUSES,
 } from "@/lib/assignment-statuses";
 import {
-  activateContractorIfInactive as activateContractor,
+  activateContractorForAssignment as activateContractorIfInactive,
   deactivateContractorIfNoLiveWork,
 } from "@/lib/contractor-status";
 
@@ -86,23 +86,6 @@ export async function checkComplianceForAssignment(params: {
   };
 }
 
-/**
- * When an assignment is saved as Placed/Active, the contractor should be
- * treated as working again. Only flips a contractor from "Inactive" to
- * "Active" — never touches "On Hold" (a deliberate staff flag) or an
- * already-"Active" contractor. See deactivateContractorIfNoActiveAssignments
- * below for the reverse transition.
- */
-async function activateContractorIfInactive(contractorId: string, status: string): Promise<void> {
-  // Gated on the LIVE set, not GATED_STATUSES. Those answer different questions:
-  // GATED_STATUSES is "does this need a compliance check?", this is "is this
-  // person working?". Using the compliance gate here meant saving an assignment
-  // as "Ending" left an Inactive contractor Inactive while they were still on
-  // site.
-  if (!(LIVE_ASSIGNMENT_STATUSES as readonly string[]).includes(status)) return;
-
-  await activateContractor(contractorId);
-}
 
 /**
  * When an assignment stops being live (or is deleted), the contractor may no
