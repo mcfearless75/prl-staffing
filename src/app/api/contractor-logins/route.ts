@@ -3,16 +3,30 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/require-staff";
 
 /**
  * Create contractor login accounts and send welcome emails
- * GET /api/contractor-logins?key=prl-seed-2026&limit=50&send=true
+ * GET /api/contractor-logins?limit=50&send=true — requires an admin session.
  *
  * - Creates login for active contractors who don't have one yet
  * - Sets a random temp password (they must set their own via email link)
  * - If send=true, sends welcome email with set-password link
+ *
+ * `send=true` mass-emails live contractors, so it is admin-gated on top of the
+ * ADMIN_SECRET check. ADMIN_SECRET is not currently set in Railway, which means
+ * the key check alone has been failing closed and this route is dormant — the
+ * session guard is what stops it becoming wide open the day that var is added.
  */
 export async function GET(request: Request) {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: guard.reason === "forbidden" ? 403 : 401 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
   const limit = parseInt(searchParams.get("limit") || "50", 10);

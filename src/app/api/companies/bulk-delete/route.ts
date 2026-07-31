@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/db";
-import { requireStaff } from "@/lib/require-staff";
+import { requireAdmin } from "@/lib/require-staff";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function DELETE(request: NextRequest) {
   try {
-    const guard = await requireStaff();
+    const guard = await requireAdmin();
     if (!guard.ok) return NextResponse.json({ error: "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
 
     const { ids } = (await request.json()) as { ids: string[] };

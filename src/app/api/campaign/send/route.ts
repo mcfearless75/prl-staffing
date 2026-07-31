@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { requireStaff } from "@/lib/require-staff";
+import { requireAdmin } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
@@ -509,7 +509,9 @@ function buildNoComplianceHtml(
 
 export async function POST(request: Request) {
   try {
-    const guard = await requireStaff();
+    // Mass email to live contractors — admin only. Getting this wrong has form:
+    // a misfire previously sent 12 wrong emails to real contractors.
+    const guard = await requireAdmin();
     if (!guard.ok) return NextResponse.json({ error: "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
     const { session } = guard;
 

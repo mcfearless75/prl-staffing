@@ -1,16 +1,29 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/require-staff";
 
 /**
  * GDPR Data Retention Cleanup
- * GET /api/gdpr/cleanup?key=ADMIN_SECRET
+ * GET /api/gdpr/cleanup?key=ADMIN_SECRET — requires an admin session too.
  *
  * Deletes:
  * - Expired & used password reset tokens, or tokens expired > 24h ago
  * - ActivityLog entries older than 3 years
  * - TimesheetAuditLog entries older than 3 years
+ *
+ * ADMIN_SECRET is not set in Railway, so the key check has been failing closed
+ * and this route is dormant. The session guard is what keeps it safe if that
+ * var is ever added — a deletion endpoint should not be reachable by URL alone.
  */
 export async function GET(request: Request) {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: guard.reason === "forbidden" ? 403 : 401 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
 

@@ -1,15 +1,24 @@
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { NextRequest } from "next/server";
+import { requireAdmin } from "@/lib/require-staff";
 
 export async function POST(request: NextRequest) {
   try {
-    const { key, email, password } = await request.json();
-
-    const expectedKey = process.env.ADMIN_SECRET || process.env.AUTH_SECRET;
-    if (!expectedKey || key !== expectedKey) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    // Was gated by `ADMIN_SECRET || AUTH_SECRET`. ADMIN_SECRET is not set, so
+    // in practice this route was authenticated by AUTH_SECRET — the key
+    // NextAuth uses to sign every staff and contractor session. That made a
+    // session-signing secret double as an API key travelling in request
+    // bodies. An admin session is the correct guard and needs no shared secret.
+    const guard = await requireAdmin();
+    if (!guard.ok) {
+      return Response.json(
+        { error: "Unauthorized" },
+        { status: guard.reason === "forbidden" ? 403 : 401 }
+      );
     }
+
+    const { email, password } = await request.json();
 
     if (!email || !password) {
       return Response.json({ error: "email and password required" }, { status: 400 });

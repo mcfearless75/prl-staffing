@@ -27,3 +27,21 @@ export async function requireStaff(): Promise<
   if (userType !== "staff") return { ok: false, reason: "forbidden" };
   return { ok: true, session: session as StaffSession };
 }
+
+/**
+ * Guard for staff routes whose blast radius is too wide for "any staff":
+ * bulk deletes, mass email, account unlocks, auditor credential resets.
+ *
+ * `gdpr/erasure/execute` already set this precedent inline; this is the same
+ * rule, named and shared. Every staff user currently holds role "admin", so
+ * this locks nobody out today — it is here so that the first non-admin staff
+ * role created does not silently inherit the destructive endpoints.
+ */
+export async function requireAdmin(): Promise<
+  { ok: true; session: StaffSession } | { ok: false; reason: "unauthenticated" | "forbidden" }
+> {
+  const guard = await requireStaff();
+  if (!guard.ok) return guard;
+  if (guard.session.user.role !== "admin") return { ok: false, reason: "forbidden" };
+  return guard;
+}

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { requireStaff } from "@/lib/require-staff";
+import { requireStaff, requireAdmin } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 
 // GET /api/admin/unlock-account?email=xxx  — check login status
@@ -42,7 +42,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const guard = await requireStaff();
+  // Clearing a lockout defeats the brute-force protection, so this one is
+  // admin-only. The GET above is a read-only diagnostic and stays staff-wide.
+  const guard = await requireAdmin();
   if (!guard.ok) return NextResponse.json({ error: "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
 
   const { email } = await request.json();
