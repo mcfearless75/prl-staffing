@@ -104,6 +104,7 @@ export async function generateInsights(): Promise<Insight[]> {
     verifiedCompliance,
     expiringCompliance30d,
     contractorsNoAssignment,
+    availableContractors,
   ] = await Promise.all([
     prisma.contractor.count(),
     prisma.contractor.count({ where: { status: "Active" } }),
@@ -136,6 +137,9 @@ export async function generateInsights(): Promise<Insight[]> {
         assignments: { none: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } } },
       },
     }),
+    // Contractors available to work — the same population /compliance scores
+    // against, so the two pages describe one workforce rather than two.
+    prisma.contractor.count({ where: { status: { notIn: ["Left", "Inactive"] } } }),
   ]);
 
   // ── Compliance Insights ──
@@ -236,8 +240,22 @@ export async function generateInsights(): Promise<Insight[]> {
 
   // ── Workforce Insights ──
 
-  const utilizationRate = activeContractors > 0
-    ? Math.round((activeAssignments / activeContractors) * 100)
+  // Utilisation is PEOPLE working over PEOPLE available, both sides in the same
+  // unit. It used to divide `activeAssignments` — a count of assignment ROWS
+  // with status exactly "Active" — by a count of contractors, which mixed units,
+  // silently dropped everyone on Ending, Placed or Holiday, and double-counted
+  // anyone holding two assignments at once.
+  //
+  // `assignedContractorIds` is the distinct-people list already built above for
+  // the compliance score, so /intelligence now reports the same workforce the
+  // dashboard tile and /compliance report. Availability deliberately excludes
+  // only Left and Inactive — the same population /compliance scores against —
+  // rather than contractors whose status is "Active", because that status is
+  // itself auto-derived from having live work, which would make the ratio
+  // tautologically ~100%.
+  const workingContractors = assignedContractorIds.length;
+  const utilizationRate = availableContractors > 0
+    ? Math.round((workingContractors / availableContractors) * 100)
     : 0;
 
   insights.push({
@@ -245,7 +263,7 @@ export async function generateInsights(): Promise<Insight[]> {
     category: "workforce",
     severity: utilizationRate < 50 ? "warning" : "info",
     title: `Workforce utilization: ${utilizationRate}%`,
-    description: `${activeAssignments} active assignments across ${activeContractors} active contractors.`,
+    description: `${workingContractors} of ${availableContractors} available contractors are on live assignments.`,
     metric: `${utilizationRate}%`,
     trend: utilizationRate < 50 ? "down" : "stable",
   });
@@ -455,8 +473,8 @@ export async function assessRisks(): Promise<RiskItem[]> {
     expiringRecords,
     endingAssignments,
     overdueInvoices,
-    activeAssignments,
-    contractors,
+    liveAssignmentPeople,
+    availableContractors,
   ] = await Promise.all([
     prisma.complianceRecord.findMany({
       where: {
@@ -482,9 +500,18 @@ export async function assessRisks(): Promise<RiskItem[]> {
       include: { company: true },
       orderBy: { dueDate: "asc" },
     }),
-    prisma.assignment.count({ where: { status: "Active" } }),
-    prisma.contractor.count({ where: { status: "Active" } }),
+    // Distinct PEOPLE on live work, and the people available to do it — the
+    // same two populations the utilisation insight uses, so the risk card and
+    // the insight can never disagree about the same workforce.
+    prisma.assignment.findMany({
+      where: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
+      select: { contractorId: true },
+      distinct: ["contractorId"],
+    }),
+    prisma.contractor.count({ where: { status: { notIn: ["Left", "Inactive"] } } }),
   ]);
+
+  const workingContractors = liveAssignmentPeople.length;
 
   // Compliance risks
   for (const record of expiringRecords.slice(0, 10)) {
@@ -543,14 +570,17 @@ export async function assessRisks(): Promise<RiskItem[]> {
     });
   }
 
-  // Utilization risk
-  if (contractors > 0 && activeAssignments / contractors < 0.5) {
+  // Utilization risk — same people-over-people definition as the insight above.
+  // Previously divided assignment ROWS by contractors, so it under-reported by
+  // ignoring Ending, Placed and Holiday work.
+  const utilization = availableContractors > 0 ? workingContractors / availableContractors : 0;
+  if (availableContractors > 0 && utilization < 0.5) {
     risks.push({
       id: "util-low",
       category: "staffing",
       severity: "medium",
       title: "Low workforce utilization",
-      description: `Only ${Math.round((activeAssignments / contractors) * 100)}% of contractors have active assignments. Consider business development.`,
+      description: `Only ${Math.round(utilization * 100)}% of available contractors are on live assignments. Consider business development.`,
       probability: 80,
       impact: "Revenue opportunity cost",
       actionLabel: "Contractor matching",
