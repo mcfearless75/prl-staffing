@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
 import { runAllWorkflows } from "@/lib/workflows/engine";
 import { complianceChaseAgent } from "@/lib/workflows/compliance-chase";
 import { complianceDigestAgent } from "@/lib/workflows/compliance-digest";
@@ -31,10 +31,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, results });
   }
 
-  // Otherwise require authenticated session
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  // Otherwise require an authenticated STAFF session.
+  //
+  // This was a bare `session?.user` check, which the middleware matcher does
+  // not cover for /api/* paths — so any logged-in CONTRACTOR could POST here
+  // and run the whole agent pipeline on demand: mass contractor email, plus
+  // assignment and contractor status mutations. requireStaff() exists for
+  // exactly this case; this route simply never used it.
+  const guard = await requireStaff();
+  if (!guard.ok) {
+    return NextResponse.json(
+      { error: guard.reason === "forbidden" ? "Forbidden" : "Unauthorised" },
+      { status: guard.reason === "forbidden" ? 403 : 401 }
+    );
   }
 
   const results = await runAllWorkflows(agents);
