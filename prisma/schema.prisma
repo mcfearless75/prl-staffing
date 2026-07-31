@@ -128,6 +128,18 @@ model Contractor {
   holidayRequests  HolidayRequest[]
   chaseLogs        ChaseLog[]
   jobRoles         ContractorJobRole[]
+
+  // These three indexes already exist in the database — the migrations that
+  // added their columns created them directly in SQL, but never declared them
+  // here. Prisma compares this schema against migration history, so an
+  // undeclared index reads as drift: the next `prisma migrate dev` would
+  // generate a migration DROPPING all three, silently degrading the compliance
+  // expiry scans and welcomeAgent's approval lookup. Declaring them is a no-op
+  // against the live database — the names match Prisma's own
+  // <Table>_<column>_idx convention, which is what the SQL used.
+  @@index([approvedAt])
+  @@index([passportExpiry])
+  @@index([visaExpiry])
 }
 
 // ─── Contractor Notes (append-only staff notes thread; NOT the Contractor.notes onboarding JSON blob) ───
