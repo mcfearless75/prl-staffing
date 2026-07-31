@@ -6,6 +6,7 @@ import type { AssignmentFormState } from "./actions";
 import {
   ASSIGNMENT_STATUSES,
   ASSIGNMENT_STATUS_DESCRIPTIONS,
+  COMPLIANCE_GATED_STATUSES,
   type AssignmentStatus,
 } from "@/lib/assignment-statuses";
 
@@ -22,8 +23,10 @@ type ComplianceSummary = {
   missingTypes: string[];
 } | null;
 
-// Statuses that trigger the compliance gate — must match assignments/actions.ts.
-const GATED_STATUSES = new Set(["Placed", "Active"]);
+// Statuses that trigger the compliance gate. Shared with assignments/actions.ts
+// rather than copied — the copy here silently fell out of step when "Holiday"
+// was added server-side.
+const GATED_STATUSES = COMPLIANCE_GATED_STATUSES;
 
 export interface AssignmentDefaultValues {
   contractorId: string;

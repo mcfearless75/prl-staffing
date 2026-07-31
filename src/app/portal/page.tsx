@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -16,7 +17,7 @@ export default async function PortalDashboard() {
     where: { id: contractorId },
     include: {
       assignments: {
-        where: { status: { in: ["Active", "Placed"] } },
+        where: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
         include: { company: true },
         orderBy: { startDate: "desc" },
       },

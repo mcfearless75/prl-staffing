@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ExpenseForm } from "./form";
@@ -11,7 +12,7 @@ export default async function PortalNewExpensePage() {
 
   // Same active/placed filter as the timesheet self-service flow.
   const assignments = await prisma.assignment.findMany({
-    where: { contractorId, status: { in: ["Active", "Placed"] } },
+    where: { contractorId, status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
     include: { company: true },
     orderBy: { startDate: "desc" },
   });

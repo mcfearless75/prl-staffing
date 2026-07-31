@@ -62,6 +62,24 @@ export const ASSIGNMENT_STATUS_DESCRIPTIONS: Record<AssignmentStatus, string> = 
   Completed: "Finished — no longer counted in the assigned workforce.",
 };
 
+/**
+ * Statuses that require verified mandatory compliance before the assignment can
+ * be saved — i.e. the ones that put someone new onto a site.
+ *
+ * Shared because the server action and the form each had their own copy, with a
+ * comment on one saying "must match" the other. They stopped matching the moment
+ * "Holiday" was added on the server: the form would have hidden the override UI
+ * while the server rejected the save, leaving no way through.
+ *
+ * "Ending" is deliberately absent — that work was checked when it started, and
+ * gating a wind-down would strand the assignment.
+ */
+export const COMPLIANCE_GATED_STATUSES: ReadonlySet<string> = new Set([
+  "Placed",
+  "Active",
+  "Holiday",
+]);
+
 export function isLiveAssignmentStatus(status: string): boolean {
   return (LIVE_ASSIGNMENT_STATUSES as readonly string[]).includes(status);
 }

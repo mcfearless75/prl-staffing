@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { parseAssignmentRateFields } from "@/lib/assignment-rates";
-import { ASSIGNMENT_STATUSES, LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
+import {
+  ASSIGNMENT_STATUSES,
+  LIVE_ASSIGNMENT_STATUSES,
+  COMPLIANCE_GATED_STATUSES,
+} from "@/lib/assignment-statuses";
 import {
   activateContractorIfInactive as activateContractor,
   deactivateContractorIfNoLiveWork,
@@ -13,14 +17,10 @@ import {
 
 export type AssignmentFormState = { error?: string } | null;
 
-// Statuses that require the contractor to hold verified mandatory compliance
-// before the assignment can be saved.
-//
-// "Holiday" is gated alongside Placed/Active because it puts someone new onto a
-// site — without it, picking Holiday would be a way to bypass the compliance
-// check entirely. "Ending" is not gated: that work was already checked when it
-// started, and blocking a wind-down would strand the assignment.
-const GATED_STATUSES = new Set(["Placed", "Active", "Holiday"]);
+// Shared with assignment-form.tsx so the form's override UI and this check can
+// never disagree. See COMPLIANCE_GATED_STATUSES for why Holiday is in and
+// Ending is out.
+const GATED_STATUSES = COMPLIANCE_GATED_STATUSES;
 
 export interface ComplianceRequirementCheck {
   type: string;

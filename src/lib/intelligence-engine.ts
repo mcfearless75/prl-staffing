@@ -133,7 +133,7 @@ export async function generateInsights(): Promise<Insight[]> {
     prisma.contractor.count({
       where: {
         status: "Active",
-        assignments: { none: { status: { in: ["Active", "Placed"] } } },
+        assignments: { none: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } } },
       },
     }),
   ]);
@@ -324,7 +324,7 @@ export async function matchContractors(
     where: { status: "Active" },
     include: {
       assignments: {
-        where: { status: { in: ["Active", "Placed"] } },
+        where: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
         include: { company: true },
       },
       compliances: true,

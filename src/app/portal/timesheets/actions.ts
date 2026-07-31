@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -35,7 +36,7 @@ export async function createContractorTimesheet(_contractorId: string, formData:
   let assignmentId: string | null = null;
   if (rawAssignmentId) {
     const owned = await prisma.assignment.findFirst({
-      where: { id: rawAssignmentId, contractorId, status: { in: ["Active", "Placed"] } },
+      where: { id: rawAssignmentId, contractorId, status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
       select: { id: true },
     });
     assignmentId = owned ? owned.id : null;
@@ -95,7 +96,7 @@ export async function updateContractorTimesheetEntries(
   // above: the session, not client input, is the source of truth for what
   // this contractor is allowed to attach to a day).
   const ownedAssignments = await prisma.assignment.findMany({
-    where: { contractorId, status: { in: ["Active", "Placed"] } },
+    where: { contractorId, status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
     select: { id: true },
   });
   const ownedAssignmentIds = new Set(ownedAssignments.map((a) => a.id));
