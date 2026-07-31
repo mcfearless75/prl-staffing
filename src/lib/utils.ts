@@ -69,6 +69,23 @@ export function getInitials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
+/**
+ * Escapes a string for interpolation into an HTML email body.
+ *
+ * The email templates build HTML by string concatenation, so any value a human
+ * typed — a timesheet rejection reason, an absence note — must come through
+ * here first. Ten near-identical private copies of this already exist across the
+ * API routes; new callers should use this one rather than add an eleventh.
+ */
+export function escapeHtml(value: string): string {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     Applied: "bg-purple-100 text-purple-700",

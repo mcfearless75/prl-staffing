@@ -137,39 +137,55 @@ export default async function PortalTimesheetDetailPage({
               {timesheet.entries.map((entry) => {
                 const bankHol = bankHolidays.find((b) => b.dayOfWeek === entry.dayOfWeek);
                 const isAbsent = entry.status === "Absent";
+                // A rejected day used to render identically to a normal one, so
+                // a contractor emailed "Tuesday was queried" arrived here and
+                // saw nothing. Follows the pattern portal/expenses already uses.
+                const isRejected = entry.status === "Rejected";
                 return (
                   <div
                     key={entry.id}
-                    className={`flex items-center justify-between px-4 py-3 ${isAbsent ? "bg-indigo-50/50" : ""}`}
+                    className={`px-4 py-3 ${isAbsent ? "bg-indigo-50/50" : ""} ${isRejected ? "bg-red-50/50" : ""}`}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900 w-8">{dayNames[entry.dayOfWeek]}</span>
-                      {bankHol && !isAbsent && (
-                        <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[9px] font-medium text-purple-700">
-                          {bankHol.name}
-                        </span>
-                      )}
-                      {isAbsent && (
-                        <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[9px] font-medium text-indigo-700">
-                          Absent — {entry.absenceReason}
-                        </span>
-                      )}
-                      {!isAbsent && dayAssignmentLabel(entry) && (
-                        <span className="text-[10px] text-gray-400">{dayAssignmentLabel(entry)}</span>
-                      )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900 w-8">{dayNames[entry.dayOfWeek]}</span>
+                        {bankHol && !isAbsent && !isRejected && (
+                          <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[9px] font-medium text-purple-700">
+                            {bankHol.name}
+                          </span>
+                        )}
+                        {isAbsent && (
+                          <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[9px] font-medium text-indigo-700">
+                            Absent — {entry.absenceReason}
+                          </span>
+                        )}
+                        {isRejected && (
+                          <span className="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-medium text-red-700">
+                            Queried
+                          </span>
+                        )}
+                        {!isAbsent && !isRejected && dayAssignmentLabel(entry) && (
+                          <span className="text-[10px] text-gray-400">{dayAssignmentLabel(entry)}</span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        {isAbsent ? (
+                          <span className="text-sm font-bold text-indigo-600">A</span>
+                        ) : (
+                          <>
+                            <span className={`text-sm font-bold ${isRejected ? "text-red-700" : "text-gray-900"}`}>
+                              {entry.hours}h
+                            </span>
+                            {entry.overtime > 0 && (
+                              <span className="ml-2 text-xs text-orange-600">+{entry.overtime}h OT</span>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      {isAbsent ? (
-                        <span className="text-sm font-bold text-indigo-600">A</span>
-                      ) : (
-                        <>
-                          <span className="text-sm font-bold text-gray-900">{entry.hours}h</span>
-                          {entry.overtime > 0 && (
-                            <span className="ml-2 text-xs text-orange-600">+{entry.overtime}h OT</span>
-                          )}
-                        </>
-                      )}
-                    </div>
+                    {isRejected && entry.rejectionReason && (
+                      <p className="mt-1 text-[11px] text-red-600 leading-snug">{entry.rejectionReason}</p>
+                    )}
                   </div>
                 );
               })}
@@ -212,6 +228,21 @@ export default async function PortalTimesheetDetailPage({
         <p className="text-xs text-emerald-600 text-center font-medium">
           This timesheet has been approved.
         </p>
+      )}
+      {/* Previously "Rejected" produced no message at all, so a returned week
+          looked no different from one still awaiting approval. */}
+      {timesheet.status === "Rejected" && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+          <p className="text-xs font-semibold text-red-700">
+            This timesheet was sent back and needs attention.
+          </p>
+          {timesheet.rejectionReason && (
+            <p className="mt-1 text-xs text-red-600 leading-relaxed">{timesheet.rejectionReason}</p>
+          )}
+          <p className="mt-2 text-[11px] text-red-500">
+            Contact your consultant or reply to the email we sent you if you think this is wrong.
+          </p>
+        </div>
       )}
     </div>
   );

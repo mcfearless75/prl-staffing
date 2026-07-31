@@ -297,6 +297,10 @@ model Timesheet {
   updatedAt    DateTime        @updatedAt
   isException     Boolean         @default(false)
   exceptionReason String?
+  // Why staff sent the whole week back. TimesheetEntry and Expense both already
+  // carry one; the week did not, so "your timesheet was rejected" could never
+  // say why. Nullable and additive — rows rejected before this existed keep null.
+  rejectionReason String?
   entries         TimesheetEntry[]
   auditLogs       TimesheetAuditLog[]
   approvals       TimesheetApproval[]

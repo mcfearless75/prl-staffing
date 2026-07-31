@@ -247,7 +247,17 @@ export default async function TimesheetDetailPage({
                     Approve
                   </button>
                 </form>
-                <form action={rejectAction}>
+                {/* The reason is emailed to the contractor and shown in their
+                    portal, so it is worth typing — but left optional so the
+                    reject button keeps working the way staff expect. */}
+                <form action={rejectAction} className="flex items-start gap-2">
+                  <input
+                    type="text"
+                    name="rejectionReason"
+                    placeholder="Reason (sent to the contractor)"
+                    maxLength={300}
+                    className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 w-64"
+                  />
                   <button
                     type="submit"
                     className="rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 border border-gray-300 shadow-sm hover:bg-gray-50 transition-colors"

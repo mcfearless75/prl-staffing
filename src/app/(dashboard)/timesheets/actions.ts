@@ -12,6 +12,11 @@ import {
   DEFAULT_OVERTIME_CONFIG,
 } from "@/lib/overtime-calculator";
 import { calculateProfessionalHours } from "@/lib/professional-hours";
+import {
+  notifyTimesheetRejected,
+  notifyTimesheetEntryRejected,
+  notifyTimesheetEntryAbsent,
+} from "@/lib/timesheet-notifications";
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -511,14 +516,28 @@ export async function approveTimesheet(id: string) {
   return approveTimesheetStep(id);
 }
 
-export async function rejectTimesheet(id: string) {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
+/**
+ * `formData` rather than a plain string because this is bound as a form action
+ * (`rejectTimesheet.bind(null, id)`), so React passes the submitted FormData as
+ * the second argument — a `reason: string` parameter would silently receive a
+ * FormData object instead.
+ */
+export async function rejectTimesheet(id: string, formData?: FormData) {
+  // Was a bare `auth()` + `session?.user` check while rejectTimesheetEntry
+  // immediately below already used requireStaff() — the same inconsistency that
+  // let a contractor reach the workflow pipeline in d0049a8.
+  const guard = await requireStaff();
+  if (!guard.ok) redirect(guard.reason === "forbidden" ? "/" : "/login");
+
+  const raw = formData?.get("rejectionReason");
+  const reason = typeof raw === "string" && raw.trim() ? raw.trim() : null;
+
   try {
     await prisma.timesheet.update({
       where: { id },
       data: {
         status: "Rejected",
+        rejectionReason: reason,
       },
     });
 
@@ -533,8 +552,10 @@ export async function rejectTimesheet(id: string) {
       action: "Rejected",
       field: "status",
       oldValue: "Submitted",
-      newValue: "Rejected",
+      newValue: reason ? `Rejected: ${reason}` : "Rejected",
     });
+
+    await notifyTimesheetRejected(id, reason);
 
     revalidatePath(`/timesheets/${id}`);
     revalidatePath("/timesheets");
@@ -568,6 +589,11 @@ export async function rejectTimesheetEntry(entryId: string, reason: string) {
       field: dayNames[entry.dayOfWeek],
       newValue: reason,
     });
+
+    // After the write, so a mail failure cannot lose the rejection, and never
+    // awaited for its result — the contractor being told is a courtesy on top
+    // of the change, not a precondition for it.
+    await notifyTimesheetEntryRejected(entry.timesheetId, entry.dayOfWeek, reason);
 
     revalidatePath(`/timesheets/${entry.timesheetId}`);
     revalidatePath(`/timesheets/${entry.timesheetId}/edit`);
@@ -647,6 +673,15 @@ export async function markTimesheetEntryAbsent(entryId: string, reason: string, 
       oldValue: String(oldHours),
       newValue: absenceReason,
     });
+
+    // Outside the $transaction above: this is the one action of the three that
+    // actually removes hours and changes what the contractor is paid, so it is
+    // the one they most need to hear about — but a mail failure must not roll
+    // back the absence.
+    // oldHours decides the wording: marking a day absent that never held any
+    // hours does not move the weekly total, so that email must not claim the
+    // contractor's pay changed.
+    await notifyTimesheetEntryAbsent(timesheet.id, entry.dayOfWeek, absenceReason, oldHours);
 
     revalidatePath(`/timesheets/${timesheet.id}`);
     revalidatePath(`/timesheets/${timesheet.id}/edit`);
