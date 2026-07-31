@@ -218,7 +218,11 @@ export default function CampaignPage() {
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          <StatCard label="Total" value={stats.total} icon={Users} color="bg-gray-500" />
+          {/* Not the contractor total. /api/campaign/status excludes anyone on a
+              prl-placeholder email, because this page exists to email people and
+              those addresses cannot be delivered to. Labelled so it stops
+              reading as a headcount that disagrees with every other page. */}
+          <StatCard label="Contactable" value={stats.total} icon={Users} color="bg-gray-500" />
           <StatCard label="Signed Up" value={stats.activated} icon={UserCheck} color="bg-blue-500" />
           <StatCard label="Emails Opened" value={stats.opened} icon={MailOpen} color="bg-amber-500" />
           <StatCard label="Profile Complete" value={stats.profileCompleteCount} icon={CheckCircle} color="bg-green-500" />
