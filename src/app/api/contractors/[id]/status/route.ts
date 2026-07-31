@@ -1,13 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { NextRequest, NextResponse } from "next/server";
-
-// Standard workforce statuses, plus applicant-pipeline values (Applied, Looking)
-// that other flows may set. Legacy On Site / Benched / Pending Docs retired.
-const VALID_STATUSES = [
-  "New", "Active", "Suspended", "Inactive", "Left",
-  "Applied", "Looking",
-];
+import { isValidContractorStatus } from "@/lib/contractor-statuses";
 
 export async function PATCH(
   request: NextRequest,
@@ -20,7 +14,7 @@ export async function PATCH(
   const body = await request.json();
   const { status } = body;
 
-  if (!status || !VALID_STATUSES.includes(status)) {
+  if (!status || !isValidContractorStatus(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 

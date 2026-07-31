@@ -3,25 +3,23 @@
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-
-// Standard workforce statuses staff can set manually. Applicant-pipeline
-// statuses (Applied, Looking) are managed on the Applicants page, not here.
-const STATUSES = [
-  { value: "New",       color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-  { value: "Active",    color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  { value: "Suspended", color: "bg-red-100 text-red-700 border-red-200" },
-  { value: "Inactive",  color: "bg-gray-100 text-gray-600 border-gray-200" },
-  { value: "Left",      color: "bg-rose-100 text-rose-700 border-rose-200" },
-];
+import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
 
 // Colours for any status a contractor might already hold, including legacy /
 // pipeline values, so badges still render correctly even when not selectable.
+// The VOCABULARY lives in contractor-statuses.ts — this map is presentation
+// only, and an unknown status degrades to grey rather than disappearing.
 const STATUS_COLORS: Record<string, string> = {
-  ...Object.fromEntries(STATUSES.map((s) => [s.value, s.color])),
-  Applied: "bg-purple-100 text-purple-700 border-purple-200",
-  Looking: "bg-sky-100 text-sky-700 border-sky-200",
-  "On Site": "bg-blue-100 text-blue-700 border-blue-200",
-  Benched: "bg-amber-100 text-amber-700 border-amber-200",
+  New:            "bg-indigo-100 text-indigo-700 border-indigo-200",
+  Active:         "bg-emerald-100 text-emerald-700 border-emerald-200",
+  "On Hold":      "bg-amber-100 text-amber-700 border-amber-200",
+  Suspended:      "bg-red-100 text-red-700 border-red-200",
+  Inactive:       "bg-gray-100 text-gray-600 border-gray-200",
+  Left:           "bg-rose-100 text-rose-700 border-rose-200",
+  Applied:        "bg-purple-100 text-purple-700 border-purple-200",
+  Looking:        "bg-sky-100 text-sky-700 border-sky-200",
+  "On Site":      "bg-blue-100 text-blue-700 border-blue-200",
+  Benched:        "bg-amber-100 text-amber-700 border-amber-200",
   "Pending Docs": "bg-orange-100 text-orange-700 border-orange-200",
 };
 
@@ -97,17 +95,17 @@ export function ContractorStatusSelect({
         style={{ top: dropdownPos.top, left: dropdownPos.left }}
       >
         <div className="p-1.5 space-y-0.5">
-          {STATUSES.map((s) => (
+          {SETTABLE_CONTRACTOR_STATUSES.map((s) => (
             <button
-              key={s.value}
-              onClick={() => setSelected(s.value)}
+              key={s}
+              onClick={() => setSelected(s)}
               className={`w-full rounded-md px-2.5 py-1.5 text-left text-xs font-medium transition-colors ${
-                selected === s.value
-                  ? s.color + " ring-1 ring-inset ring-current/30"
+                selected === s
+                  ? badgeColor(s) + " ring-1 ring-inset ring-current/30"
                   : "text-gray-700 hover:bg-gray-50"
               }`}
             >
-              {s.value}
+              {s}
             </button>
           ))}
         </div>

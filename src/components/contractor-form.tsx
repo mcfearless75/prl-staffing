@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { RolePicker } from "@/components/role-picker";
+import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
 
 type ContractorFormState = { error?: string };
 
@@ -230,9 +231,11 @@ export function ContractorForm({
               defaultValue={contractor?.status ?? "Active"}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-              <option value="On Hold">On Hold</option>
+              {SETTABLE_CONTRACTOR_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
             </select>
           </div>
 

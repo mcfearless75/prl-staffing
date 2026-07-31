@@ -6,6 +6,19 @@ import { Badge } from "@/components/badge";
 import { formatDate, getInitials, getStatusColor } from "@/lib/utils";
 import { Plus, Search, Upload, ArrowUpDown } from "lucide-react";
 import { ContractorStatusSelect } from "@/components/contractor-status-select";
+import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
+
+// Presentation only — the vocabulary itself lives in contractor-statuses.ts.
+// A status with no entry here still gets a working tab, just a neutral one.
+const STATUS_TAB_COLORS: Record<string, string> = {
+  "":          "bg-gray-100 text-gray-700 hover:bg-gray-200",
+  New:         "bg-indigo-100 text-indigo-700 hover:bg-indigo-200",
+  Active:      "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
+  "On Hold":   "bg-amber-100 text-amber-700 hover:bg-amber-200",
+  Suspended:   "bg-red-100 text-red-700 hover:bg-red-200",
+  Inactive:    "bg-gray-100 text-gray-600 hover:bg-gray-200",
+  Left:        "bg-rose-100 text-rose-700 hover:bg-rose-200",
+};
 
 type ComplianceStatus = "Verified" | "Expiring" | "Pending" | "Non-Compliant" | "No Records";
 
@@ -97,20 +110,13 @@ export default async function ContractorsPage({
 
       {/* Quick-filter tabs */}
       <div className="flex flex-wrap gap-2">
-        {[
-          { label: "All", value: "", color: "bg-gray-100 text-gray-700 hover:bg-gray-200" },
-          { label: "New", value: "New", color: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200" },
-          { label: "Active", value: "Active", color: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" },
-          { label: "Suspended", value: "Suspended", color: "bg-red-100 text-red-700 hover:bg-red-200" },
-          { label: "Inactive", value: "Inactive", color: "bg-gray-100 text-gray-600 hover:bg-gray-200" },
-          { label: "Left", value: "Left", color: "bg-rose-100 text-rose-700 hover:bg-rose-200" },
-        ].map((tab) => (
+        {["", ...SETTABLE_CONTRACTOR_STATUSES].map((value) => (
           <Link
-            key={tab.value}
-            href={tab.value ? `/contractors?status=${encodeURIComponent(tab.value)}${search ? `&search=${encodeURIComponent(search)}` : ""}${sortBy !== "lastName" ? `&sortBy=${sortBy}` : ""}` : "/contractors"}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${tab.color} ${status === tab.value ? "ring-2 ring-offset-1 ring-current" : ""}`}
+            key={value}
+            href={value ? `/contractors?status=${encodeURIComponent(value)}${search ? `&search=${encodeURIComponent(search)}` : ""}${sortBy !== "lastName" ? `&sortBy=${sortBy}` : ""}` : "/contractors"}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${STATUS_TAB_COLORS[value] ?? "bg-gray-100 text-gray-700 hover:bg-gray-200"} ${status === value ? "ring-2 ring-offset-1 ring-current" : ""}`}
           >
-            {tab.label}
+            {value || "All"}
           </Link>
         ))}
       </div>
@@ -133,11 +139,11 @@ export default async function ContractorsPage({
           className="rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">All Statuses</option>
-          <option value="New">New</option>
-          <option value="Active">Active</option>
-          <option value="Suspended">Suspended</option>
-          <option value="Inactive">Inactive</option>
-          <option value="Left">Left</option>
+          {SETTABLE_CONTRACTOR_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
         </select>
         <button
           type="submit"

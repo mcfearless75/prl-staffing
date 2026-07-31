@@ -70,7 +70,7 @@ model Contractor {
   dayRate      Float?
   payRate      Float?             // hourly pay rate
   chargeRate   Float?             // hourly charge rate
-  status       String             @default("Inactive") // Active, Inactive, On Hold
+  status       String             @default("Inactive") // See src/lib/contractor-statuses.ts — New, Active, On Hold, Suspended, Inactive, Left, plus pipeline Applied/Looking
   // When staff explicitly approved this applicant. Set ONLY by a deliberate
   // individual approval — never by bulk import, onboarding create, or a
   // contractor going back to work. welcomeAgent keys off this; `updatedAt` was
