@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { formatDate } from "@/lib/utils";
 import { generateInvoices } from "../actions";
+import { SubmitButton } from "@/components/submit-button";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
@@ -144,12 +145,12 @@ export default async function GenerateInvoicesPage({
             </div>
 
             <div className="flex items-center gap-3 pt-2">
-              <button
-                type="submit"
-                className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
+              <SubmitButton
+                pendingLabel="Generating…"
+                className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Generate Invoices
-              </button>
+              </SubmitButton>
               <Link
                 href="/billing"
                 className="rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
