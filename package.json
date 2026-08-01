@@ -7,6 +7,8 @@
     "build": "prisma generate && next build",
     "start": "./node_modules/.bin/prisma migrate deploy && next start",
     "lint": "eslint",
+    "test": "tsx --test \"tests/**/*.test.ts\"",
+    "test:watch": "tsx --test --watch \"tests/**/*.test.ts\"",
     "seed": "npx prisma db seed",
     "console": "npx tsx scripts/prl-console.ts",
     "smoke": "railway run --service Postgres node scripts/smoke-prism.mjs"

@@ -23,15 +23,58 @@ import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
  */
 export { LIVE_ASSIGNMENT_STATUSES };
 
+type Awaitable<T> = T | PromiseLike<T>;
+
+/**
+ * The slice of Prisma these transitions actually use.
+ *
+ * Injected rather than imported so the rules can be exercised against an
+ * in-memory double — these are the transitions that stranded contractors on
+ * site with an Inactive status, and they were previously only checkable by
+ * running them against the live database.
+ */
+export type ContractorStatusDb = {
+  contractor: {
+    updateMany(args: {
+      where: { id: string; status: string };
+      data: { status: string };
+    }): Awaitable<{ count: number }>;
+    findUnique(args: {
+      where: { id: string };
+      select: { status: true };
+    }): Awaitable<{ status: string } | null>;
+  };
+  assignment: {
+    count(args: {
+      where: { contractorId: string; status: { in: string[] } };
+    }): Awaitable<number>;
+  };
+};
+
+/**
+ * The single contractor status automation may promote FROM, and the one it may
+ * demote FROM. Everything else — "On Hold", "Left", "New", "Suspended" — is
+ * staff intent, and staff intent outranks automation.
+ *
+ * Named constants rather than inline literals because they ARE the guarantee:
+ * they appear in the `where` clause, so a status absent from here cannot match
+ * and therefore cannot be rewritten.
+ */
+export const AUTO_ACTIVATE_FROM = "Inactive";
+export const AUTO_DEACTIVATE_FROM = "Active";
+
 /**
  * Flips a contractor Inactive -> Active when they are put back to work.
  *
  * Deliberately narrow: it will not touch "On Hold" (a deliberate staff flag),
  * "Left", or a contractor already Active. Staff intent outranks automation.
  */
-export async function activateContractorIfInactive(contractorId: string): Promise<void> {
-  await prisma.contractor.updateMany({
-    where: { id: contractorId, status: "Inactive" },
+export async function activateContractorIfInactive(
+  contractorId: string,
+  db: ContractorStatusDb = prisma
+): Promise<void> {
+  await db.contractor.updateMany({
+    where: { id: contractorId, status: AUTO_ACTIVATE_FROM },
     data: { status: "Active" },
   });
 }
@@ -58,10 +101,11 @@ export async function activateContractorIfInactive(contractorId: string): Promis
  */
 export async function activateContractorForAssignment(
   contractorId: string,
-  status: string
+  status: string,
+  db: ContractorStatusDb = prisma
 ): Promise<void> {
   if (!(LIVE_ASSIGNMENT_STATUSES as readonly string[]).includes(status)) return;
-  await activateContractorIfInactive(contractorId);
+  await activateContractorIfInactive(contractorId, db);
 }
 
 /**
@@ -71,14 +115,17 @@ export async function activateContractorForAssignment(
  * go Inactive because one of them ended. Only ever moves "Active" — "On Hold"
  * and "Left" are left alone for the same reason as above.
  */
-export async function deactivateContractorIfNoLiveWork(contractorId: string): Promise<void> {
-  const remaining = await prisma.assignment.count({
+export async function deactivateContractorIfNoLiveWork(
+  contractorId: string,
+  db: ContractorStatusDb = prisma
+): Promise<void> {
+  const remaining = await db.assignment.count({
     where: { contractorId, status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
   });
   if (remaining > 0) return;
 
-  await prisma.contractor.updateMany({
-    where: { id: contractorId, status: "Active" },
+  await db.contractor.updateMany({
+    where: { id: contractorId, status: AUTO_DEACTIVATE_FROM },
     data: { status: "Inactive" },
   });
 }
@@ -89,17 +136,18 @@ export async function deactivateContractorIfNoLiveWork(contractorId: string): Pr
  * reads assignment state the previous write may have changed.
  */
 export async function deactivateContractorsWithNoLiveWork(
-  contractorIds: string[]
+  contractorIds: string[],
+  db: ContractorStatusDb = prisma
 ): Promise<number> {
   const unique = [...new Set(contractorIds)];
   let deactivated = 0;
   for (const id of unique) {
-    const before = await prisma.contractor.findUnique({
+    const before = await db.contractor.findUnique({
       where: { id },
       select: { status: true },
     });
-    await deactivateContractorIfNoLiveWork(id);
-    const after = await prisma.contractor.findUnique({
+    await deactivateContractorIfNoLiveWork(id, db);
+    const after = await db.contractor.findUnique({
       where: { id },
       select: { status: true },
     });

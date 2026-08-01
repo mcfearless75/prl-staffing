@@ -59,15 +59,54 @@
 # Build
 npm run build
 
-# Test
+# Test — unit suite, no database, ~1s
 npm test
+
+# Typecheck
+npx tsc --noEmit
 
 # Lint
 npm run lint
+
+# Smoke — hits PRODUCTION, needs Railway creds
+npm run smoke
 ```
 
 - ALWAYS run tests after making code changes
 - ALWAYS verify build succeeds before committing
+- `prisma generate` EPERMs on Windows while `npm run dev` is running — stop dev first
+
+### Test suite
+
+`npm test` runs Node's built-in test runner (`node:test`) through `tsx`, which
+is already a dependency — the suite adds **no new packages**. Tests live in
+`/tests` as `*.test.ts` and import via the `@/` alias.
+
+It is a **unit** suite: no database, no network, no fixtures. That is the point
+— it has to be fast enough to run on every change, and the bugs it guards
+against were all in pure shared logic, not in queries.
+
+What it covers, and why those things:
+
+| File | Guards |
+|---|---|
+| `assignment-statuses.test.ts` | `LIVE_ASSIGNMENT_STATUSES` and its subsets. "Which statuses mean the contractor is still working?" was answered differently in ten files; one such split stopped 31 contractors on `Ending` from submitting a timesheet |
+| `contractor-statuses.test.ts` | Settable vs pipeline vocabularies. `"On Hold"` was offered by one UI, unreachable from another and rejected by the API |
+| `contractor-status.test.ts` | Activate/deactivate transitions, against an in-memory double. Pins that `"On Hold"` and `"Left"` are **never** auto-changed |
+| `compliance-score.test.ts` | The compliance denominator counts **distinct people on live work, not assignment rows** — /intelligence divided rows by people and called it a proportion of the workforce |
+
+Two rules for anyone extending it:
+
+- **Test the invariant, not the literal.** Assert that `IN_PROGRESS` is the live
+  set minus `Placed`, rather than copying the array — otherwise adding a
+  legitimate status fails the suite for no reason, and the copy becomes the
+  eleventh disagreeing definition.
+- **Mutation-check anything new.** Break the code on purpose and confirm the
+  test fails before you trust it. Both invariants above were verified this way.
+
+To keep logic testable, prefer pure functions over inline query bodies:
+`summariseCompliance()` and the injectable `ContractorStatusDb` exist precisely
+so the rules can be exercised without Postgres.
 
 ## Security Rules
 

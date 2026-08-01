@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
-import { loadRequirementMatcher } from "@/lib/compliance-gaps";
+import { loadRequirementMatcher, type RequirementMatcher } from "@/lib/compliance-gaps";
 import { resolveRole } from "@/lib/role-normalisation";
 
 // The headline compliance percentage, computed in ONE place.
@@ -50,6 +50,22 @@ export type ComplianceScore = {
 
 const ACTIVE_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
+/**
+ * One live assignment row, reduced to what the score actually reads.
+ *
+ * Widened from the Prisma row deliberately, so `summariseCompliance` can be
+ * exercised with hand-built rows and no database.
+ */
+export type ScoredAssignment = {
+  contractorId: string;
+  role: string | null;
+  companyId: string | null;
+  contractor: {
+    jobTitle: string | null;
+    compliances: { type: string; status: string }[];
+  };
+};
+
 export async function getComplianceScore(): Promise<ComplianceScore> {
   const [assignments, matcher] = await Promise.all([
     prisma.assignment.findMany({
@@ -69,6 +85,22 @@ export async function getComplianceScore(): Promise<ComplianceScore> {
     loadRequirementMatcher(),
   ]);
 
+  return summariseCompliance(assignments, matcher);
+}
+
+/**
+ * The scoring itself: assignment rows in, one score out. Pure — no Prisma, no
+ * clock, no I/O.
+ *
+ * Split out from the query above so the denominator is testable. Every number
+ * this returns is per-PERSON, and the bug this guards against is counting
+ * assignment ROWS instead: /intelligence divided a count of rows by a count of
+ * people and called the result a proportion of the workforce.
+ */
+export function summariseCompliance(
+  assignments: readonly ScoredAssignment[],
+  matcher: RequirementMatcher
+): ComplianceScore {
   // Collapse to one row per contractor. A contractor on two assignments is one
   // person; prefer the assignment that actually carries a role.
   type Row = {
