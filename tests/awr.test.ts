@@ -5,6 +5,7 @@ import {
   AWR_MAX_GAP_WEEKS,
   AWR_TRIGGER_WEEKS,
   filterAwrByBasis,
+  runClock,
   type AwrBasis,
   type AwrClockResult,
 } from "@/lib/awr";
@@ -137,6 +138,146 @@ describe("the filters as a set", () => {
     // full list is the safe direction: an over-inclusive report is visibly
     // wrong, an empty one reads as "no AWR exposure".
     assert.deepEqual(ids(filterAwrByBasis(ALL, "everyone" as AwrBasis)), ids(ALL));
+  });
+});
+
+/**
+ * The 12-week qualifying clock itself.
+ *
+ * This decides the single most consequential fact in the AWR report: whether a
+ * contractor has earned equal-treatment rights. Overcounting creates a pay
+ * liability that isn't owed; undercounting misses one that is. The pause/reset
+ * rule is the subtle part — a break of six weeks or less holds the running
+ * total, a longer one destroys it.
+ *
+ * Weeks are built as real local Monday midnights, the way production's
+ * startOfDay() produces them, so the arithmetic is exercised against the actual
+ * calendar rather than against tidy multiples of 7 x 24h.
+ */
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/** Monday midnights at the given week offsets from a real starting Monday. */
+function mondays(year: number, month: number, day: number, weekOffsets: number[]): number[] {
+  return weekOffsets
+    .map((offset) => {
+      const d = new Date(year, month - 1, day + offset * 7);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    })
+    .sort((a, b) => a - b);
+}
+
+/** Week offsets 0..n-1 — an unbroken run of n worked weeks. */
+const unbroken = (n: number) => Array.from({ length: n }, (_, i) => i);
+
+describe("runClock — the 12-week qualifying clock", () => {
+  test("no qualifying weeks is a clock that never started", () => {
+    assert.deepEqual(runClock([]), { count: 0, triggerDate: null, lastWeek: null });
+  });
+
+  test("one worked week counts as one and triggers nothing", () => {
+    const weeks = mondays(2026, 5, 4, [0]);
+    const result = runClock(weeks);
+    assert.equal(result.count, 1);
+    assert.equal(result.triggerDate, null);
+    assert.equal(result.lastWeek, weeks[0]);
+  });
+
+  test("eleven unbroken weeks do not trigger", () => {
+    // The off-by-one that would hand out equal treatment a week early.
+    const result = runClock(mondays(2026, 5, 4, unbroken(11)));
+    assert.equal(result.count, 11);
+    assert.equal(result.triggerDate, null);
+  });
+
+  test("twelve unbroken weeks trigger", () => {
+    const result = runClock(mondays(2026, 5, 4, unbroken(12)));
+    assert.equal(result.count, 12);
+    assert.ok(result.triggerDate);
+  });
+
+  test("the trigger date is the END of the twelfth week, not its start", () => {
+    // Rights begin once the qualifying week is COMPLETED. Starting from Monday
+    // 4 May 2026, the twelfth qualifying week starts Monday 20 July and the
+    // clock trips on Sunday 26 July.
+    const weeks = mondays(2026, 5, 4, unbroken(12));
+    const { triggerDate } = runClock(weeks);
+    assert.ok(triggerDate);
+    assert.equal(triggerDate.getTime(), weeks[11] + 6 * DAY);
+    assert.equal(triggerDate.getFullYear(), 2026);
+    assert.equal(triggerDate.getMonth(), 6, "July");
+    assert.equal(triggerDate.getDate(), 26);
+  });
+
+  test("a break of six weeks pauses the clock — the total survives", () => {
+    // Eleven weeks, six weeks off, then one more. The missed weeks do not count
+    // but nothing is lost, so the twelfth worked week still trips it.
+    const result = runClock(mondays(2026, 5, 4, [...unbroken(11), 17]));
+    assert.equal(result.count, 12);
+    assert.ok(result.triggerDate);
+  });
+
+  test("a break of SEVEN weeks resets the clock to zero", () => {
+    // One week further apart than the case above, and eleven weeks of accrued
+    // qualification are gone.
+    const result = runClock(mondays(2026, 5, 4, [...unbroken(11), 18]));
+    assert.equal(result.count, 1);
+    assert.equal(result.triggerDate, null);
+  });
+
+  test("six weeks off is the boundary — five and six pause, seven resets", () => {
+    const at = (gap: number) => runClock(mondays(2026, 5, 4, [0, gap + 1])).count;
+    assert.equal(at(5), 2, "5 weeks missed");
+    assert.equal(at(AWR_MAX_GAP_WEEKS), 2, "6 weeks missed");
+    assert.equal(at(AWR_MAX_GAP_WEEKS + 1), 1, "7 weeks missed");
+  });
+
+  test("consecutive weeks have no gap at all", () => {
+    assert.equal(runClock(mondays(2026, 5, 4, [0, 1])).count, 2);
+  });
+
+  test("after a reset the clock can still reach twelve", () => {
+    // Five weeks, a long break, then a full twelve.
+    const result = runClock(mondays(2026, 1, 5, [...unbroken(5), ...unbroken(12).map((i) => i + 20)]));
+    assert.equal(result.count, 12);
+    assert.ok(result.triggerDate);
+  });
+
+  test("the trigger date is the FIRST crossing, not the last week worked", () => {
+    // Someone fifteen weeks in triggered three weeks ago. Backdating equal
+    // treatment to the wrong week is a real pay question.
+    const weeks = mondays(2026, 5, 4, unbroken(15));
+    const { triggerDate } = runClock(weeks);
+    assert.ok(triggerDate);
+    assert.equal(triggerDate.getTime(), weeks[11] + 6 * DAY);
+  });
+
+  test("the raw count is not capped — capping is the report's job", () => {
+    const result = runClock(mondays(2026, 5, 4, unbroken(15)));
+    assert.equal(result.count, 15);
+    assert.equal(Math.min(result.count, AWR_TRIGGER_WEEKS), AWR_TRIGGER_WEEKS);
+  });
+
+  test("lastWeek is the final qualifying week, which the projection runs from", () => {
+    const weeks = mondays(2026, 5, 4, unbroken(5));
+    assert.equal(runClock(weeks).lastWeek, weeks[4]);
+  });
+
+  test("counts correctly across the spring clock change", () => {
+    // Local midnights either side of 29 March 2026 are 7 days MINUS an hour
+    // apart. A clock that compared raw milliseconds instead of rounding to
+    // whole weeks would see a gap here and reset a qualifying run.
+    const result = runClock(mondays(2026, 2, 2, unbroken(12)));
+    assert.equal(result.count, 12);
+    assert.ok(result.triggerDate);
+  });
+
+  test("counts correctly across the autumn clock change", () => {
+    // 25 October 2026, in the other direction: 7 days PLUS an hour.
+    const result = runClock(mondays(2026, 9, 7, unbroken(12)));
+    assert.equal(result.count, 12);
+    assert.ok(result.triggerDate);
   });
 });
 

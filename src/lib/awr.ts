@@ -160,7 +160,7 @@ export async function computeAwrClocks(): Promise<AwrClockResult[]> {
 }
 
 /** Runs the pause/reset clock algorithm over a sorted list of distinct qualifying week timestamps. */
-function runClock(sortedWeeks: number[]): { count: number; triggerDate: Date | null; lastWeek: number | null } {
+export function runClock(sortedWeeks: number[]): { count: number; triggerDate: Date | null; lastWeek: number | null } {
   let count = 0;
   let lastWeek: number | null = null;
   let triggerDate: Date | null = null;

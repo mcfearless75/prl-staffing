@@ -4,6 +4,7 @@ import { sendEmail, APPLICATION_RECIPIENTS } from "@/lib/email";
 import { Prisma } from "@prisma/client";
 import { maskNI, maskPassportNumber, maskBankAccount, maskSortCode } from "@/lib/utils";
 import { checkPublicFormRateLimit } from "@/lib/rate-limit";
+import { parseDate } from "@/lib/parse-date";
 
 function escapeHtml(str: string): string {
   return str
@@ -12,42 +13,6 @@ function escapeHtml(str: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-/**
- * Parses a date submitted by the public form into a Date, or null.
- *
- * Handles ISO (from <input type="date">) and UK DD/MM/YYYY, which must be done
- * explicitly: `new Date("31/12/2026")` is Invalid Date, and worse,
- * `new Date("03/04/2026")` silently parses as 4 March under US convention when
- * the applicant meant 3 April.
- *
- * Returns null rather than throwing — a bad date must never lose an entire
- * application, and the raw value is preserved in the notes blob regardless.
- */
-function parseDate(value: unknown): Date | null {
-  if (typeof value !== "string" || !value.trim()) return null;
-  const raw = value.trim();
-
-  const uk = raw.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
-  if (uk) {
-    const [, d, m, y] = uk;
-    const dt = new Date(Date.UTC(+y, +m - 1, +d));
-    // Rejects impossible dates that would otherwise roll over (e.g. 31/02).
-    if (dt.getUTCDate() !== +d || dt.getUTCMonth() !== +m - 1) return null;
-    return dt;
-  }
-
-  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (iso) {
-    const [, y, m, d] = iso;
-    const dt = new Date(Date.UTC(+y, +m - 1, +d));
-    if (dt.getUTCDate() !== +d || dt.getUTCMonth() !== +m - 1) return null;
-    return dt;
-  }
-
-  const fallback = new Date(raw);
-  return Number.isNaN(fallback.getTime()) ? null : fallback;
 }
 
 export async function POST(request: Request) {
