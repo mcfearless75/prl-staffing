@@ -82,6 +82,14 @@ npm run smoke
 is already a dependency — the suite adds **no new packages**. Tests live in
 `/tests` as `*.test.ts` and import via the `@/` alias.
 
+Needs **Node 21+** locally: the script passes a glob to `node --test`, which only
+expands globs from that version. `engines.node` stays at `>=20.9.0` because that
+governs the Railway production runtime, which never runs tests. CI pins Node 24.
+
+CI (`.github/workflows/ci.yml`) runs `npm test` + `npx tsc --noEmit` on every
+push to master and on pull requests. It deliberately does not run lint, build or
+smoke — see the comments in that file for why.
+
 It is a **unit** suite: no database, no network, no fixtures. That is the point
 — it has to be fast enough to run on every change, and the bugs it guards
 against were all in pure shared logic, not in queries.

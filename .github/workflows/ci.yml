@@ -1,0 +1,67 @@
+name: CI
+
+# Runs the unit suite and the typecheck on every push to master.
+#
+# Until this existed, NOTHING ran the tests. Railway auto-deploys master on push
+# and its build does typecheck (next.config.ts sets no ignoreBuildErrors), so a
+# type error was caught — but only part-way through a deploy, and `npm test` was
+# never executed by any machine other than a developer who remembered to type it.
+#
+# Deliberately NOT run here:
+#   - `npm run lint`   — ~4,700 pre-existing errors repo-wide; it would fail on
+#                        every commit and be ignored within a week. Lint changed
+#                        files by hand until that backlog is dealt with.
+#   - `npm run build`  — Railway does it on deploy; duplicating ~3 min per push
+#                        buys nothing the deploy log does not already show.
+#   - `npm run smoke`  — hits PRODUCTION and needs Railway credentials. It is a
+#                        post-deploy check, not a pre-merge gate.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+# A second push supersedes the first; no point finishing a run for a commit that
+# has already been replaced.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test + typecheck
+    runs-on: ubuntu-latest
+
+    env:
+      # `prisma generate` reads the datasource block but never opens a
+      # connection. A placeholder satisfies env("DATABASE_URL") without putting
+      # a real credential anywhere near CI.
+      DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 24 to match local dev. Must stay >= 21: `node --test` only expands
+          # glob patterns from that version on, and the test script passes one.
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate Prisma client
+        # The typecheck needs the generated client types. Skipping this produces
+        # a wall of "property does not exist" errors that look like real bugs.
+        run: npx prisma generate
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Typecheck
+        # always() so a type error and a test failure show up in the same run,
+        # rather than one hiding the other.
+        if: always()
+        run: npx tsc --noEmit
