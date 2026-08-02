@@ -14,6 +14,7 @@ import {
   activateContractorForAssignment as activateContractorIfInactive,
   deactivateContractorIfNoLiveWork,
 } from "@/lib/contractor-status";
+import { resolveRole, requirementAppliesToRole } from "@/lib/role-normalisation";
 
 export type AssignmentFormState = { error?: string } | null;
 
@@ -60,8 +61,19 @@ export async function checkComplianceForAssignment(params: {
     return { allMet: false, requirements: [], missingTypes: ["Contractor not found"] };
   }
 
+  // Matched through the shared normaliser, like every other requirement check.
+  // The exact lowercased compare this replaced meant a mandatory rule for
+  // "Joiner" did not gate an assignment whose role read "Joiner Nights" — the
+  // gate looked configured and let the contractor through.
+  //
+  // jobTitle is deliberately NOT used as a fallback here, unlike the compliance
+  // REPORTS. Blank-role assignments keep matching only the "All" rules, as they
+  // always have; feeding 241 blank roles a job title would start blocking saves
+  // that have always succeeded. Worth doing, but as its own decision.
+  const resolved = resolveRole(role, null);
+
   const applicable = requirements.filter((req) => {
-    const roleMatch = req.role === "All" || req.role.toLowerCase() === role.trim().toLowerCase();
+    const roleMatch = requirementAppliesToRole(req.role, resolved);
     const companyMatch = !req.companyId || req.companyId === companyId;
     return roleMatch && companyMatch;
   });
