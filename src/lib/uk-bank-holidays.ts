@@ -56,7 +56,7 @@ export function getUKBankHolidays(year: number): Date[] {
     // Summer Bank Holiday (last Monday in August)
     getLastMondayInMonth(year, 7),
     // Christmas Day
-    substituteDay(new Date(year, 11, 25)),
+    getChristmasSubstitute(year),
     // Boxing Day
     getBoxingDaySubstitute(year),
   ];
@@ -78,6 +78,25 @@ function getLastMondayInMonth(year: number, month: number): Date {
     date.setDate(date.getDate() - 1);
   }
   return date;
+}
+
+/**
+ * Christmas Day, moved to the next working day that Boxing Day has not taken.
+ *
+ * The plain substituteDay rule is wrong here. When Christmas falls on a SUNDAY,
+ * Boxing Day (Monday the 26th) is already a bank holiday in its own right, so
+ * the Christmas substitute goes to TUESDAY the 27th — it cannot share the 26th.
+ * Using substituteDay collapsed both onto the 26th and left the 27th undetected,
+ * so anyone working 27 December in such a year was paid no bank-holiday premium.
+ * Next occurrence 2033; last was 2022.
+ */
+function getChristmasSubstitute(year: number): Date {
+  const christmasDay = new Date(year, 11, 25).getDay();
+  // Sunday: Boxing Day holds the Monday, so Christmas moves to Tuesday 27th.
+  if (christmasDay === 0) return new Date(year, 11, 27);
+  // Saturday: Monday 27th is free — Boxing Day goes on to Tuesday 28th.
+  if (christmasDay === 6) return new Date(year, 11, 27);
+  return new Date(year, 11, 25);
 }
 
 function getBoxingDaySubstitute(year: number): Date {
@@ -121,7 +140,7 @@ export function getBankHolidayName(date: Date): string | null {
     [getFirstMondayInMonth(year, 4), "Early May Bank Holiday"],
     [getLastMondayInMonth(year, 4), "Spring Bank Holiday"],
     [getLastMondayInMonth(year, 7), "Summer Bank Holiday"],
-    [substituteDay(new Date(year, 11, 25)), "Christmas Day"],
+    [getChristmasSubstitute(year), "Christmas Day"],
     [getBoxingDaySubstitute(year), "Boxing Day"],
   ];
 
