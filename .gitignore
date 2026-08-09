@@ -63,6 +63,17 @@ contractor-data.json
 # Claude local settings
 .claude/settings.local.json
 
+# Agent working directories — scratch state, not project history
+.foreman/
+tmp/
+
+# Zero-byte files whose NAMES are shell metacharacters, left behind when a
+# command's quoting goes wrong (`{,` `{,+` `40\`` and friends). Turbopack hard-
+# panics on them, so they must never reach a commit. Ignoring is a backstop —
+# delete them by exact name, and never `git add .`.
+[{}]*
+*\`*
+
 # Binary assets in public/ trip Tailwind v4's content scanner (byte sequences
 # get misread as arbitrary-value class candidates) — excluded from scanning.
 public/*.eps
