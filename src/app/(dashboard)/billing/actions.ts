@@ -34,6 +34,16 @@ async function getNextInvoiceNumber(
 }
 
 /**
+ * Thrown from inside generateInvoices' transaction when, after the
+ * already-invoiced check runs (which must happen inside the transaction —
+ * see the comment on `runBatch` below), nothing remains left to bill. Kept
+ * distinct from Prisma's P2034/P2002 write-conflict codes so it can never be
+ * mistaken for one and retried — it means the batch is legitimately empty,
+ * not that it lost a race.
+ */
+class AlreadyInvoicedError extends Error {}
+
+/**
  * Auto-generate invoices from approved timesheets for a given period
  */
 export async function generateInvoices(formData: FormData) {
@@ -101,79 +111,99 @@ export async function generateInvoices(formData: FormData) {
       redirect("/billing/generate?error=no-timesheets");
     }
 
-    // Check which timesheets are already on an invoice
-    const existingLines = await prisma.invoiceLine.findMany({
-      where: { timesheetId: { in: timesheets.map((t) => t.id) } },
-      select: { timesheetId: true },
-    });
-    const invoicedTimesheetIds = new Set(existingLines.map((l) => l.timesheetId));
-
-    // Filter out already-invoiced timesheets
-    const uninvoicedTimesheets = timesheets.filter(
-      (t) => !invoicedTimesheetIds.has(t.id)
-    );
-
-    // Check which expenses are already on an invoice
-    const existingExpenseLines = await prisma.invoiceLine.findMany({
-      where: { expenseId: { in: scopedExpenses.map((e) => e.id) } },
-      select: { expenseId: true },
-    });
-    const invoicedExpenseIds = new Set(existingExpenseLines.map((l) => l.expenseId));
-
-    // Filter out already-invoiced expenses
-    const uninvoicedExpenses = scopedExpenses.filter(
-      (e) => !invoicedExpenseIds.has(e.id)
-    );
-
-    if (uninvoicedTimesheets.length === 0 && uninvoicedExpenses.length === 0) {
-      redirect("/billing/generate?error=already-invoiced");
-    }
-
-    // Group timesheets and expenses by company
-    const byCompany = new Map<
-      string,
-      {
-        company: { id: string; name: string };
-        timesheets: typeof uninvoicedTimesheets;
-        expenses: typeof uninvoicedExpenses;
-      }
-    >();
-
-    for (const ts of uninvoicedTimesheets) {
-      // Fall back to the first entry carrying a resolved assignment when the
-      // week-level assignment is missing (e.g. per-day assignments were set
-      // but the week-level one never got synced). If entries span more than
-      // one company this buckets to the first resolved one — genuinely
-      // cross-company weeks are out of scope here.
-      const company = ts.assignment?.company ?? ts.entries.find((e) => e.assignment?.company)?.assignment?.company;
-      if (!company) continue;
-
-      if (!byCompany.has(company.id)) {
-        byCompany.set(company.id, { company, timesheets: [], expenses: [] });
-      }
-      byCompany.get(company.id)!.timesheets.push(ts);
-    }
-
-    for (const ex of uninvoicedExpenses) {
-      const company = ex.assignment?.company;
-      if (!company) continue;
-
-      if (!byCompany.has(company.id)) {
-        byCompany.set(company.id, { company, timesheets: [], expenses: [] });
-      }
-      byCompany.get(company.id)!.expenses.push(ex);
-    }
-
-    // Generate one invoice per company. The whole batch is pure DB work (no
-    // emails or other side effects here), so it runs inside a single
-    // Serializable transaction: every invoice number is read and consumed
-    // atomically, so two companies in this same call — or two concurrent
-    // calls to this action — can never be handed the same number, and a
-    // failure partway through rolls the whole batch back instead of leaving
-    // some companies invoiced and others not.
+    // Generate one invoice per company inside a single Serializable
+    // transaction. The "already invoiced" check runs as READS INSIDE this
+    // transaction (via `tx`, not `prisma`) — not before it opens.
+    //
+    // Two runs that each check "already invoiced?" outside a shared
+    // transaction — two staff racing, or (the realistic case, given this
+    // batch's size) one impatient double-click before the button disabled
+    // itself — can both see the same timesheets as unbilled, because
+    // neither run's read can see the other run's still-uncommitted writes.
+    // Both then create InvoiceLine rows for the same timesheets: a silent
+    // double invoice. Reading InvoiceLine here, inside the same Serializable
+    // transaction that writes it, puts the check under Postgres's
+    // snapshot-conflict detection: if two concurrent transactions both read
+    // "not yet invoiced" for a row and both then write it, Postgres
+    // recognises the write skew and aborts the loser with a serialization
+    // failure (P2034), which the retry below recomputes and reruns rather
+    // than surfacing a spurious failure to the user.
+    //
+    // This also means every invoice number is read and consumed atomically:
+    // two companies in this same call, or two concurrent calls, can never be
+    // handed the same number, and a failure partway through rolls the whole
+    // batch back instead of leaving some companies invoiced and others not.
     const runBatch = () =>
       prisma.$transaction(
         async (tx) => {
+          // Check which timesheets are already on an invoice
+          const existingLines = await tx.invoiceLine.findMany({
+            where: { timesheetId: { in: timesheets.map((t) => t.id) } },
+            select: { timesheetId: true },
+          });
+          const invoicedTimesheetIds = new Set(existingLines.map((l) => l.timesheetId));
+
+          // Filter out already-invoiced timesheets
+          const uninvoicedTimesheets = timesheets.filter(
+            (t) => !invoicedTimesheetIds.has(t.id)
+          );
+
+          // Check which expenses are already on an invoice
+          const existingExpenseLines = await tx.invoiceLine.findMany({
+            where: { expenseId: { in: scopedExpenses.map((e) => e.id) } },
+            select: { expenseId: true },
+          });
+          const invoicedExpenseIds = new Set(existingExpenseLines.map((l) => l.expenseId));
+
+          // Filter out already-invoiced expenses
+          const uninvoicedExpenses = scopedExpenses.filter(
+            (e) => !invoicedExpenseIds.has(e.id)
+          );
+
+          if (uninvoicedTimesheets.length === 0 && uninvoicedExpenses.length === 0) {
+            // Thrown rather than redirect()ed — this can be reached on the
+            // very first attempt (genuinely nothing left to bill) or after a
+            // retry below discovers a concurrent run just claimed
+            // everything. Either way it must reach the redirect in the
+            // outer catch, not the P2034/P2002 retry, hence a distinct type.
+            throw new AlreadyInvoicedError();
+          }
+
+          // Group timesheets and expenses by company
+          const byCompany = new Map<
+            string,
+            {
+              company: { id: string; name: string };
+              timesheets: typeof uninvoicedTimesheets;
+              expenses: typeof uninvoicedExpenses;
+            }
+          >();
+
+          for (const ts of uninvoicedTimesheets) {
+            // Fall back to the first entry carrying a resolved assignment when the
+            // week-level assignment is missing (e.g. per-day assignments were set
+            // but the week-level one never got synced). If entries span more than
+            // one company this buckets to the first resolved one — genuinely
+            // cross-company weeks are out of scope here.
+            const company = ts.assignment?.company ?? ts.entries.find((e) => e.assignment?.company)?.assignment?.company;
+            if (!company) continue;
+
+            if (!byCompany.has(company.id)) {
+              byCompany.set(company.id, { company, timesheets: [], expenses: [] });
+            }
+            byCompany.get(company.id)!.timesheets.push(ts);
+          }
+
+          for (const ex of uninvoicedExpenses) {
+            const company = ex.assignment?.company;
+            if (!company) continue;
+
+            if (!byCompany.has(company.id)) {
+              byCompany.set(company.id, { company, timesheets: [], expenses: [] });
+            }
+            byCompany.get(company.id)!.expenses.push(ex);
+          }
+
           const ids: string[] = [];
 
           for (const [cId, { timesheets: companyTimesheets, expenses: companyExpenses }] of byCompany) {
@@ -383,6 +413,9 @@ export async function generateInvoices(formData: FormData) {
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    if (error instanceof AlreadyInvoicedError) {
+      redirect("/billing/generate?error=already-invoiced");
+    }
     console.error("Failed to generate invoices:", error);
     throw new Error("Failed to generate invoices. Please try again.");
   }
