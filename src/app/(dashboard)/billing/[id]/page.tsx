@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
+import { SubmitButton } from "@/components/submit-button";
 import { formatDate } from "@/lib/utils";
 import {
   approveInvoice,
@@ -324,9 +325,12 @@ export default async function InvoiceDetailPage({
                 />
               </div>
             </div>
-            <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors">
+            <SubmitButton
+              pendingLabel="Recording…"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Record Payment
-            </button>
+            </SubmitButton>
           </form>
         )}
       </div>
