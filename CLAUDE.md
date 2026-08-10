@@ -102,6 +102,12 @@ What it covers, and why those things:
 | `contractor-statuses.test.ts` | Settable vs pipeline vocabularies. `"On Hold"` was offered by one UI, unreachable from another and rejected by the API |
 | `contractor-status.test.ts` | Activate/deactivate transitions, against an in-memory double. Pins that `"On Hold"` and `"Left"` are **never** auto-changed |
 | `compliance-score.test.ts` | The compliance denominator counts **distinct people on live work, not assignment rows** — /intelligence divided rows by people and called it a proportion of the workforce |
+| `uk-bank-holidays.test.ts` | The eight England & Wales holidays, asserted against the **published dates**. Found a real pay bug: when Christmas falls on a Sunday the substitute moves to Tue 27 Dec, and 27 Dec was not treated as a holiday at all |
+| `overtime-calculator.test.ts` | Weekday/weekend/bank-holiday hour splits and premiums. Also covers `professional-hours` |
+| `role-normalisation.test.ts` | Role resolution: shift suffixes, spelling variants, the job-title fallback, and `requirementAppliesToRole`. Every per-role compliance requirement is matched through this |
+| `holiday.test.ts` | `isPayeContractor` — the PAYE gate on holiday accrual, guarding four call sites with a strict compare against a free-text column |
+| `awr.test.ts` | The AWR 12-week qualifying clock (pause at ≤6 weeks off, reset beyond) and the report filters. `below-comparable` must stay a subset of `reached`, or the report overstates the liability |
+| `parse-date.test.ts` | UK `DD/MM/YYYY` parsing for the public forms. Found a real bug: `"03/04"` with no year returned **4 March 2001** — US month-first with an invented century, stored as a DOB |
 
 Two rules for anyone extending it:
 
