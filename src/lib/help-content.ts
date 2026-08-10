@@ -31,22 +31,9 @@ export const HELP_CONTENT: HelpSection[] = [
       },
     ],
   },
-  {
-    section: "AI Assistant",
-    topics: [
-      {
-        slug: "ai-assistant",
-        title: "AI Assistant",
-        match: ["/ai"],
-        summary:
-          "A chat window powered by Claude for drafting emails, checking a point of law, or a second opinion on wording.",
-        tips: [
-          "It does not read PRISM's own data — it only knows what you type into that chat.",
-          "Never paste a contractor's name, NI number, or medical details into it.",
-        ],
-      },
-    ],
-  },
+  // AI Assistant's help section removed with its nav entry (2026-08-10) — the
+  // Help page should not advertise a feature that is no longer reachable from
+  // the sidebar. Restore alongside the nav entry in components/sidebar.tsx.
   {
     section: "Intelligence",
     topics: [

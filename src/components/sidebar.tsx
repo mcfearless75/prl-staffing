@@ -26,14 +26,12 @@ import {
   FileText,
   UserCheck,
   Send,
-  Bot,
   Wrench,
   HelpCircle,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, badgeKey: null },
-  { name: "AI Assistant", href: "/ai", icon: Bot, badgeKey: null },
   { name: "Intelligence", href: "/intelligence", icon: Brain, badgeKey: null },
   { name: "Campaign", href: "/campaign", icon: Send, badgeKey: null },
   { name: "Applicants", href: "/applicants", icon: UserCheck, badgeKey: "pendingApplicants" as const },
@@ -57,6 +55,10 @@ const navigation = [
 
 // Suppliers, Expenses and Projects are built and functional but hidden from
 // nav per client request (2026-07-27) — routes still resolve directly by URL.
+//
+// AI Assistant hidden the same way (2026-08-10): PRL don't expect to use it.
+// /ai and /api/ai are untouched and still work by direct URL, so putting it
+// back is a one-line change here.
 
 type Counts = {
   complianceAlerts: number;
