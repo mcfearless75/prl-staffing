@@ -118,6 +118,17 @@ function extractContractorData(formData: FormData) {
 
 export type ContractorFormState = { error?: string };
 
+// Authoritative gate behind the form's confirm-email field — a direct POST
+// bypassing the browser could otherwise skip the client-side check entirely.
+function validateEmailConfirmation(formData: FormData): string | null {
+  const email = ((formData.get("email") as string) || "").trim().toLowerCase();
+  const confirmEmail = ((formData.get("confirmEmail") as string) || "").trim().toLowerCase();
+  if (email !== confirmEmail) {
+    return "Email and Confirm Email do not match. Please re-check and try again.";
+  }
+  return null;
+}
+
 function isUniqueEmailError(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -179,6 +190,8 @@ export async function createContractor(
 ): Promise<ContractorFormState> {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  const confirmError = validateEmailConfirmation(formData);
+  if (confirmError) return { error: confirmError };
   try {
     const data = extractContractorData(formData);
     const roleIds = extractRoleIds(formData);
@@ -253,6 +266,8 @@ export async function updateContractor(
 ): Promise<ContractorFormState> {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  const confirmError = validateEmailConfirmation(formData);
+  if (confirmError) return { error: confirmError };
   try {
     const data = extractContractorData(formData);
     const roleIds = extractRoleIds(formData);

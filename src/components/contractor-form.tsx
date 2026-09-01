@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { RolePicker } from "@/components/role-picker";
 import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
 
@@ -34,6 +34,14 @@ export function ContractorForm({
 }: ContractorFormProps) {
   const [state, formAction, pending] = useActionState(action, {});
   const hasStructuredNotes = notesAreStructured(contractor?.notes);
+
+  // Confirm-email: retyped, not prefilled and not pasteable, so a typo in the
+  // primary field (e.g. a mistyped Gmail address that's still syntactically
+  // valid) has to be made twice in a row to slip through.
+  const [email, setEmail] = useState(contractor?.email ?? "");
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const emailMismatch =
+    confirmEmail.length > 0 && email.trim().toLowerCase() !== confirmEmail.trim().toLowerCase();
 
   return (
     <form action={formAction}>
@@ -93,9 +101,39 @@ export function ContractorForm({
               id="email"
               name="email"
               required
-              defaultValue={contractor?.email ?? ""}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+          </div>
+
+          {/* Confirm Email */}
+          <div>
+            <label
+              htmlFor="confirmEmail"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Confirm Email
+            </label>
+            <input
+              type="email"
+              id="confirmEmail"
+              name="confirmEmail"
+              required
+              value={confirmEmail}
+              onChange={(e) => setConfirmEmail(e.target.value)}
+              onPaste={(e) => e.preventDefault()}
+              placeholder="Re-type to confirm"
+              aria-invalid={emailMismatch}
+              className={`mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:outline-none focus:ring-1 ${
+                emailMismatch
+                  ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              }`}
+            />
+            {emailMismatch && (
+              <p className="mt-1 text-xs text-red-600">Email addresses do not match.</p>
+            )}
           </div>
 
           {/* Personal / secondary email */}
@@ -450,7 +488,7 @@ export function ContractorForm({
           </Link>
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || confirmEmail.trim() === "" || emailMismatch}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {pending ? "Saving..." : "Save Contractor"}
