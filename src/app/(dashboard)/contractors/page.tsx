@@ -4,7 +4,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate, getInitials, getStatusColor } from "@/lib/utils";
-import { Plus, Search, Upload, ArrowUpDown } from "lucide-react";
+import { Plus, Search, Upload, ArrowUpDown, MailWarning } from "lucide-react";
 import { ContractorStatusSelect } from "@/components/contractor-status-select";
 import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
 
@@ -203,7 +203,18 @@ export default async function ContractorsPage({
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {contractor.email}
+                    <div className="flex items-center gap-1.5">
+                      {contractor.email}
+                      {contractor.emailBounced && (
+                        <span
+                          title={contractor.emailBounceReason ?? "Email bounced"}
+                          className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700"
+                        >
+                          <MailWarning className="h-3 w-3" />
+                          Bounced
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     {contractor.jobTitle || "—"}

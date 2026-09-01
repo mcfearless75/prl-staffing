@@ -9,31 +9,31 @@ datasource db {
 
 // ─── Users (internal staff) ───
 model User {
-  id              String   @id @default(cuid())
-  email           String   @unique
-  name            String
-  passwordHash    String
-  role            String   @default("admin") // admin, manager, viewer
-  failedAttempts  Int      @default(0)
-  lockedUntil     DateTime?
-  tokenVersion    Int      @default(0) // increment to invalidate all sessions
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String
+  passwordHash   String
+  role           String    @default("admin") // admin, manager, viewer
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  tokenVersion   Int       @default(0) // increment to invalidate all sessions
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 // ─── Client Companies ───
 model Company {
-  id           String       @id @default(cuid())
-  name         String
-  address      String?
-  city         String?
-  postcode     String?
-  contactName  String?
-  contactEmail String?
-  contactPhone String?
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id            String                  @id @default(cuid())
+  name          String
+  address       String?
+  city          String?
+  postcode      String?
+  contactName   String?
+  contactEmail  String?
+  contactPhone  String?
+  isActive      Boolean                 @default(true)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
   contractors   Assignment[]
   sites         Site[]
   requirements  ComplianceRequirement[]
@@ -60,17 +60,25 @@ model Supplier {
 
 // ─── Contractors ───
 model Contractor {
-  id           String             @id @default(cuid())
-  firstName    String
-  lastName     String
-  email        String             @unique
-  personalEmail String?
-  phone        String?
-  jobTitle     String?
-  dayRate      Float?
-  payRate      Float?             // hourly pay rate
-  chargeRate   Float?             // hourly charge rate
-  status       String             @default("Inactive") // See src/lib/contractor-statuses.ts — New, Active, On Hold, Suspended, Inactive, Left, plus pipeline Applied/Looking
+  id                       String              @id @default(cuid())
+  firstName                String
+  lastName                 String
+  email                    String              @unique
+  // Set by the bounce-check workflow agent when a hard bounce (SMTP 5xx) for
+  // this address comes back through the infotech@ mailbox — e.g. a typo'd
+  // address that's still syntactically valid, so nothing at entry time could
+  // have caught it. Not auto-cleared: a human fixing the email should clear
+  // it via the contractor form, same place they'd fix the address itself.
+  emailBounced             Boolean             @default(false)
+  emailBouncedAt           DateTime?
+  emailBounceReason        String?
+  personalEmail            String?
+  phone                    String?
+  jobTitle                 String?
+  dayRate                  Float?
+  payRate                  Float? // hourly pay rate
+  chargeRate               Float? // hourly charge rate
+  status                   String              @default("Inactive") // See src/lib/contractor-statuses.ts — New, Active, On Hold, Suspended, Inactive, Left, plus pipeline Applied/Looking
   // When staff explicitly approved this applicant. Set ONLY by a deliberate
   // individual approval — never by bulk import, onboarding create, or a
   // contractor going back to work. welcomeAgent keys off this; `updatedAt` was
@@ -78,56 +86,56 @@ model Contractor {
   // of approvals and emailed contractors who had been on site for months.
   // Null means "not approved through PRISM", which is correct for everyone
   // predating this column and for imported records.
-  approvedAt   DateTime?
-  supplierId   String?
-  supplier     Supplier?          @relation(fields: [supplierId], references: [id])
-  niNumber     String?
-  utrNumber    String?
-  ir35Status   String?            // Inside, Outside, TBD
-  employmentType String?          // PAYE, CIS, PSC
+  approvedAt               DateTime?
+  supplierId               String?
+  supplier                 Supplier?           @relation(fields: [supplierId], references: [id])
+  niNumber                 String?
+  utrNumber                String?
+  ir35Status               String? // Inside, Outside, TBD
+  employmentType           String? // PAYE, CIS, PSC
   emergencyContactName     String?
   emergencyContactPhone    String?
-  emergencyContactRelation String?   // Spouse, Parent, Partner, Sibling, Friend, Other
+  emergencyContactRelation String? // Spouse, Parent, Partner, Sibling, Friend, Other
   dateOfBirth              DateTime?
   address                  String?
   postcode                 String?
-  latitude                 Float?    // geocoded from postcode, for coverage map
+  latitude                 Float? // geocoded from postcode, for coverage map
   longitude                Float?
   geocodedAt               DateTime? // last successful/attempted geocode, avoids re-querying on every backfill
   nextOfKin                String?
-  medicalNotes             String?   // allergies, conditions (confidential)
+  medicalNotes             String? // allergies, conditions (confidential)
   // ─── Right to work ───
   // Collected by /apply since launch but only ever written into the notes JSON
   // blob, so it was queryable by nobody and invisible to every screen. Promoted
   // to real columns because the expiry dates are exactly what complianceChase
   // needs to alert on. notes still keeps the full raw blob as the audit trail,
   // so a date that fails to parse is degraded, never lost.
-  nonBritishNational       String?   // Yes / No as submitted
-  requiresWorkPermit       String?   // Yes / No as submitted
+  nonBritishNational       String? // Yes / No as submitted
+  requiresWorkPermit       String? // Yes / No as submitted
   passportNumber           String?
   passportExpiry           DateTime?
   visaNumber               String?
   visaExpiry               DateTime?
-  notes        String?
-  ref          String?            @unique // human-readable reference, e.g. C00001
-  inviteSentAt              DateTime?
-  inviteOpenedAt            DateTime?
-  inviteToken               String?   @unique
-  profileCompletionSentAt   DateTime?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  assignments  Assignment[]
-  timesheets   Timesheet[]
-  compliances      ComplianceRecord[]
-  invoiceLines     InvoiceLine[]
-  contractorLogin  ContractorLogin?
-  documents        Document[]
-  expenses         Expense[]
-  noteEntries      ContractorNote[]
-  holidayLedger    HolidayLedger[]
-  holidayRequests  HolidayRequest[]
-  chaseLogs        ChaseLog[]
-  jobRoles         ContractorJobRole[]
+  notes                    String?
+  ref                      String?             @unique // human-readable reference, e.g. C00001
+  inviteSentAt             DateTime?
+  inviteOpenedAt           DateTime?
+  inviteToken              String?             @unique
+  profileCompletionSentAt  DateTime?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+  assignments              Assignment[]
+  timesheets               Timesheet[]
+  compliances              ComplianceRecord[]
+  invoiceLines             InvoiceLine[]
+  contractorLogin          ContractorLogin?
+  documents                Document[]
+  expenses                 Expense[]
+  noteEntries              ContractorNote[]
+  holidayLedger            HolidayLedger[]
+  holidayRequests          HolidayRequest[]
+  chaseLogs                ChaseLog[]
+  jobRoles                 ContractorJobRole[]
 
   // These three indexes already exist in the database — the migrations that
   // added their columns created them directly in SQL, but never declared them
@@ -160,8 +168,8 @@ model HolidayLedger {
   id           String     @id @default(cuid())
   contractorId String
   contractor   Contractor @relation(fields: [contractorId], references: [id])
-  timesheetId  String?    // source timesheet for accruals; plain string FK, mirrors Expense.timesheetId pattern
-  type         String     // Accrual, Payment, Adjustment
+  timesheetId  String? // source timesheet for accruals; plain string FK, mirrors Expense.timesheetId pattern
+  type         String // Accrual, Payment, Adjustment
   hours        Float
   amount       Float?
   weekStarting DateTime?
@@ -190,7 +198,7 @@ model ChaseLog {
   id           String     @id @default(cuid())
   contractorId String
   contractor   Contractor @relation(fields: [contractorId], references: [id])
-  kind         String     // e.g. "timesheet"
+  kind         String // e.g. "timesheet"
   weekStarting DateTime?
   sentAt       DateTime   @default(now())
   sentBy       String?
@@ -203,7 +211,7 @@ model Site {
   address     String?
   city        String?
   postcode    String?
-  latitude    Float?    // geocoded from postcode, for coverage map
+  latitude    Float? // geocoded from postcode, for coverage map
   longitude   Float?
   geocodedAt  DateTime?
   isActive    Boolean      @default(true)
@@ -229,73 +237,73 @@ model Department {
 
 // ─── Assignments (contractor <-> company placement) ───
 model Assignment {
-  id             String      @id @default(cuid())
-  contractorId   String
-  contractor     Contractor  @relation(fields: [contractorId], references: [id])
-  companyId      String
-  company        Company     @relation(fields: [companyId], references: [id])
-  siteId         String?
-  site           Site?       @relation(fields: [siteId], references: [id])
-  departmentId   String?
-  department     Department? @relation(fields: [departmentId], references: [id])
-  projectId      String?
-  project        Project?    @relation(fields: [projectId], references: [id])
-  role           String
-  location       String?
-  startDate      DateTime
-  endDate        DateTime?
-  status         String      @default("Active") // See src/lib/assignment-statuses.ts — Placed, Active, Ending, Holiday, Completed
-  poNumber       String?
-  notes          String?
-  chargeRate     Float?      // client charge rate for this assignment
-  payRate        Float?      // contractor pay rate for this assignment
-  rateBasis      String?     // Hourly, Daily
-  comparatorRate Float?      // AWR comparable-employee rate
-  awrExempt      Boolean     @default(false)
-  awrStartDate   DateTime?   // manual override for AWR 12-week clock start
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  timesheets     Timesheet[]
+  id               String           @id @default(cuid())
+  contractorId     String
+  contractor       Contractor       @relation(fields: [contractorId], references: [id])
+  companyId        String
+  company          Company          @relation(fields: [companyId], references: [id])
+  siteId           String?
+  site             Site?            @relation(fields: [siteId], references: [id])
+  departmentId     String?
+  department       Department?      @relation(fields: [departmentId], references: [id])
+  projectId        String?
+  project          Project?         @relation(fields: [projectId], references: [id])
+  role             String
+  location         String?
+  startDate        DateTime
+  endDate          DateTime?
+  status           String           @default("Active") // See src/lib/assignment-statuses.ts — Placed, Active, Ending, Holiday, Completed
+  poNumber         String?
+  notes            String?
+  chargeRate       Float? // client charge rate for this assignment
+  payRate          Float? // contractor pay rate for this assignment
+  rateBasis        String? // Hourly, Daily
+  comparatorRate   Float? // AWR comparable-employee rate
+  awrExempt        Boolean          @default(false)
+  awrStartDate     DateTime? // manual override for AWR 12-week clock start
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  timesheets       Timesheet[]
   timesheetEntries TimesheetEntry[]
-  expenses       Expense[]
-  creditNotes    CreditNote[]
+  expenses         Expense[]
+  creditNotes      CreditNote[]
 }
 
 // ─── Projects (client jobs/contracts) ───
 model Project {
-  id            String       @id @default(cuid())
-  code          String       @unique // e.g. "4034"
-  name          String
-  companyId     String?
-  company       Company?     @relation(fields: [companyId], references: [id])
-  siteAddress   String?
-  costCode      String?
-  status        String       @default("Active") // Active, OnHold, Completed
-  notes         String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  assignments   Assignment[]
-  rateCards     RateCard[]
+  id          String       @id @default(cuid())
+  code        String       @unique // e.g. "4034"
+  name        String
+  companyId   String?
+  company     Company?     @relation(fields: [companyId], references: [id])
+  siteAddress String?
+  costCode    String?
+  status      String       @default("Active") // Active, OnHold, Completed
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  assignments Assignment[]
+  rateCards   RateCard[]
 }
 
 // ─── Timesheets ───
 model Timesheet {
-  id           String          @id @default(cuid())
-  contractorId String
-  contractor   Contractor      @relation(fields: [contractorId], references: [id])
-  assignmentId String?
-  assignment   Assignment?     @relation(fields: [assignmentId], references: [id])
-  weekStarting DateTime        // Monday of the week
-  status       String          @default("Draft") // Draft, Submitted, Approved, Rejected
-  totalHours   Float           @default(0)
-  overtimeHours Float          @default(0)
-  notes        String?
-  submittedAt  DateTime?
-  approvedAt   DateTime?
-  approvedBy   String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  isException     Boolean         @default(false)
+  id              String              @id @default(cuid())
+  contractorId    String
+  contractor      Contractor          @relation(fields: [contractorId], references: [id])
+  assignmentId    String?
+  assignment      Assignment?         @relation(fields: [assignmentId], references: [id])
+  weekStarting    DateTime // Monday of the week
+  status          String              @default("Draft") // Draft, Submitted, Approved, Rejected
+  totalHours      Float               @default(0)
+  overtimeHours   Float               @default(0)
+  notes           String?
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  approvedBy      String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  isException     Boolean             @default(false)
   exceptionReason String?
   // Why staff sent the whole week back. TimesheetEntry and Expense both already
   // carry one; the week did not, so "your timesheet was rejected" could never
@@ -310,11 +318,11 @@ model TimesheetEntry {
   id              String      @id @default(cuid())
   timesheetId     String
   timesheet       Timesheet   @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
-  dayOfWeek       Int         // 0=Mon, 1=Tue, ... 6=Sun
+  dayOfWeek       Int // 0=Mon, 1=Tue, ... 6=Sun
   hours           Float       @default(0)
   overtime        Float       @default(0)
-  startTime       String?     // "HH:MM" — when set with finishTime, hours are derived from these
-  finishTime      String?     // "HH:MM"
+  startTime       String? // "HH:MM" — when set with finishTime, hours are derived from these
+  finishTime      String? // "HH:MM"
   notes           String?
   status          String      @default("Pending") // Pending, Approved, Rejected, Absent
   rejectionReason String?
@@ -325,30 +333,30 @@ model TimesheetEntry {
 
 // ─── Compliance Records ───
 model ComplianceRecord {
-  id           String     @id @default(cuid())
-  contractorId String
-  contractor   Contractor @relation(fields: [contractorId], references: [id])
-  type         String     // CSCS, DBS, Right to Work, Insurance, IR35, Qualification
-  documentName String?
-  reference    String?    // cert number etc
-  issueDate    DateTime?
-  expiryDate   DateTime?
-  indefiniteExpiry Boolean @default(false) // true = "No expiry" was explicitly set, distinct from not-yet-entered
-  status       String     @default("Pending") // Verified, Pending, Expiring, Expired, Non-Compliant
-  notes        String?
-  filePath     String?    // path to uploaded document
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id               String     @id @default(cuid())
+  contractorId     String
+  contractor       Contractor @relation(fields: [contractorId], references: [id])
+  type             String // CSCS, DBS, Right to Work, Insurance, IR35, Qualification
+  documentName     String?
+  reference        String? // cert number etc
+  issueDate        DateTime?
+  expiryDate       DateTime?
+  indefiniteExpiry Boolean    @default(false) // true = "No expiry" was explicitly set, distinct from not-yet-entered
+  status           String     @default("Pending") // Verified, Pending, Expiring, Expired, Non-Compliant
+  notes            String?
+  filePath         String? // path to uploaded document
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 }
 
 // ─── Compliance Requirements (checklists per role/site) ───
 model ComplianceRequirement {
   id          String   @id @default(cuid())
-  role        String   // e.g. "Electrician", "Labourer", "All"
-  companyId   String?  // null = applies to all sites
+  role        String // e.g. "Electrician", "Labourer", "All"
+  companyId   String? // null = applies to all sites
   company     Company? @relation(fields: [companyId], references: [id])
-  type        String   // CSCS, DBS, Right to Work, Insurance, IR35 Assessment, Qualification
-  description String?  // extra detail, e.g. "NVQ Level 3"
+  type        String // CSCS, DBS, Right to Work, Insurance, IR35 Assessment, Qualification
+  description String? // extra detail, e.g. "NVQ Level 3"
   isMandatory Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -361,11 +369,11 @@ model TimesheetAuditLog {
   id          String    @id @default(cuid())
   timesheetId String
   timesheet   Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
-  action      String    // Created, Edited, Submitted, Approved, Rejected, AutoApproved, Reopened
-  field       String?   // which field changed (e.g. "hours_Mon", "status")
+  action      String // Created, Edited, Submitted, Approved, Rejected, AutoApproved, Reopened
+  field       String? // which field changed (e.g. "hours_Mon", "status")
   oldValue    String?
   newValue    String?
-  userId      String?   // who made the change
+  userId      String? // who made the change
   userName    String?
   createdAt   DateTime  @default(now())
 }
@@ -385,67 +393,67 @@ model ApprovalStep {
   id              String        @id @default(cuid())
   approvalChainId String
   approvalChain   ApprovalChain @relation(fields: [approvalChainId], references: [id], onDelete: Cascade)
-  stepOrder       Int           // 1, 2, 3...
-  approverRole    String        // "manager", "admin"
-  label           String        // "Line Manager", "Site Manager", "Finance"
+  stepOrder       Int // 1, 2, 3...
+  approverRole    String // "manager", "admin"
+  label           String // "Line Manager", "Site Manager", "Finance"
   createdAt       DateTime      @default(now())
 }
 
 // ─── Timesheet Approval Steps (per-timesheet tracking) ───
 model TimesheetApproval {
-  id          String    @id @default(cuid())
-  timesheetId String
-  timesheet   Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
-  stepOrder   Int
-  stepLabel   String
-  status      String    @default("Pending") // Pending, Approved, Rejected
-  approvedBy  String?
+  id           String    @id @default(cuid())
+  timesheetId  String
+  timesheet    Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+  stepOrder    Int
+  stepLabel    String
+  status       String    @default("Pending") // Pending, Approved, Rejected
+  approvedBy   String?
   approverName String?
-  approvedAt  DateTime?
-  notes       String?
-  createdAt   DateTime  @default(now())
+  approvedAt   DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
 }
 
 // ─── Invoices ───
 model Invoice {
-  id             String        @id @default(cuid())
-  invoiceNumber  String        @unique // e.g. INV-0001
-  companyId      String
-  company        Company       @relation(fields: [companyId], references: [id])
-  periodStart    DateTime      // billing period start
-  periodEnd      DateTime      // billing period end
-  status         String        @default("Draft") // Draft, Reconciling, Approved, Sent, Paid, Disputed
-  currency       String        @default("GBP")
-  subtotal       Float         @default(0)
-  vatRate        Float         @default(20) // UK VAT %
-  vatAmount      Float         @default(0)
-  total          Float         @default(0)
-  dueDate        DateTime?
-  paidDate       DateTime?
-  poNumber       String?       // PO reference for three-way matching
-  notes          String?
-  matchStatus    String        @default("Unmatched") // Unmatched, Partial, Matched, Disputed
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  lines          InvoiceLine[]
-  payments       InvoicePayment[]
-  creditNotes    CreditNote[]
+  id            String           @id @default(cuid())
+  invoiceNumber String           @unique // e.g. INV-0001
+  companyId     String
+  company       Company          @relation(fields: [companyId], references: [id])
+  periodStart   DateTime // billing period start
+  periodEnd     DateTime // billing period end
+  status        String           @default("Draft") // Draft, Reconciling, Approved, Sent, Paid, Disputed
+  currency      String           @default("GBP")
+  subtotal      Float            @default(0)
+  vatRate       Float            @default(20) // UK VAT %
+  vatAmount     Float            @default(0)
+  total         Float            @default(0)
+  dueDate       DateTime?
+  paidDate      DateTime?
+  poNumber      String? // PO reference for three-way matching
+  notes         String?
+  matchStatus   String           @default("Unmatched") // Unmatched, Partial, Matched, Disputed
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  lines         InvoiceLine[]
+  payments      InvoicePayment[]
+  creditNotes   CreditNote[]
 }
 
 model InvoiceLine {
-  id            String    @id @default(cuid())
+  id            String     @id @default(cuid())
   invoiceId     String
-  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice       Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   contractorId  String
   contractor    Contractor @relation(fields: [contractorId], references: [id])
   timesheetId   String?
-  expenseId     String?    // Expense id when this line bills an approved expense
-  description   String     // e.g. "J. Smith - Electrician"
+  expenseId     String? // Expense id when this line bills an approved expense
+  description   String // e.g. "J. Smith - Electrician"
   hours         Float
   overtimeHours Float      @default(0)
-  rate          Float      // charge rate per hour
-  overtimeRate  Float?     // overtime rate (1.5x)
-  amount        Float      // total line amount
+  rate          Float // charge rate per hour
+  overtimeRate  Float? // overtime rate (1.5x)
+  amount        Float // total line amount
   createdAt     DateTime   @default(now())
 }
 
@@ -488,87 +496,87 @@ model InvoicePayment {
 
 // ─── Activity Log (tracks all user actions for audit) ───
 model ActivityLog {
-  id          String   @id @default(cuid())
-  userId      String?
-  userName    String?
-  userEmail   String?
-  action      String   // e.g. "Created Contractor", "Approved Timesheet"
-  entityType  String   // e.g. "Contractor", "Timesheet", "Invoice"
-  entityId    String?
-  details     String?  // JSON or text with additional context
-  ipAddress   String?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String?
+  userName   String?
+  userEmail  String?
+  action     String // e.g. "Created Contractor", "Approved Timesheet"
+  entityType String // e.g. "Contractor", "Timesheet", "Invoice"
+  entityId   String?
+  details    String? // JSON or text with additional context
+  ipAddress  String?
+  createdAt  DateTime @default(now())
 }
 
 // ─── Contractor Login (self-service portal) ───
 model ContractorLogin {
-  id              String     @id @default(cuid())
-  contractorId    String     @unique
-  contractor      Contractor @relation(fields: [contractorId], references: [id])
-  email           String     @unique
-  failedAttempts  Int        @default(0)
-  lockedUntil     DateTime?
-  tokenVersion    Int        @default(0)
-  passwordHash String
-  lastLoginAt  DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id             String     @id @default(cuid())
+  contractorId   String     @unique
+  contractor     Contractor @relation(fields: [contractorId], references: [id])
+  email          String     @unique
+  failedAttempts Int        @default(0)
+  lockedUntil    DateTime?
+  tokenVersion   Int        @default(0)
+  passwordHash   String
+  lastLoginAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 }
 
 // ─── Payment Queries (ticket system) ───
 model PaymentQuery {
-  id                  String    @id @default(cuid())
-  ticketNumber        String    @unique // PQ-001, PQ-002
-  operativeName       String
-  email               String
-  phone               String?
-  role                String?
-  weekEnding          String
-  queryType           String    // "Incorrect Hours, Overtime, No Payment" etc
-  totalHoursClaimed   String?
+  id                   String    @id @default(cuid())
+  ticketNumber         String    @unique // PQ-001, PQ-002
+  operativeName        String
+  email                String
+  phone                String?
+  role                 String?
+  weekEnding           String
+  queryType            String // "Incorrect Hours, Overtime, No Payment" etc
+  totalHoursClaimed    String?
   totalOvertimeClaimed String?
-  totalHoursPaid      String?
-  hours               String?   // JSON array of hour rows
-  explanation         String
-  signature           String
-  status              String    @default("Open") // Open, Assigned, Resolved, Closed
-  assignedTo          String?
-  assignedAt          DateTime?
-  resolvedAt          DateTime?
-  resolvedBy          String?
-  resolutionNotes     String?
-  closedAt            DateTime?
-  closedBy            String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  totalHoursPaid       String?
+  hours                String? // JSON array of hour rows
+  explanation          String
+  signature            String
+  status               String    @default("Open") // Open, Assigned, Resolved, Closed
+  assignedTo           String?
+  assignedAt           DateTime?
+  resolvedAt           DateTime?
+  resolvedBy           String?
+  resolutionNotes      String?
+  closedAt             DateTime?
+  closedBy             String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
 
 // ─── Grievances (ticket system) ───
 model Grievance {
-  id              String    @id @default(cuid())
-  ticketNumber    String    @unique // GRV-001, GRV-002
-  name            String
-  email           String
-  phone           String?
-  role            String?
-  site            String?
-  incidentDate    String?
-  grievanceType   String    // "Bullying / Harassment, Discrimination" etc
-  description     String
-  desiredOutcome  String?
-  raisedInformally String?  // "Yes" | "No"
-  witnesses       String?
-  signature       String
-  status          String    @default("Open") // Open, Assigned, Resolved, Closed
-  assignedTo      String?
-  assignedAt      DateTime?
-  resolvedAt      DateTime?
-  resolvedBy      String?
-  resolutionNotes String?
-  closedAt        DateTime?
-  closedBy        String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  ticketNumber     String    @unique // GRV-001, GRV-002
+  name             String
+  email            String
+  phone            String?
+  role             String?
+  site             String?
+  incidentDate     String?
+  grievanceType    String // "Bullying / Harassment, Discrimination" etc
+  description      String
+  desiredOutcome   String?
+  raisedInformally String? // "Yes" | "No"
+  witnesses        String?
+  signature        String
+  status           String    @default("Open") // Open, Assigned, Resolved, Closed
+  assignedTo       String?
+  assignedAt       DateTime?
+  resolvedAt       DateTime?
+  resolvedBy       String?
+  resolutionNotes  String?
+  closedAt         DateTime?
+  closedBy         String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 // ─── New Starter Checklist submissions (public /new-starter form) ───
@@ -579,18 +587,18 @@ model NewStarterSubmission {
   email               String
   phone               String
   gender              String?
-  dob                 String?  // yyyy-mm-dd as submitted
+  dob                 String? // yyyy-mm-dd as submitted
   country             String?
   address             String?
   city                String?
   postcode            String?
   niNumber            String?
   employmentStartDate String
-  employeeStatement   String   // A, B or C (HMRC starter declaration)
+  employeeStatement   String // A, B or C (HMRC starter declaration)
   signature           String
   status              String    @default("New") // New, Processed, Rejected
-  notes               String?   // staff review notes
-  contractorId        String?   // set once converted into a Subcontractor record
+  notes               String? // staff review notes
+  contractorId        String? // set once converted into a Subcontractor record
   processedAt         DateTime?
   processedBy         String?
   createdAt           DateTime  @default(now())
@@ -602,10 +610,10 @@ model Policy {
   id          String   @id @default(cuid())
   name        String
   description String?
-  category    String   // "Compliance & Ethics", "Data & Privacy", "Health & Safety", "Business Operations", "Accreditations"
+  category    String // "Compliance & Ethics", "Data & Privacy", "Health & Safety", "Business Operations", "Accreditations"
   filename    String
-  r2Key       String   // "policies/filename.pdf"
-  fileType    String   // "pdf" | "docx" | "xlsx"
+  r2Key       String // "policies/filename.pdf"
+  fileType    String // "pdf" | "docx" | "xlsx"
   fileSize    Int?
   version     String?
   isPublic    Boolean  @default(false)
@@ -617,16 +625,16 @@ model Policy {
 
 // ─── GDPR Consent Tracking ───
 model ConsentRecord {
-  id            String   @id @default(cuid())
-  contractorId  String?
-  email         String
-  consentType   String   // "onboarding", "portal_registration", "data_processing", "marketing"
-  consentGiven  Boolean  @default(true)
-  ipAddress     String?
-  userAgent     String?
-  consentText   String?  // what they agreed to
-  givenAt       DateTime @default(now())
-  withdrawnAt   DateTime?
+  id           String    @id @default(cuid())
+  contractorId String?
+  email        String
+  consentType  String // "onboarding", "portal_registration", "data_processing", "marketing"
+  consentGiven Boolean   @default(true)
+  ipAddress    String?
+  userAgent    String?
+  consentText  String? // what they agreed to
+  givenAt      DateTime  @default(now())
+  withdrawnAt  DateTime?
 
   @@index([contractorId])
   @@index([email])
@@ -634,16 +642,16 @@ model ConsentRecord {
 
 // ─── GDPR Erasure Requests ───
 model ErasureRequest {
-  id            String   @id @default(cuid())
-  contractorId  String?
-  email         String
-  requestedBy   String   // contractor email or staff email
-  reason        String?
-  status        String   @default("Pending") // Pending, Approved, Completed, Rejected
-  processedBy   String?
-  processedAt   DateTime?
-  notes         String?
-  createdAt     DateTime @default(now())
+  id           String    @id @default(cuid())
+  contractorId String?
+  email        String
+  requestedBy  String // contractor email or staff email
+  reason       String?
+  status       String    @default("Pending") // Pending, Approved, Completed, Rejected
+  processedBy  String?
+  processedAt  DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
 }
 
 // ─── Password Reset Tokens ───
@@ -660,41 +668,41 @@ model PasswordResetToken {
 
 // ─── Document Uploads ───
 model Document {
-  id            String     @id @default(cuid())
-  contractorId  String
-  contractor    Contractor @relation(fields: [contractorId], references: [id])
-  type          String     // CSCS, CV, P45, P60, Passport, DBS, Insurance, Qualification, Other
-  fileName      String
-  fileSize      Int        // bytes
-  mimeType      String
-  storageKey    String     // R2 object key
-  storageUrl    String?    // public URL if needed
-  version       Int        @default(1)
-  uploadedBy    String?    // "contractor" or user email
-  notes         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id           String     @id @default(cuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+  type         String // CSCS, CV, P45, P60, Passport, DBS, Insurance, Qualification, Other
+  fileName     String
+  fileSize     Int // bytes
+  mimeType     String
+  storageKey   String // R2 object key
+  storageUrl   String? // public URL if needed
+  version      Int        @default(1)
+  uploadedBy   String? // "contractor" or user email
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
 // ─── Push Notification Subscriptions ───
 model PushSubscription {
-  id             String   @id @default(cuid())
-  contractorId   String?
-  userId         String?
-  endpoint       String   @unique
-  p256dh         String
-  auth           String
-  createdAt      DateTime @default(now())
+  id           String   @id @default(cuid())
+  contractorId String?
+  userId       String?
+  endpoint     String   @unique
+  p256dh       String
+  auth         String
+  createdAt    DateTime @default(now())
 }
 
 // ─── Notifications ───
 model Notification {
   id            String   @id @default(cuid())
-  recipientType String   // "contractor" or "user"
+  recipientType String // "contractor" or "user"
   recipientId   String
   title         String
   body          String
-  url           String?  // link to open when tapped
+  url           String? // link to open when tapped
   isRead        Boolean  @default(false)
   sentAt        DateTime @default(now())
 }
@@ -702,19 +710,19 @@ model Notification {
 // ─── Rate Cards ───
 model RateCard {
   id             String    @id @default(cuid())
-  trade          String    // was "role" — e.g. "Banksman", "Slinger", "Quantity Surveyor"
-  region         String?   // was "location" — e.g. "London & SE", "Midlands", "Ireland"
-  sector         String?   // e.g. "Civils/Infra"
-  project        String?   // legacy free text, superseded by projectId
+  trade          String // was "role" — e.g. "Banksman", "Slinger", "Quantity Surveyor"
+  region         String? // was "location" — e.g. "London & SE", "Midlands", "Ireland"
+  sector         String? // e.g. "Civils/Infra"
+  project        String? // legacy free text, superseded by projectId
   projectId      String?
   projectRef     Project?  @relation(fields: [projectId], references: [id])
   employmentType String    @default("PAYE") // CIS, PAYE, PSC
-  rateType       String    @default("Time")  // Time, Piece
+  rateType       String    @default("Time") // Time, Piece
   rateBasis      String    @default("Hourly") // Hourly, Daily
-  pay            Float     // was payRate — per hour or per day depending on rateBasis
-  agencyMarkup   Float?    // markup added to pay to reach charge
-  charge         Float     // was chargeRate
-  margin         Float?    // percentage
+  pay            Float // was payRate — per hour or per day depending on rateBasis
+  agencyMarkup   Float? // markup added to pay to reach charge
+  charge         Float // was chargeRate
+  margin         Float? // percentage
   effectiveFrom  DateTime  @default(now())
   effectiveTo    DateTime?
   createdAt      DateTime  @default(now())
@@ -723,234 +731,234 @@ model RateCard {
 
 // ─── Expenses (contractor-incurred costs, billable to client) ───
 model Expense {
-  id                String     @id @default(cuid())
+  id                String      @id @default(cuid())
   contractorId      String
-  contractor        Contractor @relation(fields: [contractorId], references: [id])
+  contractor        Contractor  @relation(fields: [contractorId], references: [id])
   assignmentId      String?
   assignment        Assignment? @relation(fields: [assignmentId], references: [id])
-  timesheetId       String?    // plain string FK, mirrors InvoiceLine.timesheetId pattern
+  timesheetId       String? // plain string FK, mirrors InvoiceLine.timesheetId pattern
   date              DateTime
-  category          String     // Travel, Accommodation, Materials, Other
+  category          String // Travel, Accommodation, Materials, Other
   description       String
   amount            Float
-  receiptDocumentId String?    // Document id
-  status            String     @default("Pending") // Pending, Approved, Rejected, Invoiced
+  receiptDocumentId String? // Document id
+  status            String      @default("Pending") // Pending, Approved, Rejected, Invoiced
   reviewedBy        String?
   reviewedAt        DateTime?
   rejectionReason   String?
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 }
 
 // ─── QMS: Non-Conformance / CAPA ───
 model NonConformance {
-  id            String   @id @default(cuid())
-  ncrNumber     String   @unique // NCR-001, NCR-002...
-  title         String
-  description   String
-  category      String   // Process, Product, Service, Compliance, H&S, Documentation
-  severity      String   @default("Minor") // Minor, Major, Critical
-  source        String   // Internal Audit, Customer Complaint, Management Review, Observation, Incident
-  raisedBy      String
-  raisedDate    DateTime @default(now())
-  assignedTo    String?
-  rootCause     String?
+  id                  String    @id @default(cuid())
+  ncrNumber           String    @unique // NCR-001, NCR-002...
+  title               String
+  description         String
+  category            String // Process, Product, Service, Compliance, H&S, Documentation
+  severity            String    @default("Minor") // Minor, Major, Critical
+  source              String // Internal Audit, Customer Complaint, Management Review, Observation, Incident
+  raisedBy            String
+  raisedDate          DateTime  @default(now())
+  assignedTo          String?
+  rootCause           String?
   correctiveAction    String?
   preventiveAction    String?
   evidenceOfClosure   String?
-  targetDate    DateTime?
-  closedDate    DateTime?
-  closedBy      String?
-  status        String   @default("Open") // Open, In Progress, Awaiting Verification, Closed, Overdue
-  verifiedBy    String?
-  verifiedDate  DateTime?
+  targetDate          DateTime?
+  closedDate          DateTime?
+  closedBy            String?
+  status              String    @default("Open") // Open, In Progress, Awaiting Verification, Closed, Overdue
+  verifiedBy          String?
+  verifiedDate        DateTime?
   effectivenessReview String?
   effectivenessDate   DateTime?
-  filePath      String?  // uploaded evidence
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  filePath            String? // uploaded evidence
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 // ─── QMS: Internal Audits ───
 model InternalAudit {
-  id            String   @id @default(cuid())
-  auditNumber   String   @unique // IA-2026-001
+  id            String         @id @default(cuid())
+  auditNumber   String         @unique // IA-2026-001
   title         String
-  scope         String?  // which processes/areas
+  scope         String? // which processes/areas
   auditDate     DateTime
   leadAuditor   String
-  auditTeam     String?  // comma separated
-  isoClause     String?  // e.g. "7.5, 8.1, 9.2"
-  status        String   @default("Planned") // Planned, In Progress, Completed, Cancelled
-  overallResult String?  // Conforming, Minor NC, Major NC, Observation
+  auditTeam     String? // comma separated
+  isoClause     String? // e.g. "7.5, 8.1, 9.2"
+  status        String         @default("Planned") // Planned, In Progress, Completed, Cancelled
+  overallResult String? // Conforming, Minor NC, Major NC, Observation
   summary       String?
   completedDate DateTime?
   nextAuditDate DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   findings      AuditFinding[]
 }
 
 model AuditFinding {
-  id            String        @id @default(cuid())
-  auditId       String
-  audit         InternalAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  findingNumber Int           // 1, 2, 3...
-  type          String        // NC Major, NC Minor, Observation, Opportunity for Improvement, Positive
-  isoClause     String?       // specific clause reference
-  description   String
-  evidence      String?
+  id               String        @id @default(cuid())
+  auditId          String
+  audit            InternalAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  findingNumber    Int // 1, 2, 3...
+  type             String // NC Major, NC Minor, Observation, Opportunity for Improvement, Positive
+  isoClause        String? // specific clause reference
+  description      String
+  evidence         String?
   correctiveAction String?
-  assignedTo    String?
-  targetDate    DateTime?
-  closedDate    DateTime?
-  status        String        @default("Open") // Open, In Progress, Closed, Overdue
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  assignedTo       String?
+  targetDate       DateTime?
+  closedDate       DateTime?
+  status           String        @default("Open") // Open, In Progress, Closed, Overdue
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 }
 
 // ─── QMS: Management Reviews ───
 model ManagementReview {
-  id            String   @id @default(cuid())
-  reviewNumber  String   @unique // MR-2026-Q1
-  title         String
-  reviewDate    DateTime
-  chairperson   String
-  attendees     String?  // comma separated
-  status        String   @default("Scheduled") // Scheduled, In Progress, Completed
+  id             String    @id @default(cuid())
+  reviewNumber   String    @unique // MR-2026-Q1
+  title          String
+  reviewDate     DateTime
+  chairperson    String
+  attendees      String? // comma separated
+  status         String    @default("Scheduled") // Scheduled, In Progress, Completed
   // Agenda items (auto-populated from PRISM data)
-  kpiSummary    String?  // JSON: {contractors, assignments, compliance, timesheets, billing}
-  ncrSummary    String?  // JSON: {open, closed, overdue}
-  auditSummary  String?  // JSON: {completed, findings, overdue}
-  riskSummary   String?  // JSON: {high, medium, low}
+  kpiSummary     String? // JSON: {contractors, assignments, compliance, timesheets, billing}
+  ncrSummary     String? // JSON: {open, closed, overdue}
+  auditSummary   String? // JSON: {completed, findings, overdue}
+  riskSummary    String? // JSON: {high, medium, low}
   // Minutes
-  minutes       String?  // rich text minutes
-  decisions     String?  // key decisions made
-  actions       String?  // JSON array of {action, owner, deadline}
+  minutes        String? // rich text minutes
+  decisions      String? // key decisions made
+  actions        String? // JSON array of {action, owner, deadline}
   // Review outputs
-  resourceNeeds String?
-  improvements  String?
+  resourceNeeds  String?
+  improvements   String?
   nextReviewDate DateTime?
-  completedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 // ─── QMS: Risk Register ───
 model Risk {
-  id            String   @id @default(cuid())
-  riskNumber    String   @unique // RISK-001
-  title         String
-  description   String
-  category      String   // Operational, Financial, Compliance, Reputational, H&S, IT/Data
-  likelihood    Int      @default(3) // 1-5
-  impact        Int      @default(3) // 1-5
-  riskScore     Int      @default(9) // likelihood x impact
-  riskLevel     String   @default("Medium") // Low, Medium, High, Critical
-  owner         String
-  existingControls String?
-  additionalActions String?
-  targetDate    DateTime?
-  reviewDate    DateTime?
-  lastReviewedBy String?
-  lastReviewedAt DateTime?
-  status        String   @default("Active") // Active, Mitigated, Closed, Accepted
+  id                 String    @id @default(cuid())
+  riskNumber         String    @unique // RISK-001
+  title              String
+  description        String
+  category           String // Operational, Financial, Compliance, Reputational, H&S, IT/Data
+  likelihood         Int       @default(3) // 1-5
+  impact             Int       @default(3) // 1-5
+  riskScore          Int       @default(9) // likelihood x impact
+  riskLevel          String    @default("Medium") // Low, Medium, High, Critical
+  owner              String
+  existingControls   String?
+  additionalActions  String?
+  targetDate         DateTime?
+  reviewDate         DateTime?
+  lastReviewedBy     String?
+  lastReviewedAt     DateTime?
+  status             String    @default("Active") // Active, Mitigated, Closed, Accepted
   residualLikelihood Int?
   residualImpact     Int?
   residualScore      Int?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 // ─── QMS: Quality Policy Acknowledgement ───
 model PolicyAcknowledgement {
-  id            String   @id @default(cuid())
-  userId        String
-  userEmail     String
-  userName      String
-  policyVersion String   @default("1.0")
+  id             String   @id @default(cuid())
+  userId         String
+  userEmail      String
+  userName       String
+  policyVersion  String   @default("1.0")
   acknowledgedAt DateTime @default(now())
 }
 
 // ─── QMS: Continual Improvement Log ───
 model ImprovementItem {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   title         String
   description   String
   submittedBy   String
-  source        String   // Staff Suggestion, Management Review, Audit Finding, Customer Feedback, NCR, Process Review
-  category      String?  // Process, Technology, Training, Communication, Documentation
-  priority      String   @default("Medium") // Low, Medium, High
+  source        String // Staff Suggestion, Management Review, Audit Finding, Customer Feedback, NCR, Process Review
+  category      String? // Process, Technology, Training, Communication, Documentation
+  priority      String    @default("Medium") // Low, Medium, High
   assignedTo    String?
-  status        String   @default("Proposed") // Proposed, Approved, In Progress, Completed, Rejected
+  status        String    @default("Proposed") // Proposed, Approved, In Progress, Completed, Rejected
   outcome       String?
   completedDate DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 // ─── Supply Agreements (Onboarding) ───
 model SupplyAgreement {
-  id              String   @id @default(cuid())
+  id                       String    @id @default(cuid())
   // Company details
-  companyName     String
-  companyAddress  String?
-  companyRegNo    String?
-  contactName     String
-  contactEmail    String
-  contactPhone    String?
+  companyName              String
+  companyAddress           String?
+  companyRegNo             String?
+  contactName              String
+  contactEmail             String
+  contactPhone             String?
   // Supply details
-  supplyOf        String?   // e.g. "Bolting Technicians"
-  siteLocation    String?
-  startDate       DateTime?
+  supplyOf                 String? // e.g. "Bolting Technicians"
+  siteLocation             String?
+  startDate                DateTime?
   // Rates (stored as JSON)
-  rates           String?   // JSON array of {description, rate, basis}
-  breakdown       String?   // JSON array of strings
-  additionalInfo  String?
+  rates                    String? // JSON array of {description, rate, basis}
+  breakdown                String? // JSON array of strings
+  additionalInfo           String?
   // Contractor personal details (if individual)
-  firstName       String?
-  lastName        String?
-  dateOfBirth     DateTime?
-  niNumber        String?
-  utrNumber       String?
-  address         String?
-  postcode        String?
-  emergencyContactName  String?
-  emergencyContactPhone String?
+  firstName                String?
+  lastName                 String?
+  dateOfBirth              DateTime?
+  niNumber                 String?
+  utrNumber                String?
+  address                  String?
+  postcode                 String?
+  emergencyContactName     String?
+  emergencyContactPhone    String?
   emergencyContactRelation String?
   // Status
-  status          String   @default("Pending")  // Pending, Reviewed, Approved, Rejected
-  reviewedBy      String?
-  reviewedAt      DateTime?
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  status                   String    @default("Pending") // Pending, Reviewed, Approved, Rejected
+  reviewedBy               String?
+  reviewedAt               DateTime?
+  notes                    String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 }
 
 // ─── QMS Document Repository ───
 model QmsDocument {
-  id          String   @id @default(cuid())
-  fileName    String
-  filePath    String   // display path e.g. "1. Context of Organisation/Interested Parties"
-  folder      String   // top-level folder
-  subfolder   String?  // sub-folder if any
-  fileType    String   // docx, xlsx, pptx, pdf
-  fileSize    Int      @default(0)
-  r2Key       String?  // Cloudflare R2 storage key
-  uploadedBy  String?
-  version     Int      @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  fileName   String
+  filePath   String // display path e.g. "1. Context of Organisation/Interested Parties"
+  folder     String // top-level folder
+  subfolder  String? // sub-folder if any
+  fileType   String // docx, xlsx, pptx, pdf
+  fileSize   Int      @default(0)
+  r2Key      String? // Cloudflare R2 storage key
+  uploadedBy String?
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 // ─── Agentic Workflow Engine ───
 model WorkflowLog {
   id        String   @id @default(cuid())
-  workflow  String   // "compliance-chase" | "welcome-agent" | "stale-applicant"
-  action    String   // human-readable description
-  target    String?  // contractor id or email
-  outcome   String   // "sent" | "skipped" | "failed" | "escalated"
-  detail    String?  // extra context
+  workflow  String // "compliance-chase" | "welcome-agent" | "stale-applicant"
+  action    String // human-readable description
+  target    String? // contractor id or email
+  outcome   String // "sent" | "skipped" | "failed" | "escalated"
+  detail    String? // extra context
   createdAt DateTime @default(now())
 
   @@index([workflow])
@@ -967,7 +975,7 @@ model AuditorUser {
   organisation String    @default("Nutral")
   logoUrl      String?   @default("/nutral-logo.svg")
   role         String    @default("auditor")
-  loginToken   String?   @unique  // magic-link token — bypasses password
+  loginToken   String?   @unique // magic-link token — bypasses password
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -975,12 +983,12 @@ model AuditorUser {
 
 // ─── Job Roles (admin-managed trade/role catalogue) ───
 model JobRole {
-  id          String               @id @default(cuid())
-  name        String               @unique
-  active      Boolean              @default(true)
-  sortOrder   Int                  @default(0)
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  id          String              @id @default(cuid())
+  name        String              @unique
+  active      Boolean             @default(true)
+  sortOrder   Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
   contractors ContractorJobRole[]
 }
 
@@ -998,22 +1006,22 @@ model ContractorJobRole {
 
 // ─── Customer Satisfaction Survey (public /survey form) ───
 model CustomerSurvey {
-  id                   String   @id @default(cuid())
-  companyName          String
-  contactName          String
-  contactEmail         String
-  dateOfService        String?  // yyyy-mm-dd as submitted
-  overallSatisfaction  Int      // 1-5
-  qualityOfWorkers     Int?
-  communication        Int?
-  compliance           Int?
-  valueForMoney        Int?
-  recommend            String?  // Yes, No, Maybe
-  whatDidWell          String?
-  whatToImprove        String?
-  otherComments        String?
-  status               String   @default("New") // New, Reviewed, Actioned
-  createdAt            DateTime @default(now())
+  id                  String   @id @default(cuid())
+  companyName         String
+  contactName         String
+  contactEmail        String
+  dateOfService       String? // yyyy-mm-dd as submitted
+  overallSatisfaction Int // 1-5
+  qualityOfWorkers    Int?
+  communication       Int?
+  compliance          Int?
+  valueForMoney       Int?
+  recommend           String? // Yes, No, Maybe
+  whatDidWell         String?
+  whatToImprove       String?
+  otherComments       String?
+  status              String   @default("New") // New, Reviewed, Actioned
+  createdAt           DateTime @default(now())
 
   @@index([status, createdAt])
 }
@@ -1033,7 +1041,7 @@ model SupplierQuestionnaire {
   goodsServices               String
   numberOfEmployees           String?
   yearsInBusiness             String?
-  iso9001                     String?   // Yes, No, Working towards
+  iso9001                     String? // Yes, No, Working towards
   otherCertifications         String?
   publicLiability             String?
   publicLiabilityAmount       String?
@@ -1068,13 +1076,13 @@ model SupplierQuestionnaire {
 // ─── Outbound Email Log (every send recorded so failures cannot go silent) ───
 model EmailLog {
   id         String   @id @default(cuid())
-  to         String   // comma-joined recipients
+  to         String // comma-joined recipients
   subject    String
-  template   String?  // send-site slug, e.g. "application-received"
-  status     String   // sent, failed
-  provider   String?  // graph (Microsoft 365) or resend
+  template   String? // send-site slug, e.g. "application-received"
+  status     String // sent, failed
+  provider   String? // graph (Microsoft 365) or resend
   error      String?
-  providerId String?  // Resend message id; Graph sendMail returns 202 with no id
+  providerId String? // Resend message id; Graph sendMail returns 202 with no id
   createdAt  DateTime @default(now())
 
   @@index([status, createdAt])

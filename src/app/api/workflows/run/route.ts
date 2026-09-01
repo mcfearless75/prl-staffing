@@ -6,9 +6,15 @@ import { complianceDigestAgent } from "@/lib/workflows/compliance-digest";
 import { welcomeAgent } from "@/lib/workflows/welcome-agent";
 import { staleApplicantAgent } from "@/lib/workflows/stale-applicant";
 import { placedToActiveAgent } from "@/lib/workflows/placed-to-active";
+import { bounceCheckAgent } from "@/lib/workflows/bounce-check";
 
 const agents = [
-  // Runs first: the status flips it makes are read by the compliance agents
+  // Runs first: flags any contractor whose email hard-bounced since the last
+  // run. Nothing below skips a flagged contractor yet — the send-side agents
+  // don't check emailBounced — so this only makes the flag as fresh as
+  // possible for whoever's looking at the contractor record today.
+  bounceCheckAgent,
+  // Runs next: the status flips it makes are read by the compliance agents
   // below, so a contractor starting today is chased as working, not as pending.
   placedToActiveAgent,
   complianceChaseAgent,

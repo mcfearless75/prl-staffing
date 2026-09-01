@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { formatDate } from "@/lib/utils";
 import { DeleteContractorButton } from "./delete-contractor-button";
 import { SendAppInviteButton } from "./send-app-invite-button";
 import { PortalLinkButton } from "./portal-link-button";
@@ -156,6 +157,15 @@ export default async function ContractorDetailPage({
                 <span className={`h-1.5 w-1.5 rounded-full ${overallStatusDot}`} />
                 Compliance: {overallStatus}
               </span>
+              {contractor.emailBounced && (
+                <span
+                  title={contractor.emailBounceReason ?? undefined}
+                  className="mt-1 ml-1 inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                  Email bounced{contractor.emailBouncedAt ? ` ${formatDate(contractor.emailBouncedAt)}` : ""}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">

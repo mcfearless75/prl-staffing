@@ -157,3 +157,77 @@ export async function sendViaGraph(
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
+
+export interface InboxMessage {
+  id: string;
+  subject: string;
+  fromAddress: string;
+  text: string;
+}
+
+/**
+ * Fetches unread Inbox messages for the configured mailbox, with the
+ * `Prefer: outlook.body-content-type="text"` header so Graph hands back
+ * plain text instead of its default HTML — bounce-parse.ts regexes this
+ * directly. Capped at 25: the daily cron processes what's arrived since the
+ * last run, not a full mailbox scan. Requires the Mail.Read application
+ * permission (Mail.Send alone, the original grant, can't read anything).
+ */
+export async function fetchUnreadInboxMessages(config: GraphConfig): Promise<InboxMessage[]> {
+  const token = await getAccessToken(config);
+  const url =
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.sender)}` +
+    `/mailFolders/Inbox/messages?$filter=isRead eq false&$select=id,subject,from,body&$top=25&$orderby=receivedDateTime desc`;
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Prefer: 'outlook.body-content-type="text"',
+    },
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(
+      `Graph inbox fetch failed: HTTP ${res.status}${detail ? ` — ${detail.slice(0, 300)}` : ""}`
+    );
+  }
+
+  const json = (await res.json()) as {
+    value?: Array<{
+      id: string;
+      subject?: string;
+      from?: { emailAddress?: { address?: string } };
+      body?: { content?: string };
+    }>;
+  };
+
+  return (json.value ?? []).map((m) => ({
+    id: m.id,
+    subject: m.subject ?? "",
+    fromAddress: m.from?.emailAddress?.address ?? "",
+    text: m.body?.content ?? "",
+  }));
+}
+
+/** Marks a message read so the next run's unread-filter doesn't reprocess it. */
+export async function markMessageAsRead(config: GraphConfig, messageId: string): Promise<void> {
+  const token = await getAccessToken(config);
+  const res = await fetch(
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.sender)}/messages/${encodeURIComponent(messageId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ isRead: true }),
+    }
+  );
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(
+      `Graph mark-as-read failed: HTTP ${res.status}${detail ? ` — ${detail.slice(0, 300)}` : ""}`
+    );
+  }
+}
