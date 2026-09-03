@@ -69,6 +69,8 @@ export default auth((req) => {
   if (req.nextUrl.pathname === "/privacy") return;
   if (req.nextUrl.pathname === "/contract") return;
   if (req.nextUrl.pathname === "/install") return;
+  // Unlisted help page — not linked from any nav, shared by URL only
+  if (req.nextUrl.pathname === "/help/prism-login") return;
   const userType = (req.auth?.user as { userType?: string })?.userType;
 
   if (isLoginPage) {
