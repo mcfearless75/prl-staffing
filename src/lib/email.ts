@@ -71,6 +71,7 @@ export const CALL_ENQUIRY_RECIPIENTS = recipientList(process.env.CALL_ENQUIRY_RE
   "jenni@prlsitesolutions.co.uk",
   "sian@prlsitesolutions.co.uk",
   "erica@prlsitesolutions.co.uk",
+  "infotech@prlsitesolutions.co.uk", // TODO: remove once AI call system testing is done
 ]);
 
 async function logEmail(entry: {
