@@ -162,10 +162,13 @@ other staff pages), behind `requireStaff()`:
 
 ### 5. Environment variables (Railway only, per project convention)
 
-- `RETELL_API_KEY`
-- `RETELL_WEBHOOK_SECRET`
+- `RETELL_API_KEY` — verified against Retell's own docs: there is no separate
+  webhook secret. Retell signs webhooks with the API key that has the
+  "webhook" badge enabled in its dashboard, using `X-Retell-Signature:
+  v={timestamp},d={hmac_sha256(rawBody+timestamp, key=apiKey)}`. The same
+  key verifies webhooks and (if ever needed) calls Retell's API.
 
-Neither goes in local `.env` — consistent with existing PRISM convention that
+Does not go in local `.env` — consistent with existing PRISM convention that
 local `.env` carries zero credentials.
 
 ## Error handling
@@ -197,6 +200,6 @@ local `.env` carries zero credentials.
 
 - Exact Retell phone number and agent ID, once provisioned.
 - Confirmation of where `/calls` should sit in the existing dashboard nav.
-- Whether `RETELL_API_KEY` / `RETELL_WEBHOOK_SECRET` should be added to
-  Railway now or at deploy time (they're needed before the webhook route can
-  verify anything, so before first live test at the latest).
+- Whether `RETELL_API_KEY` should be added to Railway now or at deploy time
+  (it's needed before the webhook route can verify anything, so before first
+  live test at the latest).
