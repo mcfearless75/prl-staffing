@@ -1,12 +1,14 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate, getInitials } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 
 async function approveApplicant(id: string) {
   "use server";
@@ -72,6 +74,22 @@ export default async function ApplicantsPage({
     orderBy: { updatedAt: "desc" },
     take: 50,
   });
+
+  // Which of them have actually been put on a live assignment yet.
+  const assignedContractorIds =
+    view === "approved"
+      ? new Set(
+          (
+            await prisma.assignment.findMany({
+              where: {
+                contractorId: { in: recentlyApproved.map((a) => a.id) },
+                status: { in: [...LIVE_ASSIGNMENT_STATUSES] },
+              },
+              select: { contractorId: true },
+            })
+          ).map((a) => a.contractorId)
+        )
+      : new Set<string>();
 
   const activeList =
     view === "approved"
@@ -177,6 +195,14 @@ export default async function ApplicantsPage({
                         <span className="text-sm font-medium text-gray-900">
                           {a.firstName} {a.lastName}
                         </span>
+                        {view === "approved" && assignedContractorIds.has(a.id) && (
+                          <CheckCircle2
+                            className="h-4 w-4 shrink-0 text-emerald-600"
+                            aria-label="Has an assignment"
+                          >
+                            <title>Has an assignment</title>
+                          </CheckCircle2>
+                        )}
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{a.email}</td>
