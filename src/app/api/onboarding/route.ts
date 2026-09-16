@@ -53,12 +53,19 @@ export async function POST(request: Request) {
       firstName, lastName, dateOfBirth, niNumber, utrNumber,
       address, postcode,
       emergencyContactName, emergencyContactPhone, emergencyContactRelation,
-      consentGiven,
+      detailsConfirmed, consentGiven,
     } = body;
 
     if (!companyName || !contactName || !contactEmail) {
       return NextResponse.json(
         { error: "Company name, contact name, and email are required" },
+        { status: 400 }
+      );
+    }
+
+    if (detailsConfirmed !== true) {
+      return NextResponse.json(
+        { error: "You must declare that all details provided, including medical history, are accurate before submitting this agreement." },
         { status: 400 }
       );
     }
@@ -110,6 +117,22 @@ export async function POST(request: Request) {
         userAgent,
         consentText:
           "I confirm the information provided is accurate and consent to PRL Site Solutions processing my data as described in the Privacy Policy.",
+        givenAt: new Date(),
+      },
+    });
+
+    // Separate audit record for the medical/accuracy declaration — distinct
+    // from GDPR processing consent above, since it's a factual declaration
+    // about the submitter rather than a data-processing consent.
+    await prisma.consentRecord.create({
+      data: {
+        email: contactEmail,
+        consentType: "accuracy_declaration",
+        consentGiven: detailsConfirmed,
+        ipAddress,
+        userAgent,
+        consentText:
+          "I declare that all details provided in this form — including my medical history and any health conditions relevant to my fitness to work — are true, complete and accurate.",
         givenAt: new Date(),
       },
     });

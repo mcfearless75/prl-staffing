@@ -34,6 +34,7 @@ export default function OnboardingPage() {
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRelation, setEmergencyRelation] = useState("");
+  const [detailsConfirmed, setDetailsConfirmed] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
 
   async function handleSubmit() {
@@ -55,6 +56,7 @@ export default function OnboardingPage() {
           emergencyContactName: emergencyName,
           emergencyContactPhone: emergencyPhone,
           emergencyContactRelation: emergencyRelation,
+          detailsConfirmed,
           consentGiven,
         }),
       });
@@ -278,6 +280,12 @@ export default function OnboardingPage() {
                     className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">UTR Number</label>
+                  <input type="text" value={utrNumber} onChange={(e) => setUtrNumber(e.target.value)}
+                    placeholder="e.g. 1234567890"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
                   <input type="text" value={postcode} onChange={(e) => setPostcode(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
@@ -319,6 +327,23 @@ export default function OnboardingPage() {
               </div>
             </div>
 
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={detailsConfirmed}
+                  onChange={(e) => setDetailsConfirmed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                />
+                <span className="text-xs text-red-800">
+                  I declare that all details provided in this form — including my medical history and any
+                  health conditions relevant to my fitness to work — are true, complete and accurate. I
+                  understand that withholding or misrepresenting this information could affect site safety,
+                  insurance cover, and my engagement with PRL Site Solutions.
+                </span>
+              </label>
+            </div>
+
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
@@ -343,7 +368,7 @@ export default function OnboardingPage() {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={submitting || !companyName || !contactName || !contactEmail || !consentGiven}
+                disabled={submitting || !companyName || !contactName || !contactEmail || !detailsConfirmed || !consentGiven}
                 className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
               >
                 {submitting ? "Submitting..." : "Submit Agreement ✓"}
