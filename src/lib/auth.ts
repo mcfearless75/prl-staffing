@@ -5,8 +5,11 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
 
-// IP-level rate limiting for login endpoint
+// IP-level rate limiting for login endpoint. This Map is per-process: it
+// resets on deploy and does not share state across multiple instances.
+// The real lockout is the per-account `lockedUntil` field in Postgres below.
 const ipAttempts = new Map<string, { count: number; resetAt: number }>();
+const IP_ATTEMPT_LIMIT = 20;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -33,7 +36,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const ip = forwarded ? forwarded.split(",")[0].trim() : "unknown";
         const now = Date.now();
         const ipData = ipAttempts.get(ip);
-        if (ipData && now < ipData.resetAt && ipData.count >= 50) {
+        if (ipData && now < ipData.resetAt && ipData.count >= IP_ATTEMPT_LIMIT) {
           // Return null (not throw) so NextAuth surfaces a clean "invalid credentials"
           // rather than a generic "Something went wrong" in the UI
           return null;
