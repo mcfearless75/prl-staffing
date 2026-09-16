@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatDate, getInitials } from "@/lib/utils";
@@ -43,6 +42,18 @@ async function setLooking(id: string) {
   revalidatePath("/applicants");
 }
 
+async function reactivateApplicant(id: string) {
+  "use server";
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+  // Deliberately does not touch approvedAt — that stamp means "staff approved
+  // this application", not "currently working". Going back to work isn't a
+  // new approval.
+  await prisma.contractor.update({ where: { id }, data: { status: "Active" } });
+  revalidatePath("/applicants");
+  revalidatePath("/");
+}
+
 export default async function ApplicantsPage({
   searchParams,
 }: {
@@ -54,6 +65,8 @@ export default async function ApplicantsPage({
       ? "approved"
       : params?.view === "looking"
       ? "looking"
+      : params?.view === "benched"
+      ? "benched"
       : "pending";
 
   // Pending = Applied status
@@ -68,34 +81,38 @@ export default async function ApplicantsPage({
     orderBy: { updatedAt: "desc" },
   });
 
-  // Recently approved = Active, sorted by when they were approved
+  // Recently approved = Active, not yet on a live assignment, sorted by when
+  // they were approved. Once someone is actually placed they've moved past
+  // this "just approved, needs work" queue.
   const recentlyApproved = await prisma.contractor.findMany({
-    where: { status: "Active" },
+    where: {
+      status: "Active",
+      assignments: { none: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } } },
+    },
     orderBy: { updatedAt: "desc" },
     take: 50,
   });
 
-  // Which of them have actually been put on a live assignment yet.
-  const assignedContractorIds =
-    view === "approved"
-      ? new Set(
-          (
-            await prisma.assignment.findMany({
-              where: {
-                contractorId: { in: recentlyApproved.map((a) => a.id) },
-                status: { in: [...LIVE_ASSIGNMENT_STATUSES] },
-              },
-              select: { contractorId: true },
-            })
-          ).map((a) => a.contractorId)
-        )
-      : new Set<string>();
+  // Benched = Inactive (approved before, no live work now) and, as a
+  // belt-and-braces check, still genuinely unassigned — deactivateContractorIfNoLiveWork
+  // (contractor-status.ts) is what puts people here in the ordinary course of
+  // business, but this guards against anyone manually flipped to Inactive
+  // while still holding a live assignment.
+  const benched = await prisma.contractor.findMany({
+    where: {
+      status: "Inactive",
+      assignments: { none: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
 
   const activeList =
     view === "approved"
       ? recentlyApproved
       : view === "looking"
       ? looking
+      : view === "benched"
+      ? benched
       : applied;
 
   return (
@@ -104,9 +121,11 @@ export default async function ApplicantsPage({
         title="Applicants"
         description={
           view === "approved"
-            ? `${recentlyApproved.length} recently approved contractors`
+            ? `${recentlyApproved.length} recently approved, not yet assigned`
             : view === "looking"
             ? `${looking.length} contractors actively looking`
+            : view === "benched"
+            ? `${benched.length} inactive and unassigned`
             : `${applied.length} pending applications`
         }
       />
@@ -143,6 +162,16 @@ export default async function ApplicantsPage({
         >
           Recently Approved ({recentlyApproved.length})
         </Link>
+        <Link
+          href="/applicants?view=benched"
+          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            view === "benched"
+              ? "bg-gray-700 text-white"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          }`}
+        >
+          Benched ({benched.length})
+        </Link>
       </div>
 
       {activeList.length > 0 ? (
@@ -158,7 +187,13 @@ export default async function ApplicantsPage({
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                 )}
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  {view === "approved" ? "Approved On ↓" : view === "looking" ? "Marked Looking" : "Applied"}
+                  {view === "approved"
+                    ? "Approved On ↓"
+                    : view === "looking"
+                    ? "Marked Looking"
+                    : view === "benched"
+                    ? "Benched Since ↓"
+                    : "Applied"}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
               </tr>
@@ -168,6 +203,7 @@ export default async function ApplicantsPage({
                 const approve = approveApplicant.bind(null, a.id);
                 const reject = rejectApplicant.bind(null, a.id);
                 const markLooking = setLooking.bind(null, a.id);
+                const reactivate = reactivateApplicant.bind(null, a.id);
                 return (
                   <tr
                     key={a.id}
@@ -176,6 +212,8 @@ export default async function ApplicantsPage({
                         ? "bg-emerald-50/20 hover:bg-emerald-50"
                         : view === "looking"
                         ? "bg-blue-50/20 hover:bg-blue-50"
+                        : view === "benched"
+                        ? "bg-gray-50/50 hover:bg-gray-100"
                         : "bg-amber-50/30 hover:bg-amber-50"
                     }
                   >
@@ -187,6 +225,8 @@ export default async function ApplicantsPage({
                               ? "bg-emerald-600"
                               : view === "looking"
                               ? "bg-blue-600"
+                              : view === "benched"
+                              ? "bg-gray-500"
                               : "bg-amber-500"
                           }`}
                         >
@@ -195,14 +235,6 @@ export default async function ApplicantsPage({
                         <span className="text-sm font-medium text-gray-900">
                           {a.firstName} {a.lastName}
                         </span>
-                        {view === "approved" && assignedContractorIds.has(a.id) && (
-                          <CheckCircle2
-                            className="h-4 w-4 shrink-0 text-emerald-600"
-                            aria-label="Has an assignment"
-                          >
-                            <title>Has an assignment</title>
-                          </CheckCircle2>
-                        )}
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{a.email}</td>
@@ -222,9 +254,7 @@ export default async function ApplicantsPage({
                       </td>
                     )}
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {view === "approved"
-                        ? formatDate(a.updatedAt)
-                        : view === "looking"
+                      {view === "approved" || view === "looking" || view === "benched"
                         ? formatDate(a.updatedAt)
                         : formatDate(a.createdAt)}
                     </td>
@@ -269,6 +299,19 @@ export default async function ApplicantsPage({
                         {view === "approved" && (
                           <Badge variant="Active">Active</Badge>
                         )}
+                        {view === "benched" && (
+                          <>
+                            <form action={reactivate}>
+                              <button
+                                type="submit"
+                                className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                              >
+                                Reactivate
+                              </button>
+                            </form>
+                            <Badge variant="Inactive">Inactive</Badge>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -281,9 +324,11 @@ export default async function ApplicantsPage({
         <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center">
           <p className="text-sm text-gray-500">
             {view === "approved"
-              ? "No approved contractors yet."
+              ? "No approved contractors awaiting placement."
               : view === "looking"
               ? "No contractors marked as Looking."
+              : view === "benched"
+              ? "No one benched — every inactive contractor is either back to work or genuinely gone."
               : "No pending applications."}
           </p>
         </div>
