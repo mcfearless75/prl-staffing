@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { sendEmail, CALL_ENQUIRY_RECIPIENTS } from "@/lib/email";
 import { verifyRetellWebhookSignature, parseRetellWebhookPayload } from "@/lib/calls/retell-webhook";
+import { escapeHtml } from "@/lib/utils";
 
 // Machine-to-machine endpoint: Retell may burst-retry (up to 3x within 10s
 // per call) and multiple real calls can land close together, so this limit
@@ -69,9 +70,15 @@ export async function POST(request: NextRequest) {
 
   const { data } = parsed;
 
-  const existing = await prisma.callEnquiry.findUnique({
-    where: { retellCallId: data.retellCallId },
-  });
+  let existing;
+  try {
+    existing = await prisma.callEnquiry.findUnique({
+      where: { retellCallId: data.retellCallId },
+    });
+  } catch (error) {
+    console.error("Failed to look up existing call enquiry:", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
   if (existing) {
     // Already processed — Retell retry, not a new call.
     return new NextResponse(null, { status: 204 });
@@ -109,9 +116,9 @@ export async function POST(request: NextRequest) {
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2 style="color:#1F4E79;">${categoryLabel(data.category)}${data.urgent ? " — URGENT" : ""}</h2>
-        <p><strong>Caller:</strong> ${data.callerName ?? "Not given"}${data.callerPhone ? ` (${data.callerPhone})` : ""}</p>
-        <p><strong>Reason:</strong> ${data.reason}</p>
-        <p><strong>Summary:</strong> ${data.summary}</p>
+        <p><strong>Caller:</strong> ${data.callerName != null ? escapeHtml(data.callerName) : "Not given"}${data.callerPhone ? ` (${escapeHtml(data.callerPhone)})` : ""}</p>
+        <p><strong>Reason:</strong> ${escapeHtml(data.reason)}</p>
+        <p><strong>Summary:</strong> ${escapeHtml(data.summary)}</p>
         <p><a href="https://www.prismworkforce.online/calls/${enquiryId}">View in PRISM</a></p>
       </div>
     `,
