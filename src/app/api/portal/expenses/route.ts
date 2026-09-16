@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireContractor } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 import { logActivity } from "@/lib/activity-log";
 
@@ -7,12 +7,11 @@ const VALID_CATEGORIES = ["Travel", "Accommodation", "Materials", "Other"];
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-    const contractorId = (session?.user as { contractorId?: string })?.contractorId;
-
-    if (!contractorId) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const guard = await requireContractor();
+    if (!guard.ok) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: guard.reason === "forbidden" ? 403 : 401 });
     }
+    const { contractorId } = guard;
 
     const body = await request.json();
     const {
@@ -92,12 +91,11 @@ export async function POST(request: Request) {
 // List the authenticated contractor's own expenses.
 export async function GET(request: Request) {
   try {
-    const session = await auth();
-    const contractorId = (session?.user as { contractorId?: string })?.contractorId;
-
-    if (!contractorId) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const guard = await requireContractor();
+    if (!guard.ok) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: guard.reason === "forbidden" ? 403 : 401 });
     }
+    const { contractorId } = guard;
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");

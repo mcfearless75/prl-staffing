@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { listActiveJobRoles } from "@/lib/job-roles";
-import { auth } from "@/lib/auth";
+import { requireContractor } from "@/lib/require-staff";
 
 /**
  * GET — lists active job roles for the setup-account roles step.
@@ -37,11 +37,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
     }
 
-    const session = await auth();
-    const contractorId = (session?.user as { contractorId?: string })?.contractorId;
-    if (!contractorId) {
-      return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    const guard = await requireContractor();
+    if (!guard.ok) {
+      return NextResponse.json({ error: "Not authenticated." }, { status: guard.reason === "forbidden" ? 403 : 401 });
     }
+    const { contractorId } = guard;
 
     const { roleIds } = await request.json();
 

@@ -1,15 +1,14 @@
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireContractor } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-    const contractorId = (session?.user as { contractorId?: string })?.contractorId;
-
-    if (!contractorId) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const guard = await requireContractor();
+    if (!guard.ok) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: guard.reason === "forbidden" ? 403 : 401 });
     }
+    const { contractorId } = guard;
 
     const { type, reference, expiryDate } = await request.json();
 

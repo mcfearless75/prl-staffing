@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const guard = await requireStaff();
+    if (!guard.ok) {
+      return NextResponse.json({ error: guard.reason === "forbidden" ? "Forbidden" : "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
     }
-
-    const user = session.user as { userType?: string };
-    if (user.userType === "contractor") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const { session } = guard;
 
     const body = await request.json();
     const { contractorId, reason, requestedBy } = body;
@@ -71,14 +67,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = session.user as { userType?: string };
-    if (user.userType === "contractor") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const guard = await requireStaff();
+    if (!guard.ok) {
+      return NextResponse.json({ error: guard.reason === "forbidden" ? "Forbidden" : "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
     }
 
     const requests = await prisma.erasureRequest.findMany({

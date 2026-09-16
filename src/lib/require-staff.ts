@@ -45,3 +45,18 @@ export async function requireAdmin(): Promise<
   if (guard.session.user.role !== "admin") return { ok: false, reason: "forbidden" };
   return guard;
 }
+
+/**
+ * Guard for contractor-portal API routes. Returns the session's
+ * contractorId — never trust a contractorId supplied by the client body or
+ * query string instead of this.
+ */
+export async function requireContractor(): Promise<
+  { ok: true; contractorId: string } | { ok: false; reason: "unauthenticated" | "forbidden" }
+> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, reason: "unauthenticated" };
+  const contractorId = (session.user as { contractorId?: string }).contractorId;
+  if (!contractorId) return { ok: false, reason: "forbidden" };
+  return { ok: true, contractorId };
+}

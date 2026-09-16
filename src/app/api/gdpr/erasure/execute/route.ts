@@ -1,26 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/require-staff";
 import { deleteFromR2 } from "@/lib/r2";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Require staff auth with admin role
-    const user = session.user as { userType?: string; role?: string };
-    if (user.userType === "contractor") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    if (user.role !== "admin") {
+    // Blast radius: permanently anonymises a contractor's PII and deletes
+    // their documents — admin only, not just any staff member.
+    const guard = await requireAdmin();
+    if (!guard.ok) {
       return NextResponse.json(
-        { error: "Admin role required to execute erasure" },
-        { status: 403 }
+        { error: guard.reason === "forbidden" ? "Admin role required to execute erasure" : "Unauthorized" },
+        { status: guard.reason === "forbidden" ? 403 : 401 }
       );
     }
+    const { session } = guard;
 
     const body = await request.json();
     const { erasureRequestId } = body;

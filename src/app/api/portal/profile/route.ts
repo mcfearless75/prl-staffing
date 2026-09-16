@@ -1,16 +1,15 @@
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireContractor } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 
 export async function PUT(request: Request) {
   try {
-    const session = await auth();
-    const sessionUser = session?.user as { contractorId?: string; userType?: string } | undefined;
-
-    if (!sessionUser?.contractorId) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const guard = await requireContractor();
+    if (!guard.ok) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: guard.reason === "forbidden" ? 403 : 401 });
     }
+    const { contractorId: sessionContractorId } = guard;
 
     const body = await request.json();
     const {
@@ -20,7 +19,7 @@ export async function PUT(request: Request) {
     } = body;
 
     // Security: contractors can only update their own profile
-    if (contractorId !== sessionUser.contractorId) {
+    if (contractorId !== sessionContractorId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -69,7 +68,7 @@ export async function PUT(request: Request) {
           entityType: "Contractor",
           entityId: contractorId,
           details: "Contractor updated their own profile via portal",
-          userId: sessionUser.contractorId,
+          userId: sessionContractorId,
           userEmail: normalizedEmail,
         },
       });
