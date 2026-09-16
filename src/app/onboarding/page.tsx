@@ -3,15 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const DEFAULT_RATES = [
-  { description: "Basic Rate (Day)", rate: "", basis: "Per Hour" },
-  { description: "Basic Rate (Night)", rate: "", basis: "Per Hour" },
-  { description: "Overtime Rate (1)", rate: "", basis: "Per Hour" },
-  { description: "Overtime Rate (2)", rate: "", basis: "Per Hour" },
-  { description: "Expenses", rate: "", basis: "Per Day" },
-  { description: "Lodge", rate: "", basis: "" },
-];
-
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -30,7 +21,6 @@ export default function OnboardingPage() {
   const [supplyOf, setSupplyOf] = useState("");
   const [siteLocation, setSiteLocation] = useState("");
   const [startDate, setStartDate] = useState("");
-  const [rates, setRates] = useState(DEFAULT_RATES);
   const [breakdown, setBreakdown] = useState("");
   const [additionalInfo, setAdditionalInfo] = useState("");
 
@@ -46,12 +36,6 @@ export default function OnboardingPage() {
   const [emergencyRelation, setEmergencyRelation] = useState("");
   const [consentGiven, setConsentGiven] = useState(false);
 
-  function updateRate(idx: number, field: string, value: string) {
-    const updated = [...rates];
-    (updated[idx] as Record<string, string>)[field] = value;
-    setRates(updated);
-  }
-
   async function handleSubmit() {
     setSubmitting(true);
     setError("");
@@ -64,7 +48,7 @@ export default function OnboardingPage() {
           companyName, companyAddress, companyRegNo,
           contactName, contactEmail, contactPhone,
           supplyOf, siteLocation, startDate,
-          rates, breakdown: breakdown.split("\n").filter(Boolean),
+          breakdown: breakdown.split("\n").filter(Boolean),
           additionalInfo,
           firstName, lastName, dateOfBirth, niNumber, utrNumber,
           address, postcode,
@@ -147,7 +131,7 @@ export default function OnboardingPage() {
                   : "bg-gray-100 text-gray-500"
               }`}
             >
-              {s === 1 ? "Company Details" : s === 2 ? "Supply & Rates" : "Personal & Emergency"}
+              {s === 1 ? "Company Details" : s === 2 ? "Supply Details" : "Personal & Emergency"}
             </button>
           ))}
         </div>
@@ -203,7 +187,7 @@ export default function OnboardingPage() {
               disabled={!companyName || !contactName || !contactEmail}
               className="w-full rounded-xl bg-[#005f8c] px-4 py-3 text-sm font-semibold text-white hover:bg-[#004a6b] disabled:opacity-50 transition-colors"
             >
-              Next: Supply &amp; Rates →
+              Next: Supply Details →
             </button>
           </div>
         )}
@@ -231,25 +215,6 @@ export default function OnboardingPage() {
                   <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                 </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-gray-200 bg-white p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Charge Rates</h2>
-              <div className="space-y-3">
-                {rates.map((r, i) => (
-                  <div key={i} className="grid grid-cols-3 gap-2">
-                    <input type="text" value={r.description} onChange={(e) => updateRate(i, "description", e.target.value)}
-                      placeholder="Description"
-                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-                    <input type="text" value={r.rate} onChange={(e) => updateRate(i, "rate", e.target.value)}
-                      placeholder="e.g. £29.90"
-                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-                    <input type="text" value={r.basis} onChange={(e) => updateRate(i, "basis", e.target.value)}
-                      placeholder="e.g. Per Hour"
-                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                ))}
               </div>
             </div>
 
