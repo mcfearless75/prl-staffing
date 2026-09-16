@@ -1,7 +1,22 @@
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 
-function getJwtSecret() {
+/**
+ * Single source of truth for the auditor JWT secret — used both to mint the
+ * token at /api/auditor/login and to verify it here.
+ *
+ * Production must set AUDITOR_JWT_SECRET explicitly: sharing AUTH_SECRET
+ * would let anyone who forges a NextAuth-signed token forge an auditor one
+ * too. Local/dev may fall back to AUTH_SECRET so an existing .env keeps
+ * working without a second secret.
+ */
+export function getJwtSecret() {
+  if (process.env.NODE_ENV === "production") {
+    if (!process.env.AUDITOR_JWT_SECRET) {
+      throw new Error("AUDITOR_JWT_SECRET must be set in production — refusing to fall back to AUTH_SECRET");
+    }
+    return new TextEncoder().encode(process.env.AUDITOR_JWT_SECRET);
+  }
   const secret = process.env.AUDITOR_JWT_SECRET || process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
   if (!secret) throw new Error("No JWT secret configured (AUDITOR_JWT_SECRET or AUTH_SECRET required)");
   return new TextEncoder().encode(secret);
