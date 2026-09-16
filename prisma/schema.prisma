@@ -1087,3 +1087,24 @@ model EmailLog {
 
   @@index([status, createdAt])
 }
+
+// ─── AI Call System: Retell AI Call Enquiries ───
+model CallEnquiry {
+  id               String    @id @default(cuid())
+  retellCallId     String    @unique
+  category         String // See src/lib/calls/constants.ts — APPLICANT, CONTRACTOR_QUERY, CLIENT_ENQUIRY, URGENT, OTHER
+  callerName       String?
+  callerPhone      String?
+  contractorIdHint String?
+  reason           String
+  summary          String
+  transcript       String    @db.Text
+  urgent           Boolean   @default(false)
+  status           String    @default("New") // See src/lib/calls/constants.ts — New, Actioned
+  receivedAt       DateTime  @default(now())
+  actionedBy       String?
+  actionedAt       DateTime?
+
+  @@index([status, receivedAt])
+  @@index([category])
+}
