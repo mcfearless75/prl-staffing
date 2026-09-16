@@ -30,27 +30,64 @@ import {
   HelpCircle,
 } from "lucide-react";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard, badgeKey: null },
-  { name: "Intelligence", href: "/intelligence", icon: Brain, badgeKey: null },
-  { name: "Campaign", href: "/campaign", icon: Send, badgeKey: null },
-  { name: "Applicants", href: "/applicants", icon: UserCheck, badgeKey: "pendingApplicants" as const },
-  { name: "New Starters", href: "/new-starters", icon: UserPlus, badgeKey: "newStarters" as const },
-  { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
-  { name: "Subcontractors", href: "/contractors", icon: Users, badgeKey: null },
-  { name: "Clients", href: "/companies", icon: Building2, badgeKey: null },
-  { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
-  { name: "Timesheets", href: "/timesheets", icon: Clock, badgeKey: null },
-  { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
-  { name: "Compliance", href: "/compliance", icon: ShieldCheck, badgeKey: "complianceAlerts" as const },
-  { name: "Reports", href: "/reports", icon: FileText, badgeKey: null },
-  { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
-  { name: "Job Roles", href: "/job-roles", icon: Wrench, badgeKey: null },
-  { name: "Pay Queries", href: "/payment-queries", icon: MessageSquare, badgeKey: "openQueries" as const },
-  { name: "Grievances", href: "/grievances", icon: AlertCircle, badgeKey: "openGrievances" as const },
-  { name: "QMS", href: "/qms", icon: Shield, badgeKey: null },
-  { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
-  { name: "Help", href: "/help", icon: HelpCircle, badgeKey: null },
+// Grouped so staff can jump to a labeled section instead of scanning one long
+// flat list — same items, same hrefs, same badges, just sectioned.
+const navigationSections = [
+  {
+    title: "Overview",
+    items: [
+      { name: "Dashboard", href: "/", icon: LayoutDashboard, badgeKey: null },
+      { name: "Intelligence", href: "/intelligence", icon: Brain, badgeKey: null },
+    ],
+  },
+  {
+    title: "Recruitment",
+    items: [
+      { name: "Campaign", href: "/campaign", icon: Send, badgeKey: null },
+      { name: "Applicants", href: "/applicants", icon: UserCheck, badgeKey: "pendingApplicants" as const },
+      { name: "New Starters", href: "/new-starters", icon: UserPlus, badgeKey: "newStarters" as const },
+      { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
+    ],
+  },
+  {
+    title: "Workforce",
+    items: [
+      { name: "Subcontractors", href: "/contractors", icon: Users, badgeKey: null },
+      { name: "Clients", href: "/companies", icon: Building2, badgeKey: null },
+      { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
+    ],
+  },
+  {
+    title: "Finance",
+    items: [
+      { name: "Timesheets", href: "/timesheets", icon: Clock, badgeKey: null },
+      { name: "Billing", href: "/billing", icon: Receipt, badgeKey: "draftInvoices" as const },
+      { name: "Rates", href: "/rates", icon: TrendingUp, badgeKey: null },
+      { name: "Pay Queries", href: "/payment-queries", icon: MessageSquare, badgeKey: "openQueries" as const },
+    ],
+  },
+  {
+    title: "Compliance",
+    items: [
+      { name: "Compliance", href: "/compliance", icon: ShieldCheck, badgeKey: "complianceAlerts" as const },
+      { name: "QMS", href: "/qms", icon: Shield, badgeKey: null },
+      { name: "Grievances", href: "/grievances", icon: AlertCircle, badgeKey: "openGrievances" as const },
+    ],
+  },
+  {
+    title: "Insights",
+    items: [
+      { name: "Reports", href: "/reports", icon: FileText, badgeKey: null },
+      { name: "Job Roles", href: "/job-roles", icon: Wrench, badgeKey: null },
+      { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
+    ],
+  },
+  {
+    title: "",
+    items: [
+      { name: "Help", href: "/help", icon: HelpCircle, badgeKey: null },
+    ],
+  },
 ];
 
 // Suppliers, Expenses and Projects are built and functional but hidden from
@@ -119,39 +156,50 @@ export function Sidebar() {
       </div>
 
       {/* Nav items */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3 lg:p-4">
-        {navigation.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/" && pathname.startsWith(item.href));
-          const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0;
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 lg:py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              )}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              <span className="flex-1">{item.name}</span>
-              {badgeCount > 0 && (
-                <span className={cn(
-                  "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
-                  item.badgeKey === "complianceAlerts"
-                    ? "bg-orange-500 text-white"
-                    : "bg-blue-500 text-white"
-                )}>
-                  {badgeCount > 99 ? "99+" : badgeCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3 lg:p-4">
+        {navigationSections.map((section) => (
+          <div key={section.title || "untitled"}>
+            {section.title && (
+              <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 first:pt-0">
+                {section.title}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/" && pathname.startsWith(item.href));
+                const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 lg:py-2 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    )}
+                  >
+                    <item.icon className="h-5 w-5 shrink-0" />
+                    <span className="flex-1">{item.name}</span>
+                    {badgeCount > 0 && (
+                      <span className={cn(
+                        "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
+                        item.badgeKey === "complianceAlerts"
+                          ? "bg-orange-500 text-white"
+                          : "bg-blue-500 text-white"
+                      )}>
+                        {badgeCount > 99 ? "99+" : badgeCount}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* User info + sign out */}
