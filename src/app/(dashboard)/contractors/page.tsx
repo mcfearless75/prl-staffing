@@ -7,6 +7,7 @@ import { formatDate, getInitials, getStatusColor } from "@/lib/utils";
 import { Plus, Search, Upload, ArrowUpDown, MailWarning } from "lucide-react";
 import { ContractorStatusSelect } from "@/components/contractor-status-select";
 import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 
 // Presentation only — the vocabulary itself lives in contractor-statuses.ts.
 // A status with no entry here still gets a working tab, just a neutral one.
@@ -79,6 +80,25 @@ export default async function ContractorsPage({
     },
     orderBy: sortBy === "firstName" ? { firstName: "asc" } : { lastName: "asc" },
   });
+
+  // Where each contractor is currently working — their most recent live assignment, if any.
+  const liveAssignments = await prisma.assignment.findMany({
+    where: {
+      contractorId: { in: contractors.map((c) => c.id) },
+      status: { in: [...LIVE_ASSIGNMENT_STATUSES] },
+    },
+    include: { company: { select: { name: true } }, site: { select: { name: true } } },
+    orderBy: { startDate: "desc" },
+  });
+  const workingAtByContractor = new Map<string, string>();
+  for (const a of liveAssignments) {
+    if (!workingAtByContractor.has(a.contractorId)) {
+      workingAtByContractor.set(
+        a.contractorId,
+        a.site?.name ? `${a.company.name} — ${a.site.name}` : a.company.name
+      );
+    }
+  }
 
   // Build sort-toggle URL (flip between firstName / lastName, keep other params)
   const nextSort = sortBy === "lastName" ? "firstName" : "lastName";
@@ -173,6 +193,9 @@ export default async function ContractorsPage({
                   Job Title
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Working At
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Compliance
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -218,6 +241,9 @@ export default async function ContractorsPage({
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     {contractor.jobTitle || "—"}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                    {workingAtByContractor.get(contractor.id) || "—"}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <Link href={`/compliance?search=${encodeURIComponent(contractor.firstName + " " + contractor.lastName)}`}>
