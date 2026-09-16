@@ -13,7 +13,7 @@ model User {
   email          String    @unique
   name           String
   passwordHash   String
-  role           String    @default("admin") // admin, manager, viewer
+  role           String    @default("viewer") // admin, manager, viewer — bootstrap/seed/invite flows set "admin" explicitly where needed
   failedAttempts Int       @default(0)
   lockedUntil    DateTime?
   tokenVersion   Int       @default(0) // increment to invalidate all sessions
@@ -424,7 +424,7 @@ model Invoice {
   periodEnd     DateTime // billing period end
   status        String           @default("Draft") // Draft, Reconciling, Approved, Sent, Paid, Disputed
   currency      String           @default("GBP")
-  subtotal      Float            @default(0)
+  subtotal      Float            @default(0) // TODO: Float for money is a known precision risk — migrate to Decimal in a dedicated pass, not here
   vatRate       Float            @default(20) // UK VAT %
   vatAmount     Float            @default(0)
   total         Float            @default(0)

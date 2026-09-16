@@ -28,11 +28,13 @@ export const authConfig = {
         try {
           const existing = await prisma.user.findUnique({ where: { email: user.email } });
           if (!existing) {
+            // New staff created by first SSO login start as "viewer" — an
+            // existing admin must promote them. Do not default to "admin".
             await prisma.user.create({
               data: {
                 email: user.email,
                 name: user.name || user.email.split("@")[0],
-                role: "admin",
+                role: "viewer",
                 passwordHash: "", // SSO users have no password
               },
             });
@@ -49,7 +51,7 @@ export const authConfig = {
       if (account?.provider === "microsoft-entra-id") {
         const email = (profile?.email || user?.email) as string | undefined;
         token.ssoProvider = "microsoft";
-        token.role = "admin";
+        token.role = "viewer"; // transient default until the DB lookup below sets the real role
         token.userType = "staff";
         if (email) {
           token.email = email;
