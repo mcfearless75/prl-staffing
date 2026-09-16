@@ -19,7 +19,14 @@ const STATUS_TAB_COLORS: Record<string, string> = {
   Suspended:   "bg-red-100 text-red-700 hover:bg-red-200",
   Inactive:    "bg-gray-100 text-gray-600 hover:bg-gray-200",
   Left:        "bg-rose-100 text-rose-700 hover:bg-rose-200",
+  Bench:       "bg-slate-200 text-slate-800 hover:bg-slate-300",
 };
+
+// "Bench" isn't a real status — it's Active or Inactive with no live
+// assignment. Not a plain status filter, so it's special-cased wherever the
+// `status` query param is read/written rather than added to
+// SETTABLE_CONTRACTOR_STATUSES (which drives the actual status dropdown).
+const BENCH_FILTER = "Bench";
 
 type ComplianceStatus = "Verified" | "Expiring" | "Pending" | "Non-Compliant" | "No Records";
 
@@ -68,7 +75,10 @@ export default async function ContractorsPage({
     ];
   }
 
-  if (status) {
+  if (status === BENCH_FILTER) {
+    where.status = { in: ["Active", "Inactive"] };
+    where.assignments = { none: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } } };
+  } else if (status) {
     where.status = status;
   }
 
@@ -130,7 +140,7 @@ export default async function ContractorsPage({
 
       {/* Quick-filter tabs */}
       <div className="flex flex-wrap gap-2">
-        {["", ...SETTABLE_CONTRACTOR_STATUSES].map((value) => (
+        {["", ...SETTABLE_CONTRACTOR_STATUSES, BENCH_FILTER].map((value) => (
           <Link
             key={value}
             href={value ? `/contractors?status=${encodeURIComponent(value)}${search ? `&search=${encodeURIComponent(search)}` : ""}${sortBy !== "lastName" ? `&sortBy=${sortBy}` : ""}` : "/contractors"}
@@ -164,6 +174,7 @@ export default async function ContractorsPage({
               {s}
             </option>
           ))}
+          <option value={BENCH_FILTER}>Bench (unassigned)</option>
         </select>
         <button
           type="submit"
