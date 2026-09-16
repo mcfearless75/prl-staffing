@@ -18,7 +18,7 @@ export default function SetPasswordPage() {
     <div className="relative flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.04]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/prl_logo.jpg" alt="" width={600} height={600} className="select-none max-w-[80vw]" />
+        <img src="/prl-logo.png" alt="" width={600} height={600} className="select-none max-w-[80vw]" />
       </div>
       <div className="relative z-10 w-full max-w-md">
         <div className="rounded-xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">

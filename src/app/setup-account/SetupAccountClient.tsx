@@ -165,7 +165,7 @@ export default function SetupAccountClient() {
       <>
         <div className="mb-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/prl_logo.jpg" alt="PRL Site Solutions" className="mx-auto mb-4 rounded-full w-16 h-16" />
+          <img src="/prl-logo.png" alt="PRL Site Solutions" className="mx-auto mb-4 rounded-full w-16 h-16" />
           <h1 className="text-xl font-bold text-gray-900">What do you do?</h1>
           <p className="mt-1 text-sm text-gray-500">
             Pick the job roles that apply to you. This is optional and helps us match you to the right work.
@@ -266,7 +266,7 @@ export default function SetupAccountClient() {
       <>
         <div className="mb-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/prl_logo.jpg" alt="PRL Site Solutions" className="mx-auto mb-4 rounded-full w-16 h-16" />
+          <img src="/prl-logo.png" alt="PRL Site Solutions" className="mx-auto mb-4 rounded-full w-16 h-16" />
           <h1 className="text-xl font-bold text-gray-900">
             {firstName ? `Hi ${firstName}!` : "Set Your Password"}
           </h1>
@@ -358,7 +358,7 @@ export default function SetupAccountClient() {
     <>
       <div className="mb-6 text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/prl_logo.jpg" alt="PRL Site Solutions" className="mx-auto mb-4 rounded-full w-16 h-16" />
+        <img src="/prl-logo.png" alt="PRL Site Solutions" className="mx-auto mb-4 rounded-full w-16 h-16" />
         <h1 className="text-xl font-bold text-gray-900">Set Up Your PRISM Account</h1>
         <p className="mt-1 text-sm text-gray-500">
           Enter the email address you received the invite on

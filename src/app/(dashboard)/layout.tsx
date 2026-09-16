@@ -13,11 +13,11 @@ export default function DashboardLayout({
       {/* Auto-refresh every 30s — keeps dashboard, timesheets, compliance live */}
       <AutoRefresh intervalMs={30000} />
       <HelpButton />
-      <main className="relative min-h-screen pt-14 lg:pt-0 lg:ml-64">
+      <main className="relative min-h-screen pt-14 lg:pt-0 lg:ml-64 bg-prism-canvas">
         {/* Full-screen watermark */}
         <div className="pointer-events-none fixed inset-0 lg:ml-64 flex items-center justify-center opacity-[0.03] z-0">
           <img
-            src="/prl_logo.jpg"
+            src="/prl-logo.png"
             alt=""
             width={500}
             height={500}
@@ -26,7 +26,7 @@ export default function DashboardLayout({
         </div>
         <div className="relative z-10 p-4 lg:p-8">{children}</div>
         {/* Footer */}
-        <footer className="relative z-10 border-t border-gray-100 mt-8 px-4 lg:px-8 py-4 flex items-center gap-4">
+        <footer className="relative z-10 border-t border-prism-line mt-8 px-4 lg:px-8 py-4 flex items-center gap-4">
           <img
             src="/cyber-essentials-white.png"
             alt="Cyber Essentials Certified"
@@ -39,7 +39,7 @@ export default function DashboardLayout({
             height={48}
             className="h-12 w-auto object-contain"
           />
-          <span className="text-xs text-gray-400">PRL Site Solutions — Cyber Essentials &amp; ISO 9001 Certified</span>
+          <span className="text-xs text-prism-ink-muted">PRL Site Solutions — Cyber Essentials &amp; ISO 9001 Certified</span>
         </footer>
       </main>
     </>

@@ -2,8 +2,8 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/badge";
-import { formatDate, getInitials, getStatusColor } from "@/lib/utils";
+import { StatusBadge } from "@/components/badge";
+import { formatDate, getInitials } from "@/lib/utils";
 import { Plus, Search, Upload, ArrowUpDown, MailWarning } from "lucide-react";
 import { ContractorStatusSelect } from "@/components/contractor-status-select";
 import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
@@ -41,18 +41,7 @@ function deriveComplianceStatus(records: { status: string }[]): ComplianceStatus
 }
 
 function ComplianceBadge({ status }: { status: ComplianceStatus }) {
-  const styles: Record<ComplianceStatus, string> = {
-    Verified: "bg-emerald-100 text-emerald-700",
-    Expiring: "bg-amber-100 text-amber-700",
-    Pending: "bg-gray-100 text-gray-600",
-    "Non-Compliant": "bg-red-100 text-red-700",
-    "No Records": "bg-gray-100 text-gray-400",
-  };
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status]}`}>
-      {status}
-    </span>
-  );
+  return <StatusBadge value={status} />;
 }
 
 export default async function ContractorsPage({

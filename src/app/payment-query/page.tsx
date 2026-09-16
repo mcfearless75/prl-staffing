@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PublicFormShell } from "@/components/public-form-shell";
 
 type HourRow = { date: string; start: string; finish: string; hoursClaimed: string; hoursPaid: string };
 
@@ -84,14 +85,14 @@ export default function PaymentQueryPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-xl border border-emerald-200 p-8 text-center">
-          <div className="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+      <div className="min-h-screen bg-prism-canvas flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-prism-paper rounded-lg border border-prism-line p-8 text-center shadow-[0_1px_2px_rgb(27_36_48_/_6%)]">
+          <div className="mx-auto w-16 h-16 bg-prism-ok/10 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-prism-ok" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Query Submitted</h2>
-          <p className="text-sm text-gray-500">Your payment query has been submitted to PRL Site Solutions. We will review it and get back to you.</p>
-          <a href="/payment-query" className="mt-4 inline-block text-sm text-blue-600 hover:underline">Submit another query</a>
+          <h2 className="text-xl font-bold text-prism-ink mb-2">Query Submitted</h2>
+          <p className="text-sm text-prism-ink-muted">Your payment query has been submitted to PRL Site Solutions. We will review it and get back to you.</p>
+          <a href="/payment-query" className="mt-4 inline-block text-sm text-prism-info hover:underline">Submit another query</a>
         </div>
       </div>
     );
@@ -103,23 +104,9 @@ export default function PaymentQueryPage() {
   const tdInputCls = "w-full border-0 bg-transparent px-2 py-1.5 text-sm focus:ring-0 focus:outline-none text-center";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-[#005f8c] text-white">
-        <div className="mx-auto max-w-2xl px-4 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/prl_logo.jpg" alt="PRL" className="h-12 w-12 rounded-full" />
-            <div>
-              <h1 className="text-lg font-bold">PRL Site Solutions</h1>
-              <p className="text-xs text-blue-200">Recruitment Specialists</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <PublicFormShell title="Timesheet / Payment Query Form">
       <div className="mx-auto max-w-2xl px-4 py-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-1">Timesheet / Payment Query Form</h2>
-        <p className="text-sm text-gray-500 mb-6">Use this form to raise a query about your timesheet or payment. We aim to respond within 48 hours.</p>
+        <p className="text-sm text-prism-ink-muted mb-6">Use this form to raise a query about your timesheet or payment. We aim to respond within 48 hours.</p>
 
         {error && (
           <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
@@ -269,11 +256,11 @@ export default function PaymentQueryPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-xs text-gray-400 pb-8">
+        <div className="mt-6 text-center text-xs text-prism-ink-muted pb-8">
           <p>PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk</p>
           <p className="mt-1">259 Wallasey Village, Wallasey, Wirral, Merseyside CH45 3LR</p>
         </div>
       </div>
-    </div>
+    </PublicFormShell>
   );
 }

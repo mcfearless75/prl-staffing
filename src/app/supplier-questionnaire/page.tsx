@@ -140,7 +140,7 @@ export default function SupplierQuestionnairePage() {
       {/* Header */}
       <header className="bg-[#005f8c] text-white">
         <div className="mx-auto max-w-3xl px-4 py-6 flex items-center gap-4">
-          <img src="/prl_logo.jpg" alt="PRL" width={56} height={56} className="rounded-full border-2 border-white/30" />
+          <img src="/prl-logo.png" alt="PRL" width={56} height={56} className="rounded-full border-2 border-white/30" />
           <div>
             <h1 className="text-xl font-bold">Supplier Questionnaire</h1>
             <p className="text-sm text-blue-100">PRL Site Solutions — Recruitment Specialists</p>

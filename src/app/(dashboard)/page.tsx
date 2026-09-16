@@ -257,12 +257,12 @@ export default async function DashboardPage({
       </div>
 
       {/* Compliance Overview Card */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-lg border border-prism-line bg-prism-paper p-6 shadow-[0_1px_2px_rgb(27_36_48_/_6%)]">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Compliance</h2>
+          <h2 className="text-lg font-semibold text-prism-ink">Compliance</h2>
           <Link
             href="/compliance"
-            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+            className="text-sm font-medium text-prism-info hover:underline"
           >
             View Dashboard &rarr;
           </Link>
@@ -271,22 +271,22 @@ export default async function DashboardPage({
           <span
             className={`text-6xl font-bold ${
               displayWorkforceScore >= 80
-                ? "text-green-600"
+                ? "text-prism-ok"
                 : displayWorkforceScore >= 50
-                ? "text-amber-500"
-                : "text-red-600"
+                ? "text-prism-warn"
+                : "text-prism-bad"
             }`}
           >
             {displayWorkforceScore}%
           </span>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-prism-ink-muted">
             hold every document required for their role
           </p>
-          <p className="mt-0.5 text-xs text-gray-400">
+          <p className="mt-0.5 text-xs text-prism-ink-muted">
             {assignedTotal} of {totalContractorCount} subcontractors currently assigned
           </p>
           {complianceStats.noRequirements > 0 && (
-            <p className="mt-2 text-center text-xs text-amber-600">
+            <p className="mt-2 text-center text-xs text-prism-warn">
               {complianceStats.noRequirements} have no requirements set for their role and
               cannot pass.{" "}
               <Link href="/compliance/requirements" className="font-medium underline">

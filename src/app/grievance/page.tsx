@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PublicFormShell } from "@/components/public-form-shell";
 
 export default function GrievancePage() {
   const [submitted, setSubmitted] = useState(false);
@@ -64,18 +65,18 @@ export default function GrievancePage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-xl border border-emerald-200 p-8 text-center">
-          <div className="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="min-h-screen bg-prism-canvas flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-prism-paper rounded-lg border border-prism-line p-8 text-center shadow-[0_1px_2px_rgb(27_36_48_/_6%)]">
+          <div className="mx-auto w-16 h-16 bg-prism-ok/10 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-prism-ok" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Grievance Submitted</h2>
-          <p className="text-sm text-gray-500">
+          <h2 className="text-xl font-bold text-prism-ink mb-2">Grievance Submitted</h2>
+          <p className="text-sm text-prism-ink-muted">
             Your grievance has been submitted to PRL Site Solutions. A member of the team will be in touch within 5 working days.
           </p>
-          <a href="/grievance" className="mt-4 inline-block text-sm text-blue-600 hover:underline">
+          <a href="/grievance" className="mt-4 inline-block text-sm text-prism-info hover:underline">
             Submit another grievance
           </a>
         </div>
@@ -97,23 +98,9 @@ export default function GrievancePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-[#005f8c] text-white">
-        <div className="mx-auto max-w-2xl px-4 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/prl_logo.jpg" alt="PRL" className="h-12 w-12 rounded-full" />
-            <div>
-              <h1 className="text-lg font-bold">PRL Site Solutions</h1>
-              <p className="text-xs text-blue-200">Recruitment Specialists</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <PublicFormShell title="Grievance Form">
       <div className="mx-auto max-w-2xl px-4 py-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-1">Grievance Form</h2>
-        <p className="text-sm text-gray-500 mb-6">
+        <p className="text-sm text-prism-ink-muted mb-6">
           Use this form to raise a formal grievance. All submissions are treated confidentially. We aim to acknowledge within 5 working days.
         </p>
 
@@ -279,11 +266,11 @@ export default function GrievancePage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-xs text-gray-400 pb-8">
+        <div className="mt-6 text-center text-xs text-prism-ink-muted pb-8">
           <p>PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk</p>
           <p className="mt-1">259 Wallasey Village, Wallasey, Wirral, Merseyside CH45 3LR</p>
         </div>
       </div>
-    </div>
+    </PublicFormShell>
   );
 }

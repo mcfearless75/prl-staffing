@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RolePicker } from "@/components/role-picker";
+import { PublicFormShell } from "@/components/public-form-shell";
 
 /* ---------- tiny helpers ---------- */
 const inputCls =
@@ -290,15 +291,15 @@ export default function ApplyPage() {
   /* ---- success screen ---- */
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-prism-canvas flex items-center justify-center px-4">
         <div className="max-w-md w-full text-center">
-          <div className="rounded-xl border border-emerald-200 bg-white p-8 shadow-sm">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-4">
-              <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-lg border border-prism-line bg-prism-paper p-8 shadow-[0_1px_2px_rgb(27_36_48_/_6%)]">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-prism-ok/10 mb-4">
+              <svg className="h-8 w-8 text-prism-ok" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">Application Submitted!</h1>
+            <h1 className="text-xl font-bold text-prism-ink mb-2">Application Submitted!</h1>
             <p className="text-sm text-gray-600 mb-4">
               Thank you, {form.firstName}. Your application has been submitted to PRL Site Solutions for review.
             </p>
@@ -315,24 +316,7 @@ export default function ApplyPage() {
 
   /* ---- main form ---- */
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-[#005f8c] text-white">
-        <div className="mx-auto max-w-3xl px-4 py-6 flex items-center gap-4">
-          <img
-            src="/prl_logo.jpg"
-            alt="PRL"
-            width={56}
-            height={56}
-            className="rounded-full border-2 border-white/30"
-          />
-          <div>
-            <h1 className="text-xl font-bold">Application Form</h1>
-            <p className="text-sm text-blue-100">PRL Site Solutions -- Recruitment Specialists</p>
-          </div>
-        </div>
-      </header>
-
+    <PublicFormShell title="Application Form">
       <form onSubmit={handleSubmit} className="mx-auto max-w-3xl px-4 py-6 space-y-6">
         {/* Intro */}
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
@@ -976,11 +960,11 @@ export default function ApplyPage() {
         </button>
 
         {/* Footer */}
-        <div className="text-center text-xs text-gray-400 pb-8">
+        <div className="text-center text-xs text-prism-ink-muted pb-8">
           <p>PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk</p>
           <p className="mt-1">259 Wallasey Village, Wallasey, Wirral, Merseyside CH45 3LR | Company Reg: 14358717</p>
         </div>
       </form>
-    </div>
+    </PublicFormShell>
   );
 }

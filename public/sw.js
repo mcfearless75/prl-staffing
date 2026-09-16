@@ -1,7 +1,7 @@
 // PRL Site Solutions - Service Worker v4
 const CACHE_NAME = "prl-portal-v4";
 const STATIC_ASSETS = [
-  "/prl_logo.jpg",
+  "/prl-logo.png",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
 ];

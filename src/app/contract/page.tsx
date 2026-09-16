@@ -18,7 +18,7 @@ export default function ContractPage() {
           <div className="flex items-start justify-between">
             <div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/prl_logo.jpg" alt="PRL Site Solutions" className="h-14 w-14 rounded-full mb-4 print:h-12 print:w-12" />
+              <img src="/prl-logo.png" alt="PRL Site Solutions" className="h-14 w-14 rounded-full mb-4 print:h-12 print:w-12" />
               <h1 className="text-2xl font-bold text-gray-900">Software Services Agreement</h1>
               <p className="text-sm text-gray-500 mt-1">PRISM — Contractor Management Portal</p>
             </div>

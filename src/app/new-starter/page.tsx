@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PublicFormShell } from "@/components/public-form-shell";
 
 export default function NewStarterPage() {
   const [submitting, setSubmitting] = useState(false);
@@ -97,15 +98,15 @@ export default function NewStarterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-prism-canvas flex items-center justify-center px-4">
         <div className="max-w-md w-full text-center">
-          <div className="rounded-xl border border-emerald-200 bg-white p-8 shadow-sm">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-4">
-              <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-lg border border-prism-line bg-prism-paper p-8 shadow-[0_1px_2px_rgb(27_36_48_/_6%)]">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-prism-ok/10 mb-4">
+              <svg className="h-8 w-8 text-prism-ok" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">Starter Checklist Submitted!</h1>
+            <h1 className="text-xl font-bold text-prism-ink mb-2">Starter Checklist Submitted!</h1>
             <p className="text-sm text-gray-600 mb-4">
               Thank you, {firstName}. Your new starter checklist has been submitted to PRL Site Solutions.
             </p>
@@ -119,18 +120,7 @@ export default function NewStarterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-[#005f8c] text-white">
-        <div className="mx-auto max-w-3xl px-4 py-6 flex items-center gap-4">
-          <img src="/prl_logo.jpg" alt="PRL" width={56} height={56} className="rounded-full border-2 border-white/30" />
-          <div>
-            <h1 className="text-xl font-bold">New Starter Checklist</h1>
-            <p className="text-sm text-blue-100">PRL Recruitment - Starter Checklist</p>
-          </div>
-        </div>
-      </header>
-
+    <PublicFormShell title="New Starter Checklist" subtitle="PRL Recruitment — Starter Checklist">
       <div className="mx-auto max-w-3xl px-4 py-6">
         {/* Instructions for employers */}
         <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
@@ -330,16 +320,16 @@ export default function NewStarterPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-[#005f8c] px-6 py-3 text-sm font-semibold text-white hover:bg-[#004d73] disabled:opacity-50 transition-colors"
+            className="w-full rounded-md bg-prism-ink px-6 py-3 text-sm font-semibold text-prism-paper hover:bg-prism-ink/90 disabled:opacity-50 transition-colors"
           >
             {submitting ? "Submitting..." : "Submit Starter Checklist"}
           </button>
         </form>
 
-        <p className="text-center text-xs text-gray-400 mt-6 pb-8">
+        <p className="text-center text-xs text-prism-ink-muted mt-6 pb-8">
           PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk
         </p>
       </div>
-    </div>
+    </PublicFormShell>
   );
 }

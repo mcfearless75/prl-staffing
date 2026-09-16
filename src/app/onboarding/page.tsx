@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { PublicFormShell } from "@/components/public-form-shell";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -76,15 +77,15 @@ export default function OnboardingPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-prism-canvas flex items-center justify-center px-4">
         <div className="max-w-md w-full text-center">
-          <div className="rounded-xl border border-emerald-200 bg-white p-8 shadow-sm">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-4">
-              <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-lg border border-prism-line bg-prism-paper p-8 shadow-[0_1px_2px_rgb(27_36_48_/_6%)]">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-prism-ok/10 mb-4">
+              <svg className="h-8 w-8 text-prism-ok" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">Agreement Submitted!</h1>
+            <h1 className="text-xl font-bold text-prism-ink mb-2">Agreement Submitted!</h1>
             <p className="text-sm text-gray-600 mb-4">
               Thank you, {contactName || firstName}. Your supply agreement has been submitted to PRL Site Solutions for review.
             </p>
@@ -98,18 +99,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-[#005f8c] text-white">
-        <div className="mx-auto max-w-3xl px-4 py-6 flex items-center gap-4">
-          <img src="/prl_logo.jpg" alt="PRL" width={56} height={56} className="rounded-full border-2 border-white/30" />
-          <div>
-            <h1 className="text-xl font-bold">Supply Agreement</h1>
-            <p className="text-sm text-blue-100">PRL Site Solutions — Recruitment Specialists</p>
-          </div>
-        </div>
-      </header>
-
+    <PublicFormShell title="Supply Agreement">
       <div className="mx-auto max-w-3xl px-4 py-6">
         {/* Intro */}
         <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
@@ -378,11 +368,11 @@ export default function OnboardingPage() {
         )}
 
         {/* Footer */}
-        <div className="mt-8 text-center text-xs text-gray-400 pb-8">
+        <div className="mt-8 text-center text-xs text-prism-ink-muted pb-8">
           <p>PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk</p>
           <p className="mt-1">259 Wallasey Village, Wallasey, Wirral, Merseyside CH45 3LR | Company Reg: 14358717</p>
         </div>
       </div>
-    </div>
+    </PublicFormShell>
   );
 }

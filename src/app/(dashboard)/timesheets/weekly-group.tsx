@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/badge";
+import { StatusBadge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { ChevronDown, ChevronRight, Clock, AlertTriangle, CheckCircle2, Send } from "lucide-react";
 
@@ -216,9 +216,9 @@ export function WeeklyTimesheetGroup({
                         </td>
                         <td className="whitespace-nowrap px-4 py-2.5">
                           <div className="flex items-center gap-1.5">
-                            <Badge variant={ts.status}>{ts.status}</Badge>
+                            <StatusBadge value={ts.status} />
                             {ts.isException && (
-                              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                              <span className="rounded bg-prism-warn/10 px-1.5 py-0.5 text-[10px] font-medium text-prism-warn">
                                 Exception
                               </span>
                             )}

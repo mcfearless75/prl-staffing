@@ -87,7 +87,7 @@ export default function SetPasswordClient() {
     <>
       <div className="mb-6 text-center">
         <img
-          src="/prl_logo.jpg"
+          src="/prl-logo.png"
           alt="PRL Site Solutions"
           className="mx-auto mb-4 rounded-full w-16 h-16"
         />

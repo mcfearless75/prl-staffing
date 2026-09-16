@@ -64,7 +64,7 @@ export default async function CallsPage({
             key={s}
             href={buildHref(s, categoryFilter)}
             className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              (statusFilter || "All") === s ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"
+              (statusFilter || "All") === s ? "bg-prism-ink text-prism-paper" : "bg-gray-100 text-gray-700"
             }`}
           >
             {s}
@@ -77,7 +77,7 @@ export default async function CallsPage({
             key={c}
             href={buildHref(statusFilter, c)}
             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              (categoryFilter || "All") === c ? "bg-indigo-600 text-white" : "bg-gray-50 text-gray-600"
+              (categoryFilter || "All") === c ? "bg-prism-ink text-prism-paper" : "bg-gray-50 text-gray-600"
             }`}
           >
             {c === "All" ? "All" : categoryLabel(c as CallEnquiryCategory)}
@@ -105,7 +105,9 @@ export default async function CallsPage({
               </td>
               <td>
                 {e.urgent && e.category !== "URGENT" ? (
-                  <span className="text-red-600 font-semibold">URGENT </span>
+                  <span className="mr-1 inline-flex items-center rounded-full bg-prism-warn/10 px-2 py-0.5 text-xs font-semibold text-prism-warn">
+                    URGENT
+                  </span>
                 ) : null}
                 {categoryLabel(e.category as CallEnquiryCategory)}
               </td>
@@ -113,7 +115,15 @@ export default async function CallsPage({
                 {e.callerName || "—"} {e.callerPhone ? `(${e.callerPhone})` : ""}
               </td>
               <td className="max-w-xs truncate">{e.reason}</td>
-              <td>{e.status}</td>
+              <td>
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    e.status === "Actioned" ? "bg-prism-ok/10 text-prism-ok" : "bg-prism-warn/10 text-prism-warn"
+                  }`}
+                >
+                  {e.status}
+                </span>
+              </td>
             </tr>
           ))}
           {enquiries.length === 0 && (

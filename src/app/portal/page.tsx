@@ -4,7 +4,7 @@ import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Badge } from "@/components/badge";
+import { StatusBadge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { ShieldCheck, FileUp, User, Plus, ChevronRight, Smartphone, MessageSquare } from "lucide-react";
 
@@ -45,10 +45,10 @@ export default async function PortalDashboard() {
     <div className="space-y-5">
       {/* Welcome */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900">
+        <h1 className="text-xl font-semibold tracking-tight text-prism-ink">
           Hello, {contractor.firstName}
         </h1>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-prism-ink-muted">
           Welcome to your contractor portal
         </p>
       </div>
@@ -98,14 +98,14 @@ export default async function PortalDashboard() {
       <div className="grid grid-cols-2 gap-3">
         <Link
           href="/portal/timesheets/new"
-          className="flex items-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 p-4 hover:bg-blue-100 transition-colors"
+          className="flex items-center gap-3 min-h-[44px] rounded-lg border-2 border-prism-ink/20 bg-prism-ink/5 p-4 hover:bg-prism-ink/10 transition-colors"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-prism-ink text-prism-paper">
             <Plus className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-blue-900">New Timesheet</p>
-            <p className="text-[10px] text-blue-600">Submit your hours</p>
+            <p className="text-sm font-semibold text-prism-ink">New Timesheet</p>
+            <p className="text-[10px] text-prism-ink-muted">Submit your hours</p>
           </div>
         </Link>
         <Link
@@ -162,19 +162,19 @@ export default async function PortalDashboard() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-          <p className="text-2xl font-bold text-blue-600">{pendingTimesheets}</p>
-          <p className="text-[10px] text-gray-500 mt-1">Draft Timesheets</p>
+        <div className="rounded-lg border border-prism-line bg-prism-paper p-4 text-center">
+          <p className="text-2xl font-bold text-prism-info">{pendingTimesheets}</p>
+          <p className="text-[10px] text-prism-ink-muted mt-1">Draft Timesheets</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-          <p className="text-2xl font-bold text-emerald-600">{approvedTimesheets}</p>
-          <p className="text-[10px] text-gray-500 mt-1">Approved</p>
+        <div className="rounded-lg border border-prism-line bg-prism-paper p-4 text-center">
+          <p className="text-2xl font-bold text-prism-ok">{approvedTimesheets}</p>
+          <p className="text-[10px] text-prism-ink-muted mt-1">Approved</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-          <p className={`text-2xl font-bold ${expiringCompliance > 0 ? "text-red-600" : "text-gray-400"}`}>
+        <div className="rounded-lg border border-prism-line bg-prism-paper p-4 text-center">
+          <p className={`text-2xl font-bold ${expiringCompliance > 0 ? "text-prism-bad" : "text-prism-ink-muted"}`}>
             {expiringCompliance}
           </p>
-          <p className="text-[10px] text-gray-500 mt-1">Compliance Alerts</p>
+          <p className="text-[10px] text-prism-ink-muted mt-1">Compliance Alerts</p>
         </div>
       </div>
 
@@ -192,7 +192,7 @@ export default async function PortalDashboard() {
                 <p className="text-sm font-medium text-gray-900">{a.role}</p>
                 <p className="text-xs text-gray-500">{a.company.name} {a.location ? `- ${a.location}` : ""}</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge variant={a.status}>{a.status}</Badge>
+                  <StatusBadge value={a.status} />
                   <span className="text-xs text-gray-400">Since {formatDate(a.startDate)}</span>
                 </div>
               </div>
@@ -228,7 +228,7 @@ export default async function PortalDashboard() {
                     {ts.totalHours}h {ts.overtimeHours > 0 ? `(${ts.overtimeHours}h OT)` : ""}
                   </p>
                 </div>
-                <Badge variant={ts.status}>{ts.status}</Badge>
+                <StatusBadge value={ts.status} />
               </Link>
             ))
           )}
@@ -251,7 +251,7 @@ export default async function PortalDashboard() {
                 <div key={c.id} className="px-4 py-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-red-900">{c.type}</p>
-                    <Badge variant={c.status}>{c.status}</Badge>
+                    <StatusBadge value={c.status} />
                   </div>
                   {c.expiryDate && (
                     <p className="text-xs text-red-600 mt-0.5">Expires {formatDate(c.expiryDate)}</p>

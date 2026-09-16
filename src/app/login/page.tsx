@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { defaultBrand } from "@/lib/brand";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -60,13 +61,13 @@ function LoginForm() {
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
+          <div className="rounded-lg bg-prism-bad/10 p-3 text-sm text-prism-bad border border-prism-bad/20">
             {error}
           </div>
         )}
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-prism-ink">
             Email
           </label>
           <input
@@ -75,14 +76,14 @@ function LoginForm() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base sm:text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mt-1 block w-full rounded-md border border-prism-line bg-prism-paper px-3 py-2.5 text-base sm:text-sm focus:border-prism-ink focus:outline-none focus:ring-2 focus:ring-prism-ink/20"
             placeholder="your@email.com"
             autoComplete="email"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-sm font-medium text-prism-ink">
             Password
           </label>
           <div className="relative">
@@ -92,14 +93,14 @@ function LoginForm() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 pr-10 text-base sm:text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md border border-prism-line bg-prism-paper px-3 py-2.5 pr-10 text-base sm:text-sm focus:border-prism-ink focus:outline-none focus:ring-2 focus:ring-prism-ink/20"
               placeholder="Enter your password"
               autoComplete="current-password"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-prism-ink-muted hover:text-prism-ink transition-colors"
               tabIndex={-1}
             >
               {showPassword ? (
@@ -119,7 +120,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-blue-600 px-4 py-3 sm:py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 active:bg-blue-800 transition-colors"
+          className="w-full min-h-[44px] rounded-md bg-prism-ink px-4 py-3 sm:py-2.5 text-sm font-medium text-prism-paper hover:bg-prism-ink/90 focus:outline-none focus:ring-2 focus:ring-prism-ink/40 focus:ring-offset-2 disabled:opacity-50 transition-colors"
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>
@@ -127,15 +128,15 @@ function LoginForm() {
 
       {/* Microsoft SSO Divider */}
       <div className="mt-4 flex items-center gap-3">
-        <div className="flex-1 border-t border-gray-200" />
-        <span className="text-xs text-gray-400">PRL Staff</span>
-        <div className="flex-1 border-t border-gray-200" />
+        <div className="flex-1 border-t border-prism-line" />
+        <span className="text-xs text-prism-ink-muted">PRL Staff</span>
+        <div className="flex-1 border-t border-prism-line" />
       </div>
 
       {/* Microsoft SSO Button */}
       <button
         onClick={() => signIn("microsoft-entra-id", { callbackUrl: "/" })}
-        className="mt-3 flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 sm:py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:bg-gray-100 transition-colors"
+        className="mt-3 flex w-full min-h-[44px] items-center justify-center gap-3 rounded-md border border-prism-line bg-prism-paper px-4 py-3 sm:py-2.5 text-sm font-medium text-prism-ink hover:bg-prism-canvas focus:outline-none focus:ring-2 focus:ring-prism-ink/20 transition-colors"
       >
         <svg className="h-5 w-5" viewBox="0 0 21 21" fill="none">
           <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
@@ -152,31 +153,37 @@ function LoginForm() {
           <>
             <button
               onClick={() => setForgotMode(true)}
-              className="block w-full text-sm text-blue-600 hover:text-blue-800"
+              className="block w-full text-sm text-prism-info hover:underline"
             >
               Forgot your password?
             </button>
             <a
               href="/setup-account"
-              className="block text-sm text-gray-500 hover:text-gray-700"
+              className="block text-sm text-prism-ink-muted hover:text-prism-ink"
             >
               New contractor? Set up your account →
             </a>
+            <a
+              href="/help/prism-login"
+              className="block text-sm text-prism-ink-muted hover:text-prism-ink"
+            >
+              Trouble signing in?
+            </a>
           </>
         ) : forgotSent ? (
-          <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+          <div className="rounded-lg bg-prism-ok/10 p-3 text-sm text-prism-ok">
             If that email is registered, a reset link has been sent. Check your inbox.
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs text-gray-500">Enter your email to receive a password reset link</p>
+            <p className="text-xs text-prism-ink-muted">Enter your email to receive a password reset link</p>
             <div className="flex gap-2">
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="flex-1 rounded-md border border-prism-line bg-prism-paper px-3 py-2 text-sm focus:border-prism-ink focus:outline-none focus:ring-2 focus:ring-prism-ink/20"
               />
               <button
                 onClick={async () => {
@@ -196,14 +203,14 @@ function LoginForm() {
                   setForgotLoading(false);
                 }}
                 disabled={forgotLoading || !email}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="rounded-md bg-prism-ink px-4 py-2 text-sm font-medium text-prism-paper hover:bg-prism-ink/90 disabled:opacity-50 transition-colors"
               >
                 {forgotLoading ? "..." : "Send"}
               </button>
             </div>
             <button
               onClick={() => setForgotMode(false)}
-              className="text-xs text-gray-400 hover:text-gray-600"
+              className="text-xs text-prism-ink-muted hover:text-prism-ink"
             >
               Back to login
             </button>
@@ -216,29 +223,44 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      {/* Watermark */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.04]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/prl_logo.jpg" alt="" width={600} height={600} className="select-none max-w-[80vw]" />
+    <div className="flex min-h-screen flex-col bg-prism-canvas md:flex-row">
+      {/* Ink panel */}
+      <div className="relative flex items-center justify-center overflow-hidden bg-prism-ink px-6 py-10 md:w-1/2 md:py-0">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/prl-logo.png" alt="" width={420} height={420} className="select-none max-w-[60vw]" />
+        </div>
+        <div className="relative z-10 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/prl-logo.png"
+            alt="PRL Site Solutions"
+            width={64}
+            height={64}
+            className="mx-auto mb-4 w-14 h-14 sm:w-16 sm:h-16"
+          />
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-prism-paper">PRISM</h1>
+          <p className="mt-2 text-sm text-white/60">PRL Site Solutions — Workforce &amp; Compliance Portal</p>
+          <p className="mt-6 text-sm text-white/50">
+            Need help? Call <a href={`tel:${defaultBrand.phone.replace(/\s+/g, "")}`} className="text-prism-paper hover:underline">{defaultBrand.phone}</a>
+          </p>
+        </div>
       </div>
-      <div className="relative z-10 w-full max-w-md">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
-          <div className="mb-6 sm:mb-8 text-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/prl_logo.jpg"
-              alt="PRL Site Solutions"
-              width={80}
-              height={80}
-              className="mx-auto mb-4 rounded-full w-16 h-16 sm:w-20 sm:h-20"
-            />
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">PRL Site Solutions</h1>
-            <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
+
+      {/* Paper card */}
+      <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
+        <div className="w-full max-w-md">
+          <div className="rounded-lg border border-prism-line bg-prism-paper p-6 sm:p-8 shadow-[0_1px_2px_rgb(27_36_48_/_6%)]">
+            <div className="mb-6 text-center md:hidden">
+              <h2 className="text-xl font-semibold tracking-tight text-prism-ink">Sign in</h2>
+            </div>
+            <div className="mb-6 hidden text-center md:block">
+              <h2 className="text-xl font-semibold tracking-tight text-prism-ink">Sign in to your account</h2>
+            </div>
+            <Suspense fallback={<div className="text-center py-4 text-prism-ink-muted text-sm">Loading...</div>}>
+              <LoginForm />
+            </Suspense>
           </div>
-          <Suspense fallback={<div className="text-center py-4 text-gray-400 text-sm">Loading...</div>}>
-            <LoginForm />
-          </Suspense>
         </div>
       </div>
     </div>

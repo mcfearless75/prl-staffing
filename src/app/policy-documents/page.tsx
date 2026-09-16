@@ -44,7 +44,7 @@ export default async function PolicyDocumentsPage() {
       {/* Header */}
       <div className="bg-[#005f8c] text-white">
         <div className="mx-auto max-w-3xl px-4 py-6 flex items-center gap-3">
-          <img src="/prl_logo.jpg" alt="PRL" className="h-12 w-12 rounded-full" />
+          <img src="/prl-logo.png" alt="PRL" className="h-12 w-12 rounded-full" />
           <div>
             <h1 className="text-lg font-bold">PRL Site Solutions</h1>
             <p className="text-xs text-blue-200">Recruitment Specialists</p>

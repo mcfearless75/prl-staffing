@@ -1,6 +1,41 @@
 @import "tailwindcss";
 @source not "public/**/*.{eps,jpg,jpeg,png,gif,ico,pdf,docx}";
 
+/*
+ * PRISM design tokens — construction / labour-supply, paper on a navy desk.
+ * See PRISM-CLAUDE-UI-BRIEF.md for the design contract these implement.
+ */
+:root {
+  --prism-canvas: #f4f1ea;
+  --prism-paper: #fffcf7;
+  --prism-ink: #1b2430;
+  --prism-ink-muted: #5c6570;
+  --prism-line: #e5e2d9;
+  --prism-accent: #c2410c;
+  --prism-warn: #b45309;
+  --prism-ok: #0f766e;
+  --prism-bad: #b91c1c;
+  --prism-info: #1e3a5f;
+}
+
+@theme {
+  --color-prism-canvas: var(--prism-canvas);
+  --color-prism-paper: var(--prism-paper);
+  --color-prism-ink: var(--prism-ink);
+  --color-prism-ink-muted: var(--prism-ink-muted);
+  --color-prism-line: var(--prism-line);
+  --color-prism-accent: var(--prism-accent);
+  --color-prism-warn: var(--prism-warn);
+  --color-prism-ok: var(--prism-ok);
+  --color-prism-bad: var(--prism-bad);
+  --color-prism-info: var(--prism-info);
+}
+
+body {
+  background-color: var(--prism-canvas);
+  color: var(--prism-ink);
+}
+
 /* Mobile-friendly tables: horizontal scroll on small screens */
 @media (max-width: 768px) {
   table {

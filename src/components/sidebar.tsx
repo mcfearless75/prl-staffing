@@ -137,22 +137,22 @@ export function Sidebar() {
   const navContent = (
     <>
       {/* Logo */}
-      <div className="flex h-16 lg:h-20 items-center gap-3 border-b border-gray-200 px-4">
+      <div className="flex h-16 lg:h-20 items-center gap-3 border-b border-white/10 px-4">
         <img
-          src="/prl_logo.jpg"
+          src="/prl-logo.png"
           alt="PRL Site Solutions"
-          width={40}
-          height={40}
-          className="rounded-full lg:w-12 lg:h-12"
+          width={28}
+          height={28}
+          className="lg:w-8 lg:h-8"
         />
         <div className="flex-1 min-w-0">
-          <h1 className="text-sm font-bold text-gray-900 leading-tight truncate">PRL Site Solutions</h1>
-          <p className="text-xs text-gray-500">Recruitment Specialists</p>
+          <h1 className="text-sm font-bold text-prism-paper leading-tight truncate">PRISM</h1>
+          <p className="text-xs text-white/50 truncate">PRL Site Solutions</p>
         </div>
         {/* Mobile close button */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="lg:hidden rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          className="lg:hidden rounded-lg p-1 text-white/50 hover:bg-white/10 hover:text-prism-paper"
         >
           <X className="h-5 w-5" />
         </button>
@@ -163,7 +163,7 @@ export function Sidebar() {
         {navigationSections.map((section) => (
           <div key={section.title || "untitled"}>
             {section.title && (
-              <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 first:pt-0">
+              <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-white/40 first:pt-0">
                 {section.title}
               </p>
             )}
@@ -181,19 +181,14 @@ export function Sidebar() {
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2.5 lg:py-2 text-sm font-medium transition-colors",
                       isActive
-                        ? "bg-blue-50 text-blue-700"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        ? "bg-white/10 text-prism-paper"
+                        : "text-white/60 hover:bg-white/5 hover:text-prism-paper"
                     )}
                   >
                     <item.icon className="h-5 w-5 shrink-0" />
                     <span className="flex-1">{item.name}</span>
                     {badgeCount > 0 && (
-                      <span className={cn(
-                        "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
-                        item.badgeKey === "complianceAlerts"
-                          ? "bg-orange-500 text-white"
-                          : "bg-blue-500 text-white"
-                      )}>
+                      <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-prism-warn px-1.5 text-[10px] font-bold text-white">
                         {badgeCount > 99 ? "99+" : badgeCount}
                       </span>
                     )}
@@ -206,15 +201,15 @@ export function Sidebar() {
       </nav>
 
       {/* User info + sign out */}
-      <div className="border-t border-gray-200 p-3 lg:p-4">
+      <div className="border-t border-white/10 p-3 lg:p-4">
         {session?.user?.name && (
-          <p className="mb-2 truncate px-3 text-xs text-gray-500">
-            Signed in as <span className="font-medium text-gray-700">{session.user.email}</span>
+          <p className="mb-2 truncate px-3 text-xs text-white/40">
+            Signed in as <span className="font-medium text-white/70">{session.user.email}</span>
           </p>
         )}
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 lg:py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 lg:py-2 text-sm font-medium text-white/60 hover:bg-white/5 hover:text-prism-paper transition-colors"
         >
           <LogOut className="h-5 w-5" />
           Sign out
@@ -226,32 +221,31 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 lg:hidden">
+      <div className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b border-white/10 bg-prism-ink px-4 lg:hidden">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileOpen(true)}
-            className="relative rounded-lg p-1.5 text-gray-600 hover:bg-gray-100"
+            className="relative rounded-lg p-1.5 text-white/60 hover:bg-white/10"
           >
             <Menu className="h-6 w-6" />
             {counts.complianceAlerts > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-prism-warn opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-prism-warn" />
               </span>
             )}
           </button>
           <img
-            src="/prl_logo.jpg"
+            src="/prl-logo.png"
             alt="PRL"
-            width={32}
-            height={32}
-            className="rounded-full"
+            width={28}
+            height={28}
           />
-          <span className="text-sm font-bold text-gray-900">PRL Site Solutions</span>
+          <span className="text-sm font-bold text-prism-paper">PRISM</span>
         </div>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          className="rounded-lg p-2 text-white/50 hover:bg-white/10 hover:text-prism-paper"
           title="Sign out"
         >
           <LogOut className="h-5 w-5" />
@@ -269,7 +263,7 @@ export function Sidebar() {
       {/* Sidebar - mobile: slide-out drawer, desktop: fixed */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 flex h-screen w-72 lg:w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-200 ease-in-out",
+          "fixed top-0 left-0 z-50 flex h-screen w-72 lg:w-64 flex-col border-r border-white/10 bg-prism-ink transition-transform duration-200 ease-in-out",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >

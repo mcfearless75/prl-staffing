@@ -4,7 +4,7 @@ export default function PrivacyPolicyPage() {
       <div className="mx-auto max-w-3xl">
         <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
           <div className="text-center mb-8">
-            <img src="/prl_logo.jpg" alt="PRL" className="mx-auto h-16 w-16 rounded-full mb-4" />
+            <img src="/prl-logo.png" alt="PRL" className="mx-auto h-16 w-16 rounded-full mb-4" />
             <h1 className="text-2xl font-bold text-gray-900">Privacy Policy</h1>
             <p className="mt-1 text-sm text-gray-500">PRL Site Solutions Ltd — PRISM Platform</p>
             <p className="text-xs text-gray-400 mt-2">Version 1.0 | Effective: 24 March 2026 | Ref: PRL-PP-001</p>
