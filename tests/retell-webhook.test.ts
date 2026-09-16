@@ -50,7 +50,7 @@ describe("parseRetellWebhookPayload", () => {
     const result = parseRetellWebhookPayload(
       JSON.stringify({ event: "call_started", call: { call_id: "abc" } })
     );
-    assert.deepEqual(result, { ok: true, skip: true });
+    assert.deepEqual(result, { ok: true, skip: true, event: "call_started", callId: "abc" });
   });
 
   test("extracts custom_analysis_data fields for call_analyzed", () => {
@@ -115,6 +115,24 @@ describe("parseRetellWebhookPayload", () => {
     assert.equal(result.ok, true);
     if (!result.ok || result.skip) return assert.fail("expected parsed data");
     assert.equal(result.data.urgent, true);
+  });
+
+  test("falls back to OTHER category when custom data has an invalid category string", () => {
+    const payload = {
+      event: "call_analyzed",
+      call: {
+        call_id: "call_654",
+        transcript: "Agent: hi\nUser: hello",
+        call_analysis: {
+          call_summary: "Unclear what the caller wanted.",
+          custom_analysis_data: { category: "BOGUS" },
+        },
+      },
+    };
+    const result = parseRetellWebhookPayload(JSON.stringify(payload));
+    assert.equal(result.ok, true);
+    if (!result.ok || result.skip) return assert.fail("expected parsed data");
+    assert.equal(result.data.category, "OTHER");
   });
 
   test("falls back to call.from_number when caller_phone is absent from custom data", () => {

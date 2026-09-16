@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { sendEmail, CALL_ENQUIRY_RECIPIENTS } from "@/lib/email";
 import { verifyRetellWebhookSignature, parseRetellWebhookPayload } from "@/lib/calls/retell-webhook";
+import { categoryLabel } from "@/lib/calls/constants";
 import { escapeHtml } from "@/lib/utils";
 
 // Machine-to-machine endpoint: Retell may burst-retry (up to 3x within 10s
@@ -22,21 +23,6 @@ function checkIpRateLimit(ip: string): boolean {
   if (entry.count >= RATE_LIMIT) return false;
   entry.count += 1;
   return true;
-}
-
-function categoryLabel(category: string): string {
-  switch (category) {
-    case "APPLICANT":
-      return "New Applicant";
-    case "CONTRACTOR_QUERY":
-      return "Contractor Query";
-    case "CLIENT_ENQUIRY":
-      return "Client Enquiry";
-    case "URGENT":
-      return "Urgent";
-    default:
-      return "Other";
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -65,6 +51,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
   if (parsed.skip) {
+    console.info(
+      `Retell webhook: skipped event${parsed.event ? ` "${parsed.event}"` : " (no event field)"}` +
+        `${parsed.callId ? ` for call ${parsed.callId}` : ""}`
+    );
     return new NextResponse(null, { status: 204 });
   }
 
@@ -109,13 +99,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 
+  // The category label already says "Urgent" when category === "URGENT" —
+  // only add the separate urgent prefix/suffix when it wouldn't be a duplicate.
+  const showUrgentFlag = data.urgent && data.category !== "URGENT";
+
   const emailResult = await sendEmail({
     to: CALL_ENQUIRY_RECIPIENTS,
-    subject: `${data.urgent ? "[URGENT] " : ""}Call enquiry: ${categoryLabel(data.category)}`,
+    subject: `${showUrgentFlag ? "[URGENT] " : ""}Call enquiry: ${categoryLabel(data.category)}`,
     template: "call-enquiry",
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-        <h2 style="color:#1F4E79;">${categoryLabel(data.category)}${data.urgent ? " — URGENT" : ""}</h2>
+        <h2 style="color:#1F4E79;">${categoryLabel(data.category)}${showUrgentFlag ? " — URGENT" : ""}</h2>
         <p><strong>Caller:</strong> ${data.callerName != null ? escapeHtml(data.callerName) : "Not given"}${data.callerPhone ? ` (${escapeHtml(data.callerPhone)})` : ""}</p>
         <p><strong>Reason:</strong> ${escapeHtml(data.reason)}</p>
         <p><strong>Summary:</strong> ${escapeHtml(data.summary)}</p>

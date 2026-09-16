@@ -14,7 +14,7 @@ export interface ParsedCallEnquiry {
 }
 
 export type ParseResult =
-  | { ok: true; skip: true }
+  | { ok: true; skip: true; event: string | null; callId: string | null }
   | { ok: true; skip: false; data: ParsedCallEnquiry }
   | { ok: false; error: string };
 
@@ -51,7 +51,13 @@ export function parseRetellWebhookPayload(rawBody: string): ParseResult {
   const root = payload as Record<string, unknown>;
 
   if (root.event !== "call_analyzed") {
-    return { ok: true, skip: true };
+    const event = typeof root.event === "string" ? root.event : null;
+    const call =
+      typeof root.call === "object" && root.call !== null
+        ? (root.call as Record<string, unknown>)
+        : null;
+    const callId = call && typeof call.call_id === "string" ? call.call_id : null;
+    return { ok: true, skip: true, event, callId };
   }
 
   if (typeof root.call !== "object" || root.call === null) {

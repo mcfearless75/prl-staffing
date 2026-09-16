@@ -2,9 +2,15 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
-import { CALL_ENQUIRY_CATEGORIES, CALL_ENQUIRY_STATUSES } from "@/lib/calls/constants";
+import {
+  CALL_ENQUIRY_CATEGORIES,
+  CALL_ENQUIRY_STATUSES,
+  categoryLabel,
+  type CallEnquiryCategory,
+} from "@/lib/calls/constants";
 
 function buildHref(status: string, category: string): string {
   const params = new URLSearchParams();
@@ -26,13 +32,23 @@ export default async function CallsPage({
   const statusFilter = params?.status || "";
   const categoryFilter = params?.category || "";
 
-  const where: Record<string, unknown> = {};
+  const where: Prisma.CallEnquiryWhereInput = {};
   if (statusFilter && statusFilter !== "All") where.status = statusFilter;
   if (categoryFilter && categoryFilter !== "All") where.category = categoryFilter;
 
   const enquiries = await prisma.callEnquiry.findMany({
     where,
     orderBy: { receivedAt: "desc" },
+    select: {
+      id: true,
+      receivedAt: true,
+      category: true,
+      urgent: true,
+      callerName: true,
+      callerPhone: true,
+      reason: true,
+      status: true,
+    },
   });
 
   const statuses = ["All", ...CALL_ENQUIRY_STATUSES];
@@ -64,7 +80,7 @@ export default async function CallsPage({
               (categoryFilter || "All") === c ? "bg-indigo-600 text-white" : "bg-gray-50 text-gray-600"
             }`}
           >
-            {c}
+            {c === "All" ? "All" : categoryLabel(c as CallEnquiryCategory)}
           </Link>
         ))}
       </div>
@@ -88,8 +104,10 @@ export default async function CallsPage({
                 </Link>
               </td>
               <td>
-                {e.urgent ? <span className="text-red-600 font-semibold">URGENT </span> : null}
-                {e.category}
+                {e.urgent && e.category !== "URGENT" ? (
+                  <span className="text-red-600 font-semibold">URGENT </span>
+                ) : null}
+                {categoryLabel(e.category as CallEnquiryCategory)}
               </td>
               <td>
                 {e.callerName || "—"} {e.callerPhone ? `(${e.callerPhone})` : ""}

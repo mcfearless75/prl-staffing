@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
+import { categoryLabel, type CallEnquiryCategory } from "@/lib/calls/constants";
 import { markActioned } from "../actions";
 
 export default async function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,8 +19,10 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="p-6 max-w-3xl">
       <h1 className="text-2xl font-semibold mb-2">
-        {enquiry.urgent ? <span className="text-red-600">URGENT — </span> : null}
-        {enquiry.category}
+        {enquiry.urgent && enquiry.category !== "URGENT" ? (
+          <span className="text-red-600">URGENT — </span>
+        ) : null}
+        {categoryLabel(enquiry.category as CallEnquiryCategory)}
       </h1>
       <p className="text-gray-500 mb-6">{enquiry.receivedAt.toLocaleString("en-GB")}</p>
 
