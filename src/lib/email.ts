@@ -64,6 +64,15 @@ export const COMPLIANCE_RECIPIENTS = recipientList(process.env.COMPLIANCE_RECIPI
   "helen@prlsitesolutions.co.uk",
 ]);
 
+export const CALL_ENQUIRY_RECIPIENTS = recipientList(process.env.CALL_ENQUIRY_RECIPIENTS, [
+  "adella@prlsitesolutions.co.uk",
+  "keenan@prlsitesolutions.co.uk",
+  "helen@prlsitesolutions.co.uk",
+  "jenni@prlsitesolutions.co.uk",
+  "sian@prlsitesolutions.co.uk",
+  "erica@prlsitesolutions.co.uk",
+]);
+
 async function logEmail(entry: {
   to: string;
   subject: string;
