@@ -28,6 +28,7 @@ import {
   Send,
   Wrench,
   HelpCircle,
+  Phone,
 } from "lucide-react";
 
 const navigation = [
@@ -48,6 +49,7 @@ const navigation = [
   { name: "Job Roles", href: "/job-roles", icon: Wrench, badgeKey: null },
   { name: "Pay Queries", href: "/payment-queries", icon: MessageSquare, badgeKey: "openQueries" as const },
   { name: "Grievances", href: "/grievances", icon: AlertCircle, badgeKey: "openGrievances" as const },
+  { name: "Calls", href: "/calls", icon: Phone, badgeKey: "newCallEnquiries" as const },
   { name: "QMS", href: "/qms", icon: Shield, badgeKey: null },
   { name: "Activity Log", href: "/activity", icon: Activity, badgeKey: null },
   { name: "Help", href: "/help", icon: HelpCircle, badgeKey: null },
@@ -68,13 +70,14 @@ type Counts = {
   openQueries: number;
   openGrievances: number;
   newStarters: number;
+  newCallEnquiries: number;
 };
 
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
-  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0 });
+  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0 });
 
   // Fetch badge counts on mount and every 30 seconds
   useEffect(() => {

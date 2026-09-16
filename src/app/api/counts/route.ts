@@ -9,7 +9,7 @@ export async function GET() {
   if (!guard.ok) return NextResponse.json({ error: "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
 
   try {
-    const [pendingTimesheets, complianceAlerts, draftInvoices, pendingOnboarding, pendingApplicants, openQueries, openGrievances, newStarters] = await Promise.all([
+    const [pendingTimesheets, complianceAlerts, draftInvoices, pendingOnboarding, pendingApplicants, openQueries, openGrievances, newStarters, newCallEnquiries] = await Promise.all([
       prisma.timesheet.count({
         where: { status: { in: ["Submitted", "Draft"] } },
       }),
@@ -34,6 +34,9 @@ export async function GET() {
       prisma.newStarterSubmission.count({
         where: { status: "New" },
       }),
+      prisma.callEnquiry.count({
+        where: { status: "New" },
+      }),
     ]);
 
     return NextResponse.json({
@@ -45,8 +48,9 @@ export async function GET() {
       openQueries,
       openGrievances,
       newStarters,
+      newCallEnquiries,
     });
   } catch {
-    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0 });
+    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0 });
   }
 }
