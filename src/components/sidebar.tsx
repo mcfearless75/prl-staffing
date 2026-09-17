@@ -29,6 +29,7 @@ import {
   Wrench,
   HelpCircle,
   Phone,
+  ChevronDown,
 } from "lucide-react";
 
 // Grouped so staff can jump to a labeled section instead of scanning one long
@@ -110,11 +111,48 @@ type Counts = {
   newCallEnquiries: number;
 };
 
+const COLLAPSE_STORAGE_KEY = "prism-sidebar-collapsed-sections";
+
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
   const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0 });
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  // Restore collapsed sections from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(COLLAPSE_STORAGE_KEY);
+      if (stored) setCollapsed(JSON.parse(stored));
+    } catch {
+      // ignore malformed/unavailable storage
+    }
+  }, []);
+
+  // Always keep the section containing the active page expanded
+  useEffect(() => {
+    const activeSection = navigationSections.find((section) =>
+      section.items.some(
+        (item) => pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
+      )
+    );
+    if (activeSection?.title) {
+      setCollapsed((prev) => (prev[activeSection.title] ? { ...prev, [activeSection.title]: false } : prev));
+    }
+  }, [pathname]);
+
+  function toggleSection(title: string) {
+    setCollapsed((prev) => {
+      const next = { ...prev, [title]: !prev[title] };
+      try {
+        localStorage.setItem(COLLAPSE_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore unavailable storage
+      }
+      return next;
+    });
+  }
 
   // Fetch badge counts on mount and every 30 seconds
   useEffect(() => {
@@ -160,14 +198,27 @@ export function Sidebar() {
 
       {/* Nav items */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-3 lg:p-4">
-        {navigationSections.map((section) => (
+        {navigationSections.map((section) => {
+          const isCollapsed = section.title ? !!collapsed[section.title] : false;
+          return (
           <div key={section.title || "untitled"}>
             {section.title && (
-              <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-white/40 first:pt-0">
-                {section.title}
-              </p>
+              <button
+                type="button"
+                onClick={() => toggleSection(section.title)}
+                aria-expanded={!isCollapsed}
+                className="flex w-full items-center justify-between px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-white/40 first:pt-0 hover:text-white/70"
+              >
+                <span>{section.title}</span>
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0 transition-transform duration-150",
+                    isCollapsed && "-rotate-90"
+                  )}
+                />
+              </button>
             )}
-            <div className="space-y-0.5">
+            <div className={cn("space-y-0.5", isCollapsed && "hidden")}>
               {section.items.map((item) => {
                 const isActive =
                   pathname === item.href ||
@@ -197,7 +248,8 @@ export function Sidebar() {
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* User info + sign out */}
