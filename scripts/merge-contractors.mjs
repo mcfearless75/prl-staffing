@@ -33,8 +33,9 @@
  *   - The losing record is serialised into the keeper's notes before deletion,
  *     so the merge is auditable and nothing is silently destroyed.
  *   - Blank fields on the keeper are filled from the loser. Populated fields
- *     are NEVER overwritten — a merge must not quietly change someone's NI
- *     number or pay rate. Differing values are reported for a human instead.
+ *     are NEVER overwritten unless named in --take-from-loser — a merge must
+ *     not quietly change someone's NI number or pay rate. Anything differing
+ *     and not named is reported for a human instead.
  *
  * PII: prints names, emails and masked NI. Do not paste output anywhere public.
  */
@@ -57,10 +58,32 @@ const keepKey = arg("keep");
 const mergeKey = arg("merge");
 const execute = process.argv.includes("--execute");
 
+/**
+ * Fields to take from the LOSING record even though the keeper has a value.
+ *
+ *   --take-from-loser ir35Status,address
+ *
+ * Exists because the older, scruffier-looking record is often the one holding
+ * the better data. The first real merge (C00327/C00045) had "TBD" for
+ * ir35Status on the keeper and a genuine "Outside" determination on the loser —
+ * merging blind would have discarded a formal IR35 assessment and left the
+ * surviving record looking undetermined.
+ *
+ * Opt-in and field-by-field on purpose. The default of "keeper always wins"
+ * is what stops a merge quietly rewriting someone's NI number or pay rate, so
+ * every exception has to be named out loud on the command line.
+ */
+const TAKE_FROM_LOSER = (arg("take-from-loser") || "")
+  .split(",")
+  .map((f) => f.trim())
+  .filter(Boolean);
+
 if (!keepKey || !mergeKey) {
   console.error(
-    "\n  Usage: --keep <ref|id> --merge <ref|id> [--execute]\n" +
-      "  e.g.   --keep C00327 --merge C00045\n"
+    "\n  Usage: --keep <ref|id> --merge <ref|id>\n" +
+      "         [--take-from-loser <field,field>]  overwrite these on the keeper\n" +
+      "         [--execute]                        without it, nothing is written\n\n" +
+      "  e.g.   --keep C00327 --merge C00045 --take-from-loser ir35Status,address\n"
   );
   process.exit(2);
 }
@@ -117,6 +140,18 @@ const FILLABLE = [
   "passportNumber", "passportExpiry", "visaNumber", "visaExpiry",
   "dayRate", "payRate", "chargeRate", "supplierId", "latitude", "longitude",
 ];
+
+// Validated against FILLABLE, so --take-from-loser cannot reach email, ref,
+// status, id or the bounce columns: those identify the surviving record, and
+// overwriting them is not a merge, it is a swap.
+const unknownTakes = TAKE_FROM_LOSER.filter((f) => !FILLABLE.includes(f));
+if (unknownTakes.length) {
+  console.error(
+    "\n  --take-from-loser: not mergeable field(s): " + unknownTakes.join(", ") +
+      "\n\n  Allowed:\n    " + FILLABLE.join(", ") + "\n"
+  );
+  process.exit(2);
+}
 
 /** Last three characters only — enough to tell two records apart, not to use. */
 function maskNi(ni) {
@@ -226,15 +261,50 @@ async function main() {
     console.log("    " + f.padEnd(26) + " <- " + (f === "niNumber" ? maskNi(loser[f]) : show(loser[f])));
   }
 
+  const fmt = (f, v) => (f === "niNumber" ? maskNi(v) : show(v));
+
+  // Explicit overwrites: named on the command line, set on the loser, and the
+  // keeper has something there already. A named field the keeper leaves blank
+  // is already covered by `fills` and needs no announcement.
+  const overrides = TAKE_FROM_LOSER.filter(
+    (f) => !isBlank(loser[f]) && !isBlank(keep[f]) && String(keep[f]) !== String(loser[f])
+  );
+  // Named but pointless — the loser has nothing, or both already agree. Called
+  // out rather than ignored, because a typo'd field name would otherwise look
+  // like it worked.
+  const inertTakes = TAKE_FROM_LOSER.filter((f) => !overrides.includes(f) && !fills.includes(f));
+
+  if (overrides.length) {
+    console.log(
+      "\n" + "-".repeat(74) + "\n  OVERWRITING on the keeper, because you asked (--take-from-loser)\n" +
+        "-".repeat(74)
+    );
+    for (const f of overrides) {
+      console.log(
+        "    " + f.padEnd(26) + " " + fmt(f, keep[f]) + "  ->  " + fmt(f, loser[f])
+      );
+    }
+  }
+  for (const f of inertTakes) {
+    console.log(
+      "\n  note: --take-from-loser " + f + " does nothing — " +
+        (isBlank(loser[f]) ? "the losing record has no value there." : "both records already agree.")
+    );
+  }
+
   const conflicts = FILLABLE.filter(
-    (f) => !isBlank(keep[f]) && !isBlank(loser[f]) && String(keep[f]) !== String(loser[f])
+    (f) =>
+      !isBlank(keep[f]) &&
+      !isBlank(loser[f]) &&
+      String(keep[f]) !== String(loser[f]) &&
+      !overrides.includes(f)
   );
   if (conflicts.length) {
     console.log("\n  Set on BOTH and DIFFERENT. The keeper's value wins; the loser's survives");
-    console.log("  only in the archived snapshot. Check these by hand:");
+    console.log("  only in the archived snapshot. Check these by hand, or re-run with");
+    console.log("  --take-from-loser " + conflicts.join(",") + " to take the loser's instead:");
     for (const f of conflicts) {
-      const m = (x) => (f === "niNumber" ? maskNi(x) : show(x));
-      console.log("    " + f.padEnd(26) + " keep=" + m(keep[f]) + "   merge=" + m(loser[f]));
+      console.log("    " + f.padEnd(26) + " keep=" + fmt(f, keep[f]) + "   merge=" + fmt(f, loser[f]));
     }
   }
 
@@ -285,7 +355,7 @@ async function main() {
     }
 
     const data = {};
-    for (const f of fills) data[f] = loser[f];
+    for (const f of [...fills, ...overrides]) data[f] = loser[f];
     data.notes = [
       keep.notes,
       "--- Merged in " + (loser.ref || loser.id) + " on " + new Date().toISOString().slice(0, 10) + " ---",
@@ -308,6 +378,7 @@ async function main() {
           merged: { id: loser.id, ref: loser.ref, email: loser.email },
           rowsMoved: total,
           fieldsFilled: fills,
+          fieldsOverwrittenFromLoser: overrides,
           conflictsLeftAlone: conflicts,
         }),
       },
