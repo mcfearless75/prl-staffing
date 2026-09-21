@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { findPotentialDuplicates, describeReasons } from "@/lib/duplicate-check";
 
 async function requireStaffSession() {
   const session = await auth();
@@ -31,7 +32,9 @@ export async function approveAndCreateContractor(formData: FormData) {
 
     // Check if contractor already exists with this email
     const existing = await prisma.contractor.findFirst({
-      where: { email: contactEmail },
+      // Case-insensitive: submissions are lower-cased at the door now, but rows
+      // predating that are stored as typed, and an exact compare missed them.
+      where: { email: { equals: contactEmail, mode: "insensitive" } },
     });
 
     if (existing) {
@@ -53,6 +56,53 @@ export async function approveAndCreateContractor(formData: FormData) {
     const firstName = submission.firstName || nameParts[0] || "Unknown";
     const lastName = submission.lastName || nameParts.slice(1).join(" ") || "Unknown";
 
+    /**
+     * Same person, different email address.
+     *
+     * The check above only catches a reused address. This is the case that
+     * actually produced a duplicate: a second record created for somebody
+     * already in the book under another address.
+     *
+     * Only an `exact` match stops the approval — that means a matching National
+     * Insurance number, which is unique to a person, so a collision is either
+     * the same person or a typo and both need a human. Weaker signals (a shared
+     * phone, a common name) are recorded on the submission for the reviewer to
+     * see, never blocked: site workers really do share a landline and a surname.
+     */
+    const bookForMatching = await prisma.contractor.findMany({
+      select: {
+        id: true, ref: true, firstName: true, lastName: true, email: true,
+        status: true, phone: true, niNumber: true, dateOfBirth: true,
+      },
+    });
+    const matches = findPotentialDuplicates(
+      {
+        email: contactEmail,
+        firstName,
+        lastName,
+        phone: submission.contactPhone,
+        niNumber: submission.niNumber,
+        dateOfBirth: submission.dateOfBirth,
+      },
+      bookForMatching
+    );
+    const blocking = matches.find((m) => m.confidence === "exact");
+    if (blocking) {
+      throw new Error(
+        `This looks like an existing subcontractor: ${blocking.record.firstName} ` +
+          `${blocking.record.lastName}` +
+          `${blocking.record.ref ? ` (${blocking.record.ref})` : ""} — ` +
+          `matched on ${describeReasons(blocking.reasons)}. ` +
+          `Update that record instead of creating a new one. If they really are ` +
+          `two different people, correct the NI number on one of them first.`
+      );
+    }
+    const duplicateNote = matches.length
+      ? ` Possible duplicates flagged at approval: ${matches
+          .map((m) => `${m.record.firstName} ${m.record.lastName}${m.record.ref ? ` (${m.record.ref})` : ""} [${describeReasons(m.reasons)}]`)
+          .join("; ")}.`
+      : "";
+
     // Create contractor
     const contractor = await prisma.contractor.create({
       data: {
@@ -71,7 +121,7 @@ export async function approveAndCreateContractor(formData: FormData) {
         emergencyContactPhone: submission.emergencyContactPhone || null,
         emergencyContactRelation: submission.emergencyContactRelation || null,
         ir35Status: "TBD",
-        notes: `Created from onboarding submission on ${new Date().toLocaleDateString("en-GB")}. Company: ${submission.companyName}.`,
+        notes: `Created from onboarding submission on ${new Date().toLocaleDateString("en-GB")}. Company: ${submission.companyName}.${duplicateNote}`,
       },
     });
 

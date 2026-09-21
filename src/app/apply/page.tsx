@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { RolePicker } from "@/components/role-picker";
 import { PublicFormShell } from "@/components/public-form-shell";
+import { AlreadyRegistered } from "@/components/already-registered";
 
 /* ---------- tiny helpers ---------- */
 const inputCls =
@@ -196,6 +197,46 @@ export default function ApplyPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  /**
+   * Whether this email already belongs to a PRISM record.
+   *
+   * Checked as the applicant leaves the email field rather than at submit,
+   * because the form below asks for passport, bank and next-of-kin details and
+   * there is no reason to make somebody who already has an account fill any of
+   * it in. `hasLogin` distinguishes "sign in" from "you have a record but no
+   * password yet", which needs Set up account instead.
+   */
+  const [existing, setExisting] = useState<{ registered: boolean; hasLogin: boolean } | null>(null);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  // Set only by a 409 at submit: the applicant got all the way through, so the
+  // form is replaced entirely rather than merely annotated.
+  const [blockedAtSubmit, setBlockedAtSubmit] = useState(false);
+
+  async function checkEmail(value: string) {
+    const email = value.trim().toLowerCase();
+    if (!email.includes("@")) {
+      setExisting(null);
+      return;
+    }
+    setCheckingEmail(true);
+    try {
+      const res = await fetch("/api/apply/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      setExisting({ registered: Boolean(data.registered), hasLogin: Boolean(data.hasLogin) });
+    } catch {
+      // Never block an application because the check failed. The submit-time
+      // 409 is the backstop.
+      setExisting(null);
+    } finally {
+      setCheckingEmail(false);
+    }
+  }
+
   // Live job roles for the picker. If this fetch fails the field degrades to a
   // free-text box rather than blocking the application — losing a tidy role name
   // is far cheaper than losing the applicant.
@@ -276,6 +317,14 @@ export default function ApplyPage() {
 
       if (!res.ok) {
         const data = await res.json();
+        // Already registered. Not an error the applicant can fix by retrying —
+        // switch the page over to the "you already have an account" state.
+        if (res.status === 409 && data.alreadyRegistered) {
+          setExisting({ registered: true, hasLogin: Boolean(data.hasLogin) });
+          setBlockedAtSubmit(true);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
         throw new Error(data.error || "Submission failed");
       }
 
@@ -286,6 +335,11 @@ export default function ApplyPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  /* ---- already-registered screen (submit-time 409) ---- */
+  if (blockedAtSubmit && existing?.registered) {
+    return <AlreadyRegistered email={form.email} hasLogin={existing.hasLogin} variant="page" />;
   }
 
   /* ---- success screen ---- */
@@ -333,6 +387,10 @@ export default function ApplyPage() {
           </div>
         )}
 
+        {existing?.registered && (
+          <AlreadyRegistered email={form.email} hasLogin={existing.hasLogin} />
+        )}
+
         {/* ===================== SECTION 1: Personal Details ===================== */}
         <div className={sectionCls}>
           <h2 className={headingCls}>Section 1: Personal Details</h2>
@@ -363,9 +421,19 @@ export default function ApplyPage() {
                 type="email"
                 required
                 value={form.email}
-                onChange={(e) => set("email", e.target.value)}
+                onChange={(e) => {
+                  set("email", e.target.value);
+                  // Clear a stale verdict as soon as the address changes, so a
+                  // previous "already registered" cannot linger over a new one.
+                  if (existing) setExisting(null);
+                }}
+                onBlur={(e) => checkEmail(e.target.value)}
                 className={inputCls}
+                aria-describedby="email-status"
               />
+              <p id="email-status" className="mt-1 text-xs text-gray-500" aria-live="polite">
+                {checkingEmail ? "Checking…" : ""}
+              </p>
             </div>
             <div>
               <label className={labelCls}>Phone *</label>
@@ -953,7 +1021,7 @@ export default function ApplyPage() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={submitting || !form.firstName || !form.lastName || !form.email || !form.phone || !form.nokName || !form.nokRelationship || !form.nokPhone || !form.privacyAgreed || !form.signature}
+          disabled={submitting || existing?.registered || !form.firstName || !form.lastName || !form.email || !form.phone || !form.nokName || !form.nokRelationship || !form.nokPhone || !form.privacyAgreed || !form.signature}
           className="w-full rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
         >
           {submitting ? "Submitting..." : "Apply Now"}

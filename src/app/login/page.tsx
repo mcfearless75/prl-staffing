@@ -17,6 +17,15 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // Prefill from ?email=, which is how the public forms hand over somebody who
+  // turned out to be registered already: they arrive here mid-application, and
+  // retyping the address they just entered is a pointless extra step — and one
+  // more chance to typo it and be told the account does not exist.
+  useEffect(() => {
+    const urlEmail = searchParams.get("email");
+    if (urlEmail) setEmail(urlEmail.toLowerCase().trim());
+  }, [searchParams]);
+
   // Detect NextAuth error redirects (e.g. ?error=CredentialsSignin)
   useEffect(() => {
     const urlError = searchParams.get("error");

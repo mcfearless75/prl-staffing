@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendEmail, ONBOARDING_RECIPIENTS } from "@/lib/email";
+import {
+  findPotentialDuplicates,
+  describeReasons,
+  normaliseEmail,
+  type DuplicateMatch,
+} from "@/lib/duplicate-check";
 
 // IP-based rate limiter per hour. Generous because whole sites often share one
 // NAT'd IP — a tight limit silently 429s legitimate submissions.
@@ -47,7 +53,7 @@ export async function POST(request: Request) {
 
     const {
       companyName, companyAddress, companyRegNo,
-      contactName, contactEmail, contactPhone,
+      contactName, contactPhone,
       supplyOf, siteLocation, startDate,
       rates, breakdown, additionalInfo,
       firstName, lastName, dateOfBirth, niNumber, utrNumber,
@@ -55,6 +61,14 @@ export async function POST(request: Request) {
       emergencyContactName, emergencyContactPhone, emergencyContactRelation,
       detailsConfirmed, consentGiven,
     } = body;
+
+    // Lower-cased at the door. `approveAndCreateContractor` compares against a
+    // lower-cased Contractor.email, so a submission stored as "J.Nye@..." never
+    // matched an existing "j.nye@..." and produced a second person.
+    const contactEmail =
+      typeof body.contactEmail === "string"
+        ? body.contactEmail.toLowerCase().trim()
+        : body.contactEmail;
 
     if (!companyName || !contactName || !contactEmail) {
       return NextResponse.json(
@@ -75,6 +89,67 @@ export async function POST(request: Request) {
         { error: "You must consent to your data being processed before submitting this agreement." },
         { status: 400 }
       );
+    }
+
+    /**
+     * Is this person already in PRISM?
+     *
+     * This form creates a SupplyAgreement, never a Contractor, so nothing here
+     * used to look at the contractor book at all — the only duplicate check in
+     * the whole path ran later, in approveAndCreateContractor, on an exact
+     * email match. A submission from somebody already registered was accepted
+     * silently and answered with "Submitted!".
+     */
+    const candidate = {
+      email: contactEmail,
+      firstName: firstName || contactName?.trim().split(/\s+/)[0],
+      lastName: lastName || contactName?.trim().split(/\s+/).slice(1).join(" "),
+      phone: contactPhone,
+      niNumber,
+      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+    };
+    let softMatches: DuplicateMatch<{
+      id: string;
+      ref: string | null;
+      firstName: string;
+      lastName: string;
+      email: string;
+      status: string;
+    }>[] = [];
+    try {
+      // Whole-book scan — see the note in /api/apply for why this is not
+      // narrowed in SQL (NI and phone are free text stored in several shapes).
+      const book = await prisma.contractor.findMany({
+        select: {
+          id: true, ref: true, firstName: true, lastName: true, email: true,
+          status: true, phone: true, niNumber: true, dateOfBirth: true,
+        },
+      });
+      softMatches = findPotentialDuplicates(candidate, book);
+
+      const email = normaliseEmail(contactEmail);
+      const exact = softMatches.find((m) => m.reasons.includes("email"));
+      if (email && exact) {
+        // Registered already. Tell them, and send them to the portal rather
+        // than opening a second record for the same person.
+        const hasLogin = Boolean(
+          await prisma.contractorLogin.findUnique({
+            where: { contractorId: exact.record.id },
+            select: { id: true },
+          })
+        );
+        return NextResponse.json(
+          {
+            alreadyRegistered: true,
+            hasLogin,
+            error: "You already have a PRL Site Solutions account with this email address.",
+          },
+          { status: 409 }
+        );
+      }
+    } catch (matchErr) {
+      // Advisory. A failed scan must never stop a genuine supplier onboarding.
+      console.error("Onboarding duplicate scan failed:", matchErr);
     }
 
     const agreement = await prisma.supplyAgreement.create({
@@ -167,6 +242,26 @@ export async function POST(request: Request) {
           </div>
 
           <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
+            ${
+              softMatches.length === 0
+                ? ""
+                : `<div style="background:#fee2e2;border:2px solid #dc2626;border-radius:6px;padding:12px 16px;margin-bottom:20px;">
+                    <p style="margin:0 0 8px;font-size:14px;color:#991b1b;">
+                      <strong>&#9888; Possible duplicate &mdash; check before approving.</strong>
+                    </p>
+                    <p style="margin:0 0 8px;font-size:12px;color:#7f1d1d;">
+                      This submitter looks like ${softMatches.length === 1 ? "an existing subcontractor" : `${softMatches.length} existing subcontractors`} already in PRISM:
+                    </p>
+                    <ul style="margin:0;padding-left:18px;font-size:13px;color:#7f1d1d;">
+                      ${softMatches
+                        .map(
+                          (m) =>
+                            `<li style="margin-bottom:4px;"><strong>${escapeHtml(`${m.record.firstName} ${m.record.lastName}`)}</strong>${m.record.ref ? ` (${escapeHtml(m.record.ref)})` : ""} &mdash; ${escapeHtml(m.record.email)}, status ${escapeHtml(m.record.status)}<br/><span style="color:#991b1b;">matched on ${escapeHtml(describeReasons(m.reasons))} (${m.confidence})</span></li>`
+                        )
+                        .join("")}
+                    </ul>
+                  </div>`
+            }
             <!-- Alert -->
             <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:12px 16px;margin-bottom:20px;">
               <p style="margin:0;font-size:13px;color:#92400e;">
@@ -251,7 +346,7 @@ export async function POST(request: Request) {
       // A failed send must not fail the submission — the agreement is already saved
       const emailResult = await sendEmail({
         to: ONBOARDING_RECIPIENTS,
-        subject: `New Supply Agreement: ${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
+        subject: `${softMatches.length ? "New Supply Agreement [POSSIBLE DUPLICATE]" : "New Supply Agreement"}: ${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
         html: emailHtml,
         template: "supply-agreement-submitted",
       });

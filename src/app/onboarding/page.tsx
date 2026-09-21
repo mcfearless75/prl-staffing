@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PublicFormShell } from "@/components/public-form-shell";
+import { AlreadyRegistered } from "@/components/already-registered";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -10,6 +11,42 @@ export default function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  /**
+   * Whether this contact email already belongs to a PRISM contractor.
+   *
+   * Checked as they leave the email box on step 1, so somebody already
+   * registered is told before working through rates, right-to-work and
+   * next-of-kin. See src/components/already-registered.tsx.
+   */
+  const [existing, setExisting] = useState<{ registered: boolean; hasLogin: boolean } | null>(null);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [blockedAtSubmit, setBlockedAtSubmit] = useState(false);
+
+  async function checkEmail(value: string) {
+    const email = value.trim().toLowerCase();
+    if (!email.includes("@")) {
+      setExisting(null);
+      return;
+    }
+    setCheckingEmail(true);
+    try {
+      const res = await fetch("/api/apply/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      setExisting({ registered: Boolean(data.registered), hasLogin: Boolean(data.hasLogin) });
+    } catch {
+      // Never block onboarding on the check failing; the submit-time 409 is the
+      // backstop.
+      setExisting(null);
+    } finally {
+      setCheckingEmail(false);
+    }
+  }
 
   // Form state
   const [companyName, setCompanyName] = useState("");
@@ -64,6 +101,14 @@ export default function OnboardingPage() {
 
       if (!res.ok) {
         const data = await res.json();
+        // Already registered — not something a retry fixes. Switch the page to
+        // the "you already have an account" state instead of showing an error.
+        if (res.status === 409 && data.alreadyRegistered) {
+          setExisting({ registered: true, hasLogin: Boolean(data.hasLogin) });
+          setBlockedAtSubmit(true);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
         throw new Error(data.error || "Submission failed");
       }
 
@@ -73,6 +118,10 @@ export default function OnboardingPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (blockedAtSubmit && existing?.registered) {
+    return <AlreadyRegistered email={contactEmail} hasLogin={existing.hasLogin} variant="page" />;
   }
 
   if (success) {
@@ -163,7 +212,9 @@ export default function OnboardingPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                  <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} required
+                  <input type="email" value={contactEmail}
+                    onChange={(e) => { setContactEmail(e.target.value); if (existing) setExisting(null); }}
+                    onBlur={(e) => checkEmail(e.target.value)} required
                     className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                 </div>
                 <div>
@@ -174,9 +225,17 @@ export default function OnboardingPage() {
               </div>
             </div>
 
+            {checkingEmail && (
+              <p className="text-xs text-gray-500" aria-live="polite">Checking…</p>
+            )}
+
+            {existing?.registered && (
+              <AlreadyRegistered email={contactEmail} hasLogin={existing.hasLogin} />
+            )}
+
             <button
               onClick={() => setStep(2)}
-              disabled={!companyName || !contactName || !contactEmail}
+              disabled={!companyName || !contactName || !contactEmail || existing?.registered}
               className="w-full rounded-xl bg-[#005f8c] px-4 py-3 text-sm font-semibold text-white hover:bg-[#004a6b] disabled:opacity-50 transition-colors"
             >
               Next: Supply Details →
@@ -358,7 +417,7 @@ export default function OnboardingPage() {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={submitting || !companyName || !contactName || !contactEmail || !detailsConfirmed || !consentGiven}
+                disabled={submitting || existing?.registered || !companyName || !contactName || !contactEmail || !detailsConfirmed || !consentGiven}
                 className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
               >
                 {submitting ? "Submitting..." : "Submit Agreement ✓"}

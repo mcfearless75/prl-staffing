@@ -5,6 +5,11 @@ import { Prisma } from "@prisma/client";
 import { maskNI, maskPassportNumber, maskBankAccount, maskSortCode } from "@/lib/utils";
 import { checkPublicFormRateLimit } from "@/lib/rate-limit";
 import { parseDate } from "@/lib/parse-date";
+import {
+  findPotentialDuplicates,
+  describeReasons,
+  type DuplicateMatch,
+} from "@/lib/duplicate-check";
 
 function escapeHtml(str: string): string {
   return str
@@ -90,6 +95,65 @@ export async function POST(request: Request) {
             signature: body.signature,
             references: body.references,
           });
+
+    /**
+     * Same person, different email address.
+     *
+     * `Contractor.email` is unique, so the database catches an applicant who
+     * reuses their address — and nothing caught the case this was written for,
+     * where a second record was created for someone already in PRISM under a
+     * new address. Matching here is advisory only: it annotates the team
+     * notification so the office can merge, and never blocks a submission,
+     * because two real people genuinely do share a name.
+     *
+     * Candidates are narrowed to an exact NI match or a name match; the full
+     * rules then run over that handful in JS, where phone and DOB can be
+     * compared in their normalised form rather than as raw column values.
+     */
+    const candidate = {
+      email,
+      firstName,
+      lastName,
+      phone,
+      niNumber: body.niNumber,
+      dateOfBirth: parseDate(body.dob),
+    };
+    let softMatches: DuplicateMatch<{
+      id: string;
+      ref: string | null;
+      firstName: string;
+      lastName: string;
+      email: string;
+      status: string;
+    }>[] = [];
+    try {
+      // Whole-book scan, on purpose. Narrowing this to an indexed NI or name
+      // query looks cheaper but silently misses the matches that matter: NI is
+      // free text and is stored variously as "AB123456C" and "AB 12 34 56 C",
+      // so no SQL equality or `contains` finds both, and a phone written as
+      // +44... never matches one written as 07... . Normalising in JS compares
+      // them properly. The contractor book is in the hundreds of rows and this
+      // runs once per rate-limited public submission; revisit if it reaches
+      // five figures.
+      const nearby = await prisma.contractor.findMany({
+        select: {
+          id: true,
+          ref: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          status: true,
+          phone: true,
+          niNumber: true,
+          dateOfBirth: true,
+        },
+      });
+      softMatches = findPotentialDuplicates(candidate, nearby);
+    } catch (matchErr) {
+      // Advisory only — an application must never fail because the duplicate
+      // scan did.
+      console.error("Duplicate scan failed:", matchErr);
+    }
 
     let contractorId: string | undefined;
     let isReapplication = false;
@@ -214,6 +278,39 @@ export async function POST(request: Request) {
           </table>`;
       };
 
+      /**
+       * Duplicate warning, shown to the office above everything else.
+       *
+       * This is the whole point of the soft scan: the applicant is not blocked,
+       * so the only thing standing between a near-match and a second record for
+       * the same person is whoever reads this email.
+       */
+      const duplicateWarning =
+        softMatches.length === 0
+          ? ""
+          : `
+            <div style="background:#fee2e2;border:2px solid #dc2626;border-radius:6px;padding:12px 16px;margin-bottom:20px;">
+              <p style="margin:0 0 8px;font-size:14px;color:#991b1b;">
+                <strong>&#9888; Possible duplicate &mdash; check before creating a new record.</strong>
+              </p>
+              <p style="margin:0 0 8px;font-size:12px;color:#7f1d1d;">
+                This applicant looks like ${softMatches.length === 1 ? "an existing subcontractor" : `${softMatches.length} existing subcontractors`} already in PRISM:
+              </p>
+              <ul style="margin:0;padding-left:18px;font-size:13px;color:#7f1d1d;">
+                ${softMatches
+                  .map(
+                    (m) =>
+                      `<li style="margin-bottom:4px;">
+                        <strong>${escapeHtml(`${m.record.firstName} ${m.record.lastName}`)}</strong>
+                        ${m.record.ref ? ` (${escapeHtml(m.record.ref)})` : ""}
+                        &mdash; ${escapeHtml(m.record.email)}, status ${escapeHtml(m.record.status)}<br/>
+                        <span style="color:#991b1b;">matched on ${escapeHtml(describeReasons(m.reasons))} (${m.confidence})</span>
+                      </li>`
+                  )
+                  .join("")}
+              </ul>
+            </div>`;
+
       const emailHtml = `
         <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;">
           <div style="background:#005f8c;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0;">
@@ -221,6 +318,7 @@ export async function POST(request: Request) {
             <p style="margin:4px 0 0;font-size:13px;opacity:0.9;">PRL Site Solutions -- Recruitment</p>
           </div>
           <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
+            ${duplicateWarning}
             <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:12px 16px;margin-bottom:20px;">
               <p style="margin:0;font-size:13px;color:#92400e;">
                 <strong>New application</strong> received on ${new Date().toLocaleDateString("en-GB")} at ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
@@ -307,7 +405,7 @@ export async function POST(request: Request) {
 
       const emailResult = await sendEmail({
         to: APPLICATION_RECIPIENTS,
-        subject: `${isReapplication ? "Re-Application (existing record)" : "New Application"}: ${escapeHtml(body.firstName)} ${escapeHtml(body.lastName)} -- ${escapeHtml(body.positionsSought || "General")}`,
+        subject: `${isReapplication ? "Re-Application (existing record)" : softMatches.length ? "New Application [POSSIBLE DUPLICATE]" : "New Application"}: ${escapeHtml(body.firstName)} ${escapeHtml(body.lastName)} -- ${escapeHtml(body.positionsSought || "General")}`,
         html: emailHtml,
         template: "application-received",
       });
@@ -319,10 +417,41 @@ export async function POST(request: Request) {
         );
       }
 
+    /**
+     * An exact email match is the applicant themselves, already registered.
+     *
+     * This used to return `success: true`, so someone who already had a PRISM
+     * record filled in the entire form and was shown "Application Submitted!".
+     * The office got a re-application email; the applicant got no indication
+     * that they already had an account and should simply have logged in.
+     *
+     * 409 rather than 200 so the form can say so and send them to the portal.
+     * Everything above still ran — the re-application is attached to their
+     * record and the team is still notified — only the applicant's answer
+     * changed.
+     */
+    if (isReapplication) {
+      const hasLogin = contractorId
+        ? Boolean(
+            await prisma.contractorLogin.findUnique({
+              where: { contractorId },
+              select: { id: true },
+            })
+          )
+        : false;
+      return NextResponse.json(
+        {
+          alreadyRegistered: true,
+          hasLogin,
+          error: "You already have a PRL Site Solutions account with this email address.",
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       id: contractorId,
-      reapplication: isReapplication || undefined,
       message: "Application submitted successfully",
     });
   } catch (error) {
