@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { emailMatches } from "@/lib/contractor-email";
 
 export async function POST(request: Request) {
   try {
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
         // No login record yet — contractor imported from spreadsheet.
         // Find contractor by email and CREATE their login record.
         const contractor = await prisma.contractor.findFirst({
-          where: { email: resetToken.email },
+          where: { email: emailMatches(resetToken.email) },
         });
         if (contractor) {
           await prisma.contractorLogin.create({

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { emailMatches } from "@/lib/contractor-email";
 
 export async function POST(request: Request) {
   try {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
 
     // Find the contractor by email
     const contractor = await prisma.contractor.findFirst({
-      where: { email: normalised },
+      where: { email: emailMatches(normalised) },
       select: { id: true, firstName: true, lastName: true },
     });
 

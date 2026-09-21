@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { normaliseEmail } from "@/lib/duplicate-check";
+import { emailMatches } from "@/lib/contractor-email";
 
 /**
  * "Is this applicant already in PRISM?" — asked by /apply as soon as the
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
     // on the lower-cased address silently misses every one of them — which is
     // the majority of the real duplicates in this database.
     const existing = await prisma.contractor.findFirst({
-      where: { email: { equals: email, mode: "insensitive" } },
+      where: { email: emailMatches(email) },
       select: { id: true, contractorLogin: { select: { id: true } } },
     });
 

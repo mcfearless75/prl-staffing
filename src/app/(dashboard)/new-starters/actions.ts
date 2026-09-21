@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
+import { emailMatches } from "@/lib/contractor-email";
 
 export type NewStarterActionState = { error?: string; ok?: string } | null;
 
@@ -43,7 +44,10 @@ export async function convertToContractor(
   let contractorId: string;
   let linkedExisting = false;
 
-  const existing = await prisma.contractor.findUnique({ where: { email } });
+  // findFirst, not findUnique: the unique index is case-sensitive, so an
+  // exact lookup can miss an existing person and create a second record for
+  // them — which is how the duplicates merged on 2026-09-21 appeared.
+  const existing = await prisma.contractor.findFirst({ where: { email: emailMatches(email) } });
   if (existing) {
     contractorId = existing.id;
     linkedExisting = true;

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { emailMatches } from "@/lib/contractor-email";
 
 export async function POST(request: Request) {
   try {
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
 
     // Check if the email belongs to a contractor
     const contractor = await prisma.contractor.findFirst({
-      where: { email: normalised },
+      where: { email: emailMatches(normalised) },
       select: { firstName: true, id: true },
     });
 

@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { maskNI, maskPassportNumber, maskBankAccount, maskSortCode } from "@/lib/utils";
 import { checkPublicFormRateLimit } from "@/lib/rate-limit";
 import { parseDate } from "@/lib/parse-date";
+import { emailMatches } from "@/lib/contractor-email";
 import {
   findPotentialDuplicates,
   describeReasons,
@@ -168,7 +169,7 @@ export async function POST(request: Request) {
      * address differently from last time. Caught here instead.
      */
     const caseInsensitiveMatch = await prisma.contractor.findFirst({
-      where: { email: { equals: email, mode: "insensitive" } },
+      where: { email: emailMatches(email) },
       select: { id: true, notes: true },
     });
 

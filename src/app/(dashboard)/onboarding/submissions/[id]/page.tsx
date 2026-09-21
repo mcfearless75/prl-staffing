@@ -5,6 +5,7 @@ import { formatDate, maskNI, maskUTR } from "@/lib/utils";
 import { Badge } from "@/components/badge";
 import Link from "next/link";
 import { approveAndCreateContractor, updateSubmissionStatus, sendAppInvite } from "../actions";
+import { emailMatches } from "@/lib/contractor-email";
 
 export default async function SubmissionDetailPage({
   params,
@@ -36,7 +37,7 @@ export default async function SubmissionDetailPage({
   // Check if contractor already created from this submission
   const existingContractor = submission.contactEmail
     ? await prisma.contractor.findFirst({
-        where: { email: submission.contactEmail },
+        where: { email: emailMatches(submission.contactEmail) },
       })
     : null;
 
