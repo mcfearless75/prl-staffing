@@ -105,8 +105,12 @@ async function main() {
       }[current];
       console.log(`\n${"=".repeat(74)}\n${heading}\n${"=".repeat(74)}`);
     }
+    // Full id, never truncated: a record with no `ref` is identified only by
+    // its id, and that id is what gets pasted into merge-contractors.mjs.
+    // Printing the first 8 characters produced something that looked like a
+    // reference but resolved to nothing.
     const line = (c) =>
-      `    ${c.ref || c.id.slice(0, 8)}  ${`${c.firstName} ${c.lastName}`.padEnd(28)} ` +
+      `    ${(c.ref || c.id).padEnd(26)} ${`${c.firstName} ${c.lastName}`.padEnd(28)} ` +
       `${(c.email || "—").padEnd(34)} NI ${maskNi(c.niNumber).padEnd(12)} ` +
       `${c.status.padEnd(9)} added ${c.createdAt.toISOString().slice(0, 10)}`;
     console.log(`\n  matched on ${describeReasons(p.reasons)}`);
