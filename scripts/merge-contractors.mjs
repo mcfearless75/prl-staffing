@@ -15,7 +15,7 @@
  *
  * WHY THIS IS NOT A ONE-LINE UPDATE
  *
- * Fifteen tables hang off Contractor, including pay history: timesheets,
+ * Sixteen tables hang off Contractor, including pay history: timesheets,
  * invoice lines, holiday ledger, compliance records. Every one has to be
  * repointed before the losing row can go, and two of them reject a naive
  * repoint outright:
@@ -39,7 +39,7 @@
  * PII: prints names, emails and masked NI. Do not paste output anywhere public.
  */
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 if (process.env.DATABASE_PUBLIC_URL) process.env.DATABASE_URL = process.env.DATABASE_PUBLIC_URL;
 if (!process.env.DATABASE_URL) {
@@ -70,31 +70,37 @@ const prisma = new PrismaClient();
 /**
  * Every table holding a contractorId, as [prismaModel, humanLabel].
  *
- * Derived from a grep of schema.prisma for `contractorId`. If a new relation is
- * added to Contractor it MUST be added here, or a merge will orphan its rows.
- * The guard in main() fails loudly on a name that is not a real Prisma model,
- * but it cannot know about a table nobody listed.
+ * Read out of Prisma's own schema metadata at runtime rather than typed by
+ * hand. The hand-written version of this list was built from a grep for
+ * "contractorId" and wrongly included CallEnquiry, whose column is actually
+ * `contractorIdHint` — the grep matched it as a prefix. Asking the schema
+ * removes both that mistake and the standing risk of the list going stale when
+ * a relation is added to Contractor.
  *
- * ContractorLogin and ContractorJobRole are absent on purpose — both carry
+ * Note this deliberately includes the four tables that hold a contractorId
+ * WITHOUT a foreign key — NewStarterSubmission, ConsentRecord, ErasureRequest
+ * and PushSubscription. No constraint would stop the delete leaving those rows
+ * pointing at an id that no longer exists, which is exactly why they have to be
+ * repointed explicitly.
+ *
+ * ContractorLogin and ContractorJobRole are excluded on purpose: both carry
  * unique constraints and are handled separately below.
  */
-const RELATIONS = [
-  ["assignment", "assignments"],
-  ["timesheet", "timesheets"],
-  ["complianceRecord", "compliance records"],
-  ["invoiceLine", "invoice lines"],
-  ["document", "documents"],
-  ["expense", "expenses"],
-  ["contractorNote", "notes"],
-  ["holidayLedger", "holiday ledger entries"],
-  ["holidayRequest", "holiday requests"],
-  ["chaseLog", "chase logs"],
-  ["consentRecord", "consent records"],
-  ["erasureRequest", "erasure requests"],
-  ["newStarterSubmission", "new-starter submissions"],
-  ["pushSubscription", "push subscriptions"],
-  ["callEnquiry", "call enquiries"],
-];
+const SPECIAL_CASED = new Set(["ContractorLogin", "ContractorJobRole"]);
+
+/** "ComplianceRecord" -> "compliance records", for the report. */
+function humanLabel(modelName) {
+  const words = modelName.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+  return words.endsWith("s") ? words : words + "s";
+}
+
+const RELATIONS = Prisma.dmmf.datamodel.models
+  .filter(
+    (m) =>
+      !SPECIAL_CASED.has(m.name) &&
+      m.fields.some((f) => f.name === "contractorId" && f.kind === "scalar")
+  )
+  .map((m) => [m.name[0].toLowerCase() + m.name.slice(1), humanLabel(m.name)]);
 
 /**
  * Fields that may be copied across when the keeper's copy is blank.
@@ -130,9 +136,11 @@ async function findContractor(key) {
 }
 
 async function main() {
+  // Cheap sanity check on the derived list. This should be impossible now that
+  // RELATIONS comes from the DMMF, which is the point.
   for (const [model] of RELATIONS) {
     if (!prisma[model]) {
-      throw new Error('No Prisma model "' + model + '" — RELATIONS is out of date with the schema.');
+      throw new Error('Derived model "' + model + '" has no Prisma client accessor.');
     }
   }
 
