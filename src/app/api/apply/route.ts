@@ -157,7 +157,31 @@ export async function POST(request: Request) {
 
     let contractorId: string | undefined;
     let isReapplication = false;
+
+    /**
+     * Case-insensitive pre-check, because the unique constraint is not.
+     *
+     * `Contractor.email @unique` is a case-sensitive Postgres index, so
+     * "Dannystuart12@..." and "dannystuart12@..." are two different keys and
+     * the database happily stores both. Relying on P2002 alone therefore lets a
+     * duplicate straight through whenever the applicant capitalises their
+     * address differently from last time. Caught here instead.
+     */
+    const caseInsensitiveMatch = await prisma.contractor.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+      select: { id: true, notes: true },
+    });
+
     try {
+      if (caseInsensitiveMatch) {
+        // Same person under a differently-capitalised address. Take the
+        // existing-record path rather than attempting a create that the
+        // case-sensitive constraint would wave through.
+        throw new Prisma.PrismaClientKnownRequestError("Duplicate email", {
+          code: "P2002",
+          clientVersion: Prisma.prismaVersion.client,
+        });
+      }
       const contractor = await prisma.contractor.create({
         data: {
           firstName,
@@ -222,7 +246,8 @@ export async function POST(request: Request) {
       }
       // Applicant already exists in PRISM — attach the re-application to their
       // record instead of silently dropping it and claiming success.
-      const existing = await prisma.contractor.findUnique({ where: { email } });
+      const existing =
+        caseInsensitiveMatch ?? (await prisma.contractor.findFirst({ where: { email } }));
       if (existing) {
         contractorId = existing.id;
         isReapplication = true;

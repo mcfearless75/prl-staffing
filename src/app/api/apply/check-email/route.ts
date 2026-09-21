@@ -46,8 +46,13 @@ export async function POST(request: Request) {
     // Not a usable address yet — the applicant is still typing. Say nothing.
     if (!email) return NextResponse.json({ registered: false, hasLogin: false });
 
-    const existing = await prisma.contractor.findUnique({
-      where: { email },
+    // findFirst + insensitive, NOT findUnique. `Contractor.email @unique` is a
+    // case-SENSITIVE index in Postgres, so the book already contains pairs like
+    // dannystuart12@ and Dannystuart12@ as two separate people. An exact lookup
+    // on the lower-cased address silently misses every one of them — which is
+    // the majority of the real duplicates in this database.
+    const existing = await prisma.contractor.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
       select: { id: true, contractorLogin: { select: { id: true } } },
     });
 

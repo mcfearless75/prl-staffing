@@ -85,6 +85,26 @@ describe("names and dates of birth", () => {
   });
 });
 
+describe("email case", () => {
+  test("two addresses differing only in case are the same person", () => {
+    // Not hypothetical. `Contractor.email @unique` is a case-SENSITIVE index in
+    // Postgres, so the live book contains pairs like these as separate records
+    // — four of the six real duplicates found in the first audit were exactly
+    // this. Any lookup that is case-sensitive misses all of them.
+    assert.deepEqual(
+      matchReasons(
+        { firstName: "Daniel", lastName: "Stuart", email: "dannystuart12@example.com" },
+        { firstName: "Daniel", lastName: "Stuart", email: "Dannystuart12@example.com" }
+      ),
+      ["email", "name"]
+    );
+  });
+
+  test("surrounding whitespace does not hide a match either", () => {
+    assert.deepEqual(matchReasons({ email: "  a@b.com " }, { email: "A@B.com" }), ["email"]);
+  });
+});
+
 describe("confidence", () => {
   test("email and NI are exact; name alone is only possible", () => {
     assert.equal(confidenceOf(["email"]), "exact");
