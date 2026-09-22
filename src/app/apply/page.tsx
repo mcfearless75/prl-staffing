@@ -246,6 +246,16 @@ export default function ApplyPage() {
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
   const [rolesError, setRolesError] = useState(false);
 
+  // Upper bound for the date-of-birth picker, so the browser greys out future
+  // dates. Set after mount, not during render: server and browser can straddle
+  // midnight or sit in different zones, and a `max` that differs between the
+  // two is a hydration mismatch. The check in /api/apply is the real gate, so
+  // an unset bound on the first paint costs nothing.
+  const [todayIso, setTodayIso] = useState("");
+  useEffect(() => {
+    setTodayIso(new Date().toISOString().slice(0, 10));
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     fetch("/api/job-roles")
@@ -452,6 +462,7 @@ export default function ApplyPage() {
               <input
                 type="date"
                 required
+                max={todayIso || undefined}
                 value={form.dob}
                 onChange={(e) => set("dob", e.target.value)}
                 className={inputCls}

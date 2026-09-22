@@ -58,6 +58,20 @@ export async function POST(request: Request) {
       );
     }
 
+    // A mistyped year is the likely shape of this: "2026" for "1926" passes
+    // parseDate perfectly well. Compared against today's UTC midnight rather
+    // than the current instant, because parseDate normalises to UTC midnight
+    // and an applicant a few hours ahead of UTC would otherwise be told their
+    // own birthday is in the future.
+    const todayUtc = new Date();
+    todayUtc.setUTCHours(0, 0, 0, 0);
+    if (dateOfBirth.getTime() > todayUtc.getTime()) {
+      return NextResponse.json(
+        { error: "Date of birth cannot be in the future." },
+        { status: 400 }
+      );
+    }
+
     // Create contractor record in Prisma
     const ipAddress =
       request.headers.get("x-forwarded-for") ||
