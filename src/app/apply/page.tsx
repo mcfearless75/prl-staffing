@@ -448,9 +448,10 @@ export default function ApplyPage() {
               />
             </div>
             <div>
-              <label className={labelCls}>Date of Birth</label>
+              <label className={labelCls}>Date of Birth *</label>
               <input
                 type="date"
+                required
                 value={form.dob}
                 onChange={(e) => set("dob", e.target.value)}
                 className={inputCls}

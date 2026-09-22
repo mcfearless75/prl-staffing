@@ -47,6 +47,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Parsed once, up front, so the two writes below cannot disagree. This
+    // also rejects a malformed date rather than quietly storing null — see
+    // parseDate for why a half-typed "03/04" must not be guessed at.
+    const dateOfBirth = parseDate(body.dob);
+    if (!dateOfBirth) {
+      return NextResponse.json(
+        { error: "A valid date of birth is required." },
+        { status: 400 }
+      );
+    }
+
     // Create contractor record in Prisma
     const ipAddress =
       request.headers.get("x-forwarded-for") ||
@@ -117,7 +128,7 @@ export async function POST(request: Request) {
       lastName,
       phone,
       niNumber: body.niNumber,
-      dateOfBirth: parseDate(body.dob),
+      dateOfBirth,
     };
     let softMatches: DuplicateMatch<{
       id: string;
@@ -200,7 +211,7 @@ export async function POST(request: Request) {
           emergencyContactRelation:
             body.emergencyContactRelation || body.nokRelationship || null,
           nextOfKin: body.nextOfKin || null,
-          dateOfBirth: parseDate(body.dob),
+          dateOfBirth,
           // Right to work — see migration 20260730_contractor_right_to_work.
           nonBritishNational: body.nonBritishNational || null,
           requiresWorkPermit: body.requiresWorkPermit || null,
