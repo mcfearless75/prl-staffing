@@ -54,6 +54,7 @@ interface FormState {
   lastName: string;
   email: string;
   phone: string;
+  dob: string;
   country: string;
   address: string;
   city: string;
@@ -116,6 +117,7 @@ const INITIAL: FormState = {
   lastName: "",
   email: "",
   phone: "",
+  dob: "",
   country: "United Kingdom",
   address: "",
   city: "",
@@ -442,6 +444,15 @@ export default function ApplyPage() {
                 required
                 value={form.phone}
                 onChange={(e) => set("phone", e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Date of Birth</label>
+              <input
+                type="date"
+                value={form.dob}
+                onChange={(e) => set("dob", e.target.value)}
                 className={inputCls}
               />
             </div>

@@ -355,6 +355,7 @@ export async function POST(request: Request) {
               ["Name", `${body.firstName} ${body.lastName}`],
               ["Email", body.email],
               ["Phone", body.phone],
+              ["Date of Birth", body.dob],
               ["Country/Region", body.country],
               ["Address", body.address],
               ["City", body.city],
