@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { sendPasswordResetEmail } from "@/lib/email";
+import { sendEmail, sendPasswordResetEmail } from "@/lib/email";
+import { escapeHtml } from "@/lib/utils";
 import { findPotentialDuplicates, describeReasons } from "@/lib/duplicate-check";
 
 async function requireStaffSession() {
@@ -208,13 +209,59 @@ export async function approveAndCreateContractor(formData: FormData) {
   }
 }
 
+async function sendRejectionEmail(email: string, name: string, companyName: string) {
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+      <div style="background:#005f8c;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0;">
+        <h1 style="margin:0;font-size:20px;">Your Supply Agreement</h1>
+        <p style="margin:4px 0 0;font-size:13px;opacity:0.9;">PRL Site Solutions — Recruitment Specialists</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
+        <p style="font-size:14px;color:#333;">Hi ${escapeHtml(name.split(" ")[0] || "there")},</p>
+        <p style="font-size:14px;color:#333;">
+          Thank you for submitting a supply agreement for <strong>${escapeHtml(companyName)}</strong>.
+          We've reviewed it and unfortunately we're unable to take it forward at this time.
+        </p>
+        <p style="font-size:14px;color:#333;">
+          If you think something was missing or incorrect, or you'd like to discuss it, please get in touch
+          and we'll be happy to talk it through.
+        </p>
+        <p style="font-size:13px;color:#666;margin-top:20px;">
+          Call us on <strong>0800 772 3959</strong> or email
+          <a href="mailto:info@prlsitesolutions.co.uk" style="color:#005f8c;">info@prlsitesolutions.co.uk</a>.
+        </p>
+      </div>
+      <p style="text-align:center;font-size:11px;color:#999;margin-top:16px;">
+        PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk
+      </p>
+    </div>
+  `;
+
+  try {
+    const result = await sendEmail({
+      to: email,
+      subject: "Your supply agreement — PRL Site Solutions",
+      html,
+      template: "supply-agreement-rejected",
+    });
+    if (!result.success) console.error(`Failed to send rejection email to ${email}:`, result.error);
+  } catch (err) {
+    console.error(`Failed to send rejection email to ${email}:`, err);
+  }
+}
+
 export async function updateSubmissionStatus(formData: FormData) {
   try {
     const session = await requireStaffSession();
     const submissionId = formData.get("submissionId") as string;
     const status = formData.get("status") as string;
 
-    await prisma.supplyAgreement.update({
+    const previous = await prisma.supplyAgreement.findUnique({
+      where: { id: submissionId },
+      select: { status: true },
+    });
+
+    const submission = await prisma.supplyAgreement.update({
       where: { id: submissionId },
       data: {
         status,
@@ -222,6 +269,14 @@ export async function updateSubmissionStatus(formData: FormData) {
         reviewedAt: new Date(),
       },
     });
+
+    // Tell the submitter. Before this a rejected supplier heard nothing and
+    // was left waiting on the "we'll be in touch" receipt. Only on the
+    // transition, so a repeat click does not send a second email; a failed
+    // send does not undo the rejection.
+    if (status === "Rejected" && previous?.status !== "Rejected") {
+      await sendRejectionEmail(submission.contactEmail, submission.contactName, submission.companyName);
+    }
 
     revalidatePath("/onboarding/submissions");
     redirect(`/onboarding/submissions/${submissionId}`);
