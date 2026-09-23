@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { sendEmail, ONBOARDING_RECIPIENTS } from "@/lib/email";
+import { sendEmail, ONBOARDING_RECIPIENTS, ONBOARDING_REPLY_TO } from "@/lib/email";
 import {
   findPotentialDuplicates,
   describeReasons,
@@ -394,6 +394,7 @@ export async function POST(request: Request) {
         subject: "We've received your supply agreement — PRL Site Solutions",
         html: confirmationHtml,
         template: "supply-agreement-confirmation",
+        replyTo: ONBOARDING_REPLY_TO,
       });
 
       if (!confirmationResult.success) {
