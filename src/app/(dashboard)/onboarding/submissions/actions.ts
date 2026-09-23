@@ -8,6 +8,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { sendEmail, sendPasswordResetEmail, ONBOARDING_REPLY_TO } from "@/lib/email";
 import { escapeHtml } from "@/lib/utils";
+import { createSetPasswordUrl } from "@/lib/set-password-link";
 import { findPotentialDuplicates, describeReasons } from "@/lib/duplicate-check";
 
 async function requireStaffSession() {
@@ -25,16 +26,7 @@ async function requireStaffSession() {
  * could not get into until someone also clicked Send App Invite.
  */
 async function issueAppInvite(email: string, name: string) {
-  const token = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-  await prisma.passwordResetToken.deleteMany({ where: { email } });
-  await prisma.passwordResetToken.create({
-    data: { email, token, expiresAt },
-  });
-
-  const baseUrl = process.env.NEXTAUTH_URL || "https://prl-staffing-production.up.railway.app";
-  const resetUrl = `${baseUrl}/set-password?token=${token}`;
+  const resetUrl = await createSetPasswordUrl(email);
 
   const result = await sendPasswordResetEmail(email, name.split(" ")[0] || "there", resetUrl, true);
   if (!result.success) {

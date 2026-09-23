@@ -452,10 +452,10 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
               {/* Send Invite To */}
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6">
                 <h3 className="text-base font-semibold text-gray-900 mb-1">Send Invite To</h3>
-                <p className="text-xs text-gray-500 mb-4">This person will receive a link to download the PRISM app</p>
+                <p className="text-xs text-gray-500 mb-4">They&apos;ll get the supply agreement and a link to set up their PRISM login</p>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contractor email address *
+                    Their email address *
                   </label>
                   <input
                     type="email"
@@ -486,7 +486,7 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
                       Sending...
                     </>
                   ) : (
-                    "Send Invite"
+                    "Send Agreement"
                   )}
                 </button>
               </div>

@@ -1,7 +1,12 @@
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, ONBOARDING_REPLY_TO } from "@/lib/email";
+import { createSetPasswordUrl, DAY_MS } from "@/lib/set-password-link";
+
+// The supplier may not open the email the same day; a staff-sent invite is
+// trusted, so give them a week rather than the 24h of a password reset.
+const SETUP_LINK_TTL_MS = 7 * DAY_MS;
 
 function escapeHtml(str: string): string {
   return str
@@ -59,13 +64,52 @@ export async function POST(request: Request) {
     );
   }
 
+  /**
+   * PRL wrote this agreement, so there is no review step: the recipient gets
+   * the agreement and a working login link in the same email. The link goes to
+   * `sendToEmail`, which is therefore the person's login email.
+   */
+  const loginEmail = sendToEmail.toLowerCase().trim();
+
+  // A set-password link for a staff address would reset that staff password.
+  const staffUser = await prisma.user.findUnique({ where: { email: loginEmail }, select: { id: true } });
+  if (staffUser) {
+    return NextResponse.json(
+      { error: "That email belongs to a PRL staff account. Use the supplier's own email address." },
+      { status: 409 }
+    );
+  }
+
+  const nameParts = contactName.trim().split(/\s+/);
+  let contractor = await prisma.contractor.findFirst({
+    where: { email: { equals: loginEmail, mode: "insensitive" } },
+    select: { id: true },
+  });
+  if (!contractor) {
+    contractor = await prisma.contractor.create({
+      data: {
+        firstName: nameParts[0] || "Unknown",
+        lastName: nameParts.slice(1).join(" ") || "Unknown",
+        email: loginEmail,
+        phone: contactPhone || null,
+        status: "Active",
+        jobTitle: supplyOf || null,
+        ir35Status: "TBD",
+        notes: `Created from a supply agreement sent by ${session.user.email || "staff"} on ${new Date().toLocaleDateString("en-GB")}. Company: ${companyName}.`,
+      },
+      select: { id: true },
+    });
+  }
+
   const agreement = await prisma.supplyAgreement.create({
     data: {
       companyName,
       companyAddress: companyAddress || null,
       companyRegNo: null,
       contactName,
-      contactEmail,
+      // The login email, so the submission page finds the contractor and its
+      // Send App Invite button re-sends to the right address.
+      contactEmail: loginEmail,
       contactPhone: contactPhone || null,
       supplyOf: supplyOf || null,
       siteLocation: siteLocation || null,
@@ -73,7 +117,12 @@ export async function POST(request: Request) {
       rates: rates ? JSON.stringify(rates) : null,
       breakdown: breakdown ? JSON.stringify(breakdown) : null,
       additionalInfo: additionalInfo || null,
-      status: "Pending",
+      status: "Approved",
+      reviewedBy: session.user.email || "staff",
+      reviewedAt: new Date(),
+      notes: `Sent from PRISM to ${loginEmail}. Contractor ${contractor.id}.${
+        contactEmail.toLowerCase().trim() !== loginEmail ? ` Contact email given: ${contactEmail}.` : ""
+      }`,
     },
   });
 
@@ -118,7 +167,7 @@ export async function POST(request: Request) {
          <p style="margin:0;font-size:13px;color:#333;line-height:1.6;">${escapeHtml(additionalInfo)}</p>`
       : "";
 
-    const contractorHtml = `
+    const buildHtml = (setupUrl: string | null) => `
 <!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -141,7 +190,7 @@ export async function POST(request: Request) {
             <td style="padding:32px 40px 0;">
               <p style="margin:0 0 10px;color:#333;font-size:15px;line-height:1.6;">Hi ${escapeHtml(contactName)},</p>
               <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.6;">
-                PRL Site Solutions has started your onboarding. Please review the details below, then download the PRISM app to complete your registration.
+                Here is your supply agreement with PRL Site Solutions. Please check the details below, then set up your PRISM login to upload your compliance documents.
               </p>
             </td>
           </tr>
@@ -189,19 +238,27 @@ export async function POST(request: Request) {
           <!-- CTA -->
           <tr>
             <td style="padding:32px 40px;">
+              ${setupUrl ? `
               <p style="margin:0 0 20px;color:#333;font-size:14px;line-height:1.6;">
-                Once you've reviewed the details above, click the button below to download the PRISM app and complete your registration:
+                Click the button below to choose your password and set up your PRISM login:
               </p>
               <table cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="background:#005f8c;border-radius:6px;">
-                    <a href="https://www.prismworkforce.online/install"
+                    <a href="${setupUrl}"
                        style="display:inline-block;padding:14px 36px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">
-                      Download the PRISM App &rarr;
+                      Set Up My PRISM Login &rarr;
                     </a>
                   </td>
                 </tr>
               </table>
+              <p style="margin:16px 0 0;color:#666;font-size:13px;line-height:1.6;">
+                This link works for 7 days. After that, just reply to this email and we'll send a new one.
+                You can also add PRISM to your phone: <a href="https://www.prismworkforce.online/install" style="color:#005f8c;">www.prismworkforce.online/install</a>
+              </p>` : `
+              <p style="margin:0;color:#333;font-size:14px;line-height:1.6;">
+                <strong>Staff copy.</strong> The PRISM login link was sent only to ${escapeHtml(loginEmail)}.
+              </p>`}
               <p style="margin:24px 0 0;color:#888;font-size:13px;line-height:1.6;">
                 Questions? Call us on <strong>0800 772 3959</strong> or email
                 <a href="mailto:info@prlsitesolutions.co.uk" style="color:#005f8c;">info@prlsitesolutions.co.uk</a>.
@@ -225,28 +282,40 @@ export async function POST(request: Request) {
 </body>
 </html>`;
 
-    // Build recipient list: contractor + Helen always + session user if different
-    const recipients = [sendToEmail];
-    if (!recipients.includes("helen@prlsitesolutions.co.uk")) {
-      recipients.push("helen@prlsitesolutions.co.uk");
-    }
-    const sessionEmail = session.user.email;
-    if (sessionEmail && !recipients.includes(sessionEmail)) {
-      recipients.push(sessionEmail);
-    }
+    const setupUrl = await createSetPasswordUrl(loginEmail, SETUP_LINK_TTL_MS);
+    const subject = `Your Supply Agreement — ${companyName}`;
 
     const emailResult = await sendEmail({
-      to: recipients,
-      subject: `Supply Agreement — ${escapeHtml(companyName)} (${escapeHtml(contactName)})`,
-      html: contractorHtml,
+      to: loginEmail,
+      subject,
+      html: buildHtml(setupUrl),
       template: "supply-agreement-invite",
+      replyTo: ONBOARDING_REPLY_TO,
     });
 
     if (!emailResult.success) {
       console.error(
-        `[onboarding/invite] Failed to send invite email for ${companyName} (agreement ${agreement.id}) to ${recipients.join(", ")}:`,
+        `[onboarding/invite] Failed to send agreement for ${companyName} (agreement ${agreement.id}) to ${loginEmail}:`,
         emailResult.error
       );
+      return NextResponse.json(
+        { error: "The agreement was saved but the email could not be sent. Open it under Submissions and use Send App Invite to retry." },
+        { status: 502 }
+      );
+    }
+
+    // Records copy for the team — without the login link, which is personal.
+    const staffCopyTo = ["helen@prlsitesolutions.co.uk"];
+    const sessionEmail = session.user.email;
+    if (sessionEmail && !staffCopyTo.includes(sessionEmail)) staffCopyTo.push(sessionEmail);
+    const copyResult = await sendEmail({
+      to: staffCopyTo,
+      subject: `[Copy] ${subject}`,
+      html: buildHtml(null),
+      template: "supply-agreement-invite-copy",
+    });
+    if (!copyResult.success) {
+      console.error(`[onboarding/invite] Failed to send staff copy for agreement ${agreement.id}:`, copyResult.error);
     }
 
   return NextResponse.json({ success: true, id: agreement.id });

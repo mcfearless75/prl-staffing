@@ -6,7 +6,7 @@ import { Badge } from "@/components/badge";
 import { PageHeader } from "@/components/page-header";
 import { ExternalLink } from "lucide-react";
 import { MetlenInductionButton } from "./metlen-induction-button";
-import { SendFormButton } from "./send-form-button";
+import { NewSupplierButton } from "./new-supplier-button";
 
 export default async function OnboardingSubmissionsPage({
   searchParams,
@@ -41,7 +41,7 @@ export default async function OnboardingSubmissionsPage({
         action={
           <div className="flex items-center gap-3">
             <MetlenInductionButton />
-            <SendFormButton />
+            <NewSupplierButton />
             <a
               href="/onboarding"
               target="_blank"
