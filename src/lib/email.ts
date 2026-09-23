@@ -54,6 +54,16 @@ export const ONBOARDING_RECIPIENTS = recipientList(process.env.ONBOARDING_RECIPI
   "helen@prlsitesolutions.co.uk",
 ]);
 
+// Reply-To on emails sent to supply-agreement submitters. They go out from the
+// infotech@ mailbox, so without this a supplier's reply landed somewhere the
+// onboarding team never looks.
+export const ONBOARDING_REPLY_TO = recipientList(process.env.ONBOARDING_REPLY_TO, [
+  "adella@prlsitesolutions.co.uk",
+  "jenni@prlsitesolutions.co.uk",
+  "erica@prlsitesolutions.co.uk",
+  "helen@prlsitesolutions.co.uk",
+]);
+
 export const SUPPLIER_QUESTIONNAIRE_RECIPIENTS = recipientList(
   process.env.SUPPLIER_QUESTIONNAIRE_RECIPIENTS,
   ["adella@prlsitesolutions.co.uk", "helen@prlsitesolutions.co.uk"]
@@ -113,7 +123,7 @@ export async function sendEmail(opts: {
   subject: string;
   html: string;
   template?: string;
-  replyTo?: string;
+  replyTo?: string | string[];
   text?: string;
 }): Promise<SendEmailResult> {
   const recipients = Array.isArray(opts.to) ? opts.to : [opts.to];

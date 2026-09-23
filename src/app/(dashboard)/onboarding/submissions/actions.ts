@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { sendEmail, sendPasswordResetEmail } from "@/lib/email";
+import { sendEmail, sendPasswordResetEmail, ONBOARDING_REPLY_TO } from "@/lib/email";
 import { escapeHtml } from "@/lib/utils";
 import { findPotentialDuplicates, describeReasons } from "@/lib/duplicate-check";
 
@@ -243,6 +243,7 @@ async function sendRejectionEmail(email: string, name: string, companyName: stri
       subject: "Your supply agreement — PRL Site Solutions",
       html,
       template: "supply-agreement-rejected",
+      replyTo: ONBOARDING_REPLY_TO,
     });
     if (!result.success) console.error(`Failed to send rejection email to ${email}:`, result.error);
   } catch (err) {

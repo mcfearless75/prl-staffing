@@ -104,7 +104,7 @@ export async function sendViaGraph(
     to: string[];
     subject: string;
     html: string;
-    replyTo?: string;
+    replyTo?: string | string[];
     from?: string;
   }
 ): Promise<GraphSendResult> {
@@ -124,8 +124,9 @@ export async function sendViaGraph(
       };
     }
 
-    if (opts.replyTo) {
-      message.replyTo = [{ emailAddress: { address: opts.replyTo } }];
+    const replyTo = opts.replyTo === undefined ? [] : [opts.replyTo].flat();
+    if (replyTo.length > 0) {
+      message.replyTo = replyTo.map((address) => ({ emailAddress: { address } }));
     }
 
     const res = await fetch(
