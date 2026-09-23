@@ -374,8 +374,9 @@ export async function POST(request: Request) {
               We've received it and it's now with our team for review.
             </p>
             <p style="font-size:14px;color:#333;">
-              We'll be in touch shortly. If we need anything further, or once you're approved, we'll follow
-              up separately with the details for uploading compliance documents.
+              There's nothing more to do right now. Once our team approves your agreement you'll get a
+              separate email with a link to set up your PRISM login, where you can upload your compliance
+              documents. If we need anything before then, we'll be in touch.
             </p>
             <p style="font-size:13px;color:#666;margin-top:20px;">
               Any questions in the meantime? Call us on <strong>0800 772 3959</strong> or email
