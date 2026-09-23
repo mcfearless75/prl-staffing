@@ -17,6 +17,31 @@ async function requireStaffSession() {
   return session;
 }
 
+/**
+ * Set-password link + welcome email. Shared by the manual "Send App Invite"
+ * button and approval — approval used to create the login with a random
+ * password and send nothing, so an approved subcontractor had an account they
+ * could not get into until someone also clicked Send App Invite.
+ */
+async function issueAppInvite(email: string, name: string) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+  await prisma.passwordResetToken.deleteMany({ where: { email } });
+  await prisma.passwordResetToken.create({
+    data: { email, token, expiresAt },
+  });
+
+  const baseUrl = process.env.NEXTAUTH_URL || "https://prl-staffing-production.up.railway.app";
+  const resetUrl = `${baseUrl}/set-password?token=${token}`;
+
+  const result = await sendPasswordResetEmail(email, name.split(" ")[0] || "there", resetUrl, true);
+  if (!result.success) {
+    console.error("Failed to send app invite:", result.error);
+  }
+  return result;
+}
+
 export async function approveAndCreateContractor(formData: FormData) {
   try {
     const session = await requireStaffSession();
@@ -148,6 +173,14 @@ export async function approveAndCreateContractor(formData: FormData) {
       },
     });
 
+    // Invite them straight away. A failed send must not undo the approval —
+    // the contractor exists, and Send App Invite remains on the page to retry.
+    try {
+      await issueAppInvite(contactEmail, `${firstName} ${lastName}`);
+    } catch (inviteErr) {
+      console.error(`Approval invite failed for ${contactEmail}:`, inviteErr);
+    }
+
     // Log activity
     try {
       await prisma.activityLog.create({
@@ -208,27 +241,7 @@ export async function sendAppInvite(formData: FormData) {
 
     if (!email) throw new Error("Email is required");
 
-    // Generate password reset token
-    const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    // Delete any existing tokens
-    await prisma.passwordResetToken.deleteMany({ where: { email } });
-
-    // Create new token
-    await prisma.passwordResetToken.create({
-      data: { email, token, expiresAt },
-    });
-
-    const baseUrl = process.env.NEXTAUTH_URL || "https://prl-staffing-production.up.railway.app";
-    const resetUrl = `${baseUrl}/set-password?token=${token}`;
-
-    // Send welcome email
-    const result = await sendPasswordResetEmail(email, name.split(" ")[0] || "there", resetUrl, true);
-
-    if (!result.success) {
-      console.error("Failed to send app invite:", result.error);
-    }
+    await issueAppInvite(email, name);
 
     revalidatePath(`/onboarding/submissions`);
   } catch (error) {
