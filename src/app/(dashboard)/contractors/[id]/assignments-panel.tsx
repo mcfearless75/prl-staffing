@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "@/components/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -71,6 +72,7 @@ export function AssignmentsPanel({ assignments }: AssignmentsPanelProps) {
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Charge Rate</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Pay Rate</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Rate Basis</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -110,6 +112,17 @@ export function AssignmentsPanel({ assignments }: AssignmentsPanelProps) {
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                     {assignment.rateBasis || "—"}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
+                    <Link href={`/assignments/${assignment.id}`} className="font-medium text-gray-600 hover:text-gray-900">
+                      View
+                    </Link>
+                    <Link
+                      href={`/assignments/${assignment.id}/edit?from=contractor`}
+                      className="ml-4 font-medium text-blue-600 hover:text-blue-800"
+                    >
+                      Edit
+                    </Link>
                   </td>
                 </tr>
               );

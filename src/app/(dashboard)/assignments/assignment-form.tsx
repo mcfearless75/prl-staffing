@@ -57,6 +57,8 @@ interface Props {
   defaultValues?: AssignmentDefaultValues;
   submitLabel?: string;
   cancelHref: string;
+  /** "contractor" sends Save back to the subcontractor profile instead of the assignment page. */
+  returnTo?: "contractor";
 }
 
 export function AssignmentForm({
@@ -67,6 +69,7 @@ export function AssignmentForm({
   defaultValues,
   submitLabel = "Create Assignment",
   cancelHref,
+  returnTo,
 }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
 
@@ -116,6 +119,7 @@ export function AssignmentForm({
 
   return (
     <form action={formAction} className="space-y-6">
+      {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       {state?.error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {state.error}

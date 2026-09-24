@@ -47,9 +47,13 @@ export default async function AssignmentDetailPage({
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {assignment.contractor
-                  ? `${assignment.contractor.firstName} ${assignment.contractor.lastName}`
-                  : "Unknown Contractor"}
+                {assignment.contractor ? (
+                  <Link href={`/contractors/${assignment.contractor.id}`} className="hover:text-blue-700 hover:underline">
+                    {assignment.contractor.firstName} {assignment.contractor.lastName}
+                  </Link>
+                ) : (
+                  "Unknown Contractor"
+                )}
               </h1>
               <p className="text-sm text-gray-500">
                 {assignment.role} at {assignment.company?.name || "—"}
@@ -87,9 +91,13 @@ export default async function AssignmentDetailPage({
           <div>
             <p className="text-sm font-medium text-gray-500">Contractor</p>
             <p className="text-sm text-gray-900">
-              {assignment.contractor
-                ? `${assignment.contractor.firstName} ${assignment.contractor.lastName}`
-                : "—"}
+              {assignment.contractor ? (
+                <Link href={`/contractors/${assignment.contractor.id}`} className="text-blue-600 hover:underline">
+                  {assignment.contractor.firstName} {assignment.contractor.lastName}
+                </Link>
+              ) : (
+                "—"
+              )}
             </p>
           </div>
           <div>

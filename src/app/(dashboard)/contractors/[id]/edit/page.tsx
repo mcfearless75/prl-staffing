@@ -8,6 +8,8 @@ import { updateContractor } from "../../actions";
 import { StaffDocUploader } from "@/app/(dashboard)/compliance/[id]/edit/staff-doc-uploader";
 import { formatDate } from "@/lib/utils";
 import { listActiveJobRoles } from "@/lib/job-roles";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
+import { Badge } from "@/components/badge";
 
 const DOC_TYPES = [
   { type: "Passport", label: "Passport", emoji: "🛂" },
@@ -25,7 +27,7 @@ export default async function EditContractorPage({
 }) {
   const { id } = await params;
 
-  const [contractor, suppliers, documents, complianceRecords, jobRoles, contractorJobRoles] = await Promise.all([
+  const [contractor, suppliers, documents, complianceRecords, jobRoles, contractorJobRoles, liveAssignments] = await Promise.all([
     prisma.contractor.findUnique({ where: { id } }),
     prisma.supplier.findMany({
       select: { id: true, name: true },
@@ -43,6 +45,14 @@ export default async function EditContractorPage({
     prisma.contractorJobRole.findMany({
       where: { contractorId: id },
       select: { jobRoleId: true },
+    }),
+    prisma.assignment.findMany({
+      where: { contractorId: id, status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
+      orderBy: { startDate: "desc" },
+      select: {
+        id: true, role: true, status: true, startDate: true, endDate: true,
+        company: { select: { name: true } },
+      },
     }),
   ]);
 
@@ -72,6 +82,50 @@ export default async function EditContractorPage({
           </Link>
         }
       />
+      {/* Current work — the job lives on the assignment, not the person, so
+          end dates, rates and role are edited there. This makes it one click. */}
+      <div className="rounded-xl border border-gray-200 bg-white">
+        <div className="border-b border-gray-200 px-6 py-4">
+          <h2 className="text-base font-semibold text-gray-900">Current work</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            End date, rates, role and site are set on the assignment — use Edit assignment below.
+          </p>
+        </div>
+        {liveAssignments.length > 0 ? (
+          <ul className="divide-y divide-gray-100">
+            {liveAssignments.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900">
+                    {a.company?.name || "—"}
+                    {a.role ? <span className="font-normal text-gray-500"> · {a.role}</span> : null}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formatDate(a.startDate)} – {a.endDate ? formatDate(a.endDate) : "no end date set"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant={a.status}>{a.status}</Badge>
+                  <Link
+                    href={`/assignments/${a.id}/edit?from=contractor`}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                  >
+                    Edit assignment
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="px-6 py-4 text-sm text-gray-500">
+            Not on any live assignment.{" "}
+            <Link href={`/contractors/${id}?tab=Assignments`} className="text-blue-600 hover:underline">
+              See all assignments
+            </Link>
+          </p>
+        )}
+      </div>
+
       <ContractorForm
         contractor={contractor}
         suppliers={suppliers}

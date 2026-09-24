@@ -7,10 +7,13 @@ import { updateAssignment } from "../../actions";
 
 export default async function EditAssignmentPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ from?: string }>;
 }) {
   const { id } = await params;
+  const fromContractor = (await searchParams)?.from === "contractor";
 
   const [assignment, contractors, companies, projects] = await Promise.all([
     prisma.assignment.findUnique({ where: { id } }),
@@ -67,7 +70,12 @@ export default async function EditAssignmentPage({
           projects={projects}
           action={updateAction}
           submitLabel="Update Assignment"
-          cancelHref={`/assignments/${assignment.id}`}
+          cancelHref={
+            fromContractor
+              ? `/contractors/${assignment.contractorId}?tab=Assignments`
+              : `/assignments/${assignment.id}`
+          }
+          returnTo={fromContractor ? "contractor" : undefined}
           defaultValues={{
             contractorId: assignment.contractorId,
             companyId: assignment.companyId,

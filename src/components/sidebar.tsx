@@ -12,7 +12,6 @@ import {
   Clock,
   ShieldCheck,
   TrendingUp,
-  ClipboardList,
   LogOut,
   Receipt,
   Brain,
@@ -56,7 +55,6 @@ const navigationSections = [
     items: [
       { name: "Subcontractors", href: "/contractors", icon: Users, badgeKey: null },
       { name: "Clients", href: "/companies", icon: Building2, badgeKey: null },
-      { name: "Assignments", href: "/assignments", icon: ClipboardList, badgeKey: null },
     ],
   },
   {
@@ -99,6 +97,10 @@ const navigationSections = [
 // AI Assistant hidden the same way (2026-08-10): PRL don't expect to use it.
 // /ai and /api/ai are untouched and still work by direct URL, so putting it
 // back is a one-line change here.
+//
+// Assignments hidden the same way (2026-09-24): PRL want one place to manage
+// a person's work, so assignments are reached from the subcontractor profile
+// (Assignments tab, and "Current work" on Edit). /assignments still resolves.
 
 type Counts = {
   complianceAlerts: number;

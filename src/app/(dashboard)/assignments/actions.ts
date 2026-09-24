@@ -321,6 +321,11 @@ export async function updateAssignment(
   revalidatePath(`/assignments/${id}`);
   revalidatePath(`/contractors/${contractorId}`);
   revalidatePath("/contractors");
+  // Opened from the subcontractor's profile: go back there. Only the literal
+  // "contractor" is honoured, so this can never become an open redirect.
+  if (formData.get("returnTo") === "contractor") {
+    redirect(`/contractors/${contractorId}?tab=Assignments`);
+  }
   redirect(`/assignments/${id}`);
 }
 
