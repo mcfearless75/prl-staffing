@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { X, Download } from "lucide-react";
 
+/**
+ * Registers the service worker and push subscription on portal pages.
+ *
+ * There used to be an "Install PRL Portal" banner here too. It was removed
+ * (2026-09-24) because users found it a nuisance; the install steps are still
+ * on the portal home page and at /install for anyone who wants them.
+ */
 export function PWARegister() {
-  const [showInstall, setShowInstall] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -21,62 +25,15 @@ export function PWARegister() {
     // Subscribe to push notifications
     subscribeToPush();
 
-    // Listen for install prompt
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstall(true);
-    };
+    // Swallow the browser's install event. Leaving it unhandled lets Chrome on
+    // Android show its own "Add to home screen" bar instead, which is the same
+    // nuisance the old banner was removed for.
+    const handler = (e: Event) => e.preventDefault();
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, [pathname]);
 
-  const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    // @ts-expect-error - prompt() exists on BeforeInstallPromptEvent
-    deferredPrompt.prompt();
-    // @ts-expect-error - userChoice exists
-    await deferredPrompt.userChoice;
-    setDeferredPrompt(null);
-    setShowInstall(false);
-  };
-
-  if (!showInstall || !pathname.startsWith("/portal")) return null;
-
-  return (
-    <div className="fixed top-16 left-0 right-0 z-50 mx-4">
-      <div className="mx-auto max-w-lg rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-lg">
-        <div className="flex items-start gap-3">
-          <Download className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-blue-900">
-              Install PRL Portal
-            </p>
-            <p className="text-xs text-blue-700 mt-0.5">
-              Add to your home screen for quick access, offline support, and notifications.
-            </p>
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={handleInstall}
-                className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-700 active:scale-95 transition"
-              >
-                Install
-              </button>
-              <button
-                onClick={() => setShowInstall(false)}
-                className="rounded-lg bg-white px-4 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 active:scale-95 transition"
-              >
-                Not now
-              </button>
-            </div>
-          </div>
-          <button onClick={() => setShowInstall(false)} className="text-blue-400 hover:text-blue-600">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }
 
 async function subscribeToPush() {
