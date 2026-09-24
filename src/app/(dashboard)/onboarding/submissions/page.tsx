@@ -8,31 +8,50 @@ import { ExternalLink } from "lucide-react";
 import { MetlenInductionButton } from "./metlen-induction-button";
 import { NewSupplierButton } from "./new-supplier-button";
 
+const OPEN_STATUSES = ["Pending", "Reviewed"];
+
 export default async function OnboardingSubmissionsPage({
   searchParams,
 }: {
   searchParams?: Promise<{ status?: string; sort?: string }>;
 }) {
   const params = await searchParams;
-  const filterStatus = params?.status || "";
+  // The default view is the work queue: only submissions still awaiting a
+  // decision. Approved ones have become subcontractors and rejected ones are
+  // done, so both drop out of it — still reachable via their tiles, or "All".
+  const filterStatus = params?.status || "Open";
   // When viewing Approved, default sort is by last approved (updatedAt desc)
   const sortByApproved = filterStatus === "Approved" || params?.sort === "approved";
 
   const where: Record<string, unknown> = {};
-  if (filterStatus) where.status = filterStatus;
+  if (filterStatus === "Open") where.status = { in: OPEN_STATUSES };
+  else if (filterStatus !== "All") where.status = filterStatus;
 
   const submissions = await prisma.supplyAgreement.findMany({
     where,
     orderBy: sortByApproved ? { updatedAt: "desc" } : { createdAt: "desc" },
   });
 
-  const counts = {
-    total: submissions.length,
-    pending: await prisma.supplyAgreement.count({ where: { status: "Pending" } }),
-    reviewed: await prisma.supplyAgreement.count({ where: { status: "Reviewed" } }),
-    approved: await prisma.supplyAgreement.count({ where: { status: "Approved" } }),
-    rejected: await prisma.supplyAgreement.count({ where: { status: "Rejected" } }),
-  };
+  const [pending, reviewed, approved, rejected] = await Promise.all(
+    ["Pending", "Reviewed", "Approved", "Rejected"].map((status) =>
+      prisma.supplyAgreement.count({ where: { status } })
+    )
+  );
+  const counts = { pending, reviewed, approved, rejected, open: pending + reviewed, all: pending + reviewed + approved + rejected };
+
+  // Approval creates a subcontractor, matched on email (see actions.ts). Link
+  // each approved row to that record so staff go there rather than back here.
+  const approvedEmails = submissions
+    .filter((s) => s.status === "Approved")
+    .map((s) => s.contactEmail.toLowerCase().trim());
+  const contractorByEmail = new Map<string, string>();
+  if (approvedEmails.length) {
+    const contractors = await prisma.contractor.findMany({
+      where: { OR: approvedEmails.map((email) => ({ email: { equals: email, mode: "insensitive" as const } })) },
+      select: { id: true, email: true },
+    });
+    for (const c of contractors) if (c.email) contractorByEmail.set(c.email.toLowerCase(), c.id);
+  }
 
   return (
     <div className="space-y-6">
@@ -76,21 +95,33 @@ export default async function OnboardingSubmissionsPage({
 
       {/* Filter Pills */}
       <div className="flex flex-wrap items-center gap-2">
-        <Link href="/onboarding/submissions" className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${!filterStatus && !sortByApproved ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-          All ({counts.total})
-        </Link>
-        {["Pending", "Reviewed", "Rejected"].map((s) => (
-          <Link key={s} href={`/onboarding/submissions?status=${s}`} className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${filterStatus === s ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-            {s}
+        {[
+          { key: "Open", label: `To review (${counts.open})` },
+          { key: "Pending", label: "Pending" },
+          { key: "Reviewed", label: "Reviewed" },
+          { key: "Approved", label: "Approved ↓ Last" },
+          { key: "Rejected", label: "Rejected" },
+          { key: "All", label: `All (${counts.all})` },
+        ].map(({ key, label }) => (
+          <Link
+            key={key}
+            href={key === "Open" ? "/onboarding/submissions" : `/onboarding/submissions?status=${key}`}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${filterStatus === key ? (key === "Approved" ? "bg-emerald-600 text-white" : "bg-blue-600 text-white") : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+          >
+            {label}
           </Link>
         ))}
-        <Link
-          href="/onboarding/submissions?status=Approved"
-          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${filterStatus === "Approved" ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-        >
-          Approved ↓ Last
-        </Link>
       </div>
+
+      {filterStatus === "Approved" ? (
+        <p className="text-sm text-gray-500">
+          Approved submissions are now on the{" "}
+          <Link href="/contractors" className="text-blue-600 hover:underline">Subcontractors</Link>{" "}
+          list — manage them there. These are kept as a record of the signed agreement.
+        </p>
+      ) : filterStatus === "Rejected" ? (
+        <p className="text-sm text-gray-500">Rejected submissions are kept for the record only — no action needed.</p>
+      ) : null}
 
       {/* Submissions Table */}
       {submissions.length > 0 ? (
@@ -146,9 +177,22 @@ export default async function OnboardingSubmissionsPage({
                     <Badge variant={sub.status}>{sub.status}</Badge>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right">
-                    <Link href={`/onboarding/submissions/${sub.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
-                      Review
-                    </Link>
+                    {(() => {
+                      const contractorId =
+                        sub.status === "Approved" ? contractorByEmail.get(sub.contactEmail.toLowerCase().trim()) : undefined;
+                      return (
+                        <div className="flex items-center justify-end gap-4">
+                          {contractorId ? (
+                            <Link href={`/contractors/${contractorId}`} className="text-sm font-medium text-emerald-700 hover:text-emerald-900">
+                              Open subcontractor
+                            </Link>
+                          ) : null}
+                          <Link href={`/onboarding/submissions/${sub.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
+                            {OPEN_STATUSES.includes(sub.status) ? "Review" : "View"}
+                          </Link>
+                        </div>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}
@@ -158,8 +202,10 @@ export default async function OnboardingSubmissionsPage({
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center">
           <p className="text-sm text-gray-500">
-            No {filterStatus?.toLowerCase()} submissions found.{" "}
-            <Link href="/onboarding/submissions" className="text-blue-600 hover:underline">View all</Link>
+            {filterStatus === "Open"
+              ? "Nothing waiting for review."
+              : `No ${filterStatus === "All" ? "" : filterStatus.toLowerCase() + " "}submissions found.`}{" "}
+            <Link href="/onboarding/submissions?status=All" className="text-blue-600 hover:underline">View all</Link>
           </p>
         </div>
       )}
