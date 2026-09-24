@@ -83,3 +83,6 @@ public/*.docx
 # scripts/smoke-prism.mjs, which takes the credential from the environment
 # (run it via `railway run --service Postgres`) instead of storing one.
 scripts/smoke-timesheets.mjs
+
+.vercel
+.env*
