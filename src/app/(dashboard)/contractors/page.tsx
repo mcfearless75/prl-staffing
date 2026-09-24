@@ -8,6 +8,7 @@ import { Plus, Search, Upload, ArrowUpDown, MailWarning } from "lucide-react";
 import { ContractorStatusSelect } from "@/components/contractor-status-select";
 import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
+import { WorkBoard } from "./work-board";
 
 // Presentation only — the vocabulary itself lives in contractor-statuses.ts.
 // A status with no entry here still gets a working tab, just a neutral one.
@@ -28,6 +29,18 @@ const STATUS_TAB_COLORS: Record<string, string> = {
 // SETTABLE_CONTRACTOR_STATUSES (which drives the actual status dropdown).
 const BENCH_FILTER = "Bench";
 
+function ViewToggle({ view }: { view: "list" | "board" }) {
+  const base = "px-3 py-1.5 text-sm font-medium transition-colors";
+  const on = "bg-blue-600 text-white";
+  const off = "bg-white text-gray-600 hover:bg-gray-50";
+  return (
+    <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+      <Link href="/contractors" className={`${base} ${view === "list" ? on : off}`}>List</Link>
+      <Link href="/contractors?view=board" className={`${base} border-l border-gray-200 ${view === "board" ? on : off}`}>Board</Link>
+    </div>
+  );
+}
+
 type ComplianceStatus = "Verified" | "Expiring" | "Pending" | "Non-Compliant" | "No Records";
 
 function deriveComplianceStatus(records: { status: string }[]): ComplianceStatus {
@@ -47,9 +60,34 @@ function ComplianceBadge({ status }: { status: ComplianceStatus }) {
 export default async function ContractorsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ search?: string; status?: string; sortBy?: string }>;
+  searchParams?: Promise<{ search?: string; status?: string; sortBy?: string; view?: string }>;
 }) {
   const params = await searchParams;
+
+  // Board view: everyone on live work, by assignment status. It has its own
+  // search and client filter, so the list's filters don't apply to it.
+  if (params?.view === "board") {
+    const boardAssignments = await prisma.assignment.findMany({
+      where: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
+      select: {
+        id: true, contractorId: true, role: true, location: true,
+        startDate: true, endDate: true, status: true,
+        contractor: { select: { firstName: true, lastName: true } },
+        company: { select: { name: true } },
+      },
+      orderBy: [{ endDate: { sort: "asc", nulls: "last" } }, { startDate: "desc" }],
+    });
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Contractors" action={<ViewToggle view="board" />} />
+        <p className="text-sm text-gray-500">
+          Everyone on live work. Click a card to open the person; drag it to change the job&apos;s status.
+          End dates in <span className="font-semibold text-amber-600">amber</span> are within two weeks.
+        </p>
+        <WorkBoard initialAssignments={JSON.parse(JSON.stringify(boardAssignments))} />
+      </div>
+    );
+  }
   const search = params?.search || "";
   const status = params?.status || "";
   const sortBy = params?.sortBy === "firstName" ? "firstName" : "lastName";
@@ -109,6 +147,7 @@ export default async function ContractorsPage({
         title="Contractors"
         action={
           <div className="flex items-center gap-2">
+            <ViewToggle view="list" />
             <Link
               href="/contractors/import"
               className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"

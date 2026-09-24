@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
+import { LIVE_ASSIGNMENT_STATUSES, isEndingSoon } from "@/lib/assignment-statuses";
 import {
   DndContext,
   DragOverlay,
@@ -18,10 +18,17 @@ import {
 } from "@dnd-kit/core";
 import Link from "next/link";
 import { formatDate, getInitials } from "@/lib/utils";
-import { updateAssignmentStatus } from "./actions";
+import { updateAssignmentStatus } from "../assignments/actions";
 
+/**
+ * Work board: everyone on live work, one card per assignment, grouped by
+ * status. Lives under Subcontractors (moved from /assignments 2026-09-24) —
+ * cards open the person, and dragging a card still changes the assignment's
+ * status through the same compliance-gated action.
+ */
 type Assignment = {
   id: string;
+  contractorId: string;
   role: string;
   location: string | null;
   startDate: Date | string;
@@ -31,7 +38,9 @@ type Assignment = {
   company: { name: string } | null;
 };
 
-const STATUSES = ASSIGNMENT_STATUSES;
+// Live work only. Ending a job is done on the assignment itself (Edit
+// assignment), not by dragging it off the board.
+const STATUSES = LIVE_ASSIGNMENT_STATUSES;
 
 const statusColors: Record<string, { border: string; header: string; dropBorder: string; dropBg: string; dot: string }> = {
   Placed: { border: "border-l-blue-500", header: "bg-blue-50 text-blue-700", dropBorder: "border-blue-400", dropBg: "bg-blue-50/50", dot: "bg-blue-500" },
@@ -88,18 +97,25 @@ function DraggableCard({ assignment }: { assignment: Assignment }) {
               <p className="text-xs text-gray-400">{assignment.location}</p>
             )}
             <div className="mt-2 text-xs text-gray-400">
-              {formatDate(assignment.startDate)}
+              {formatDate(assignment.startDate)} –{" "}
+              {assignment.endDate ? (
+                <span className={isEndingSoon(assignment.endDate) ? "font-semibold text-amber-600" : undefined}>
+                  {formatDate(assignment.endDate)}
+                </span>
+              ) : (
+                "no end date"
+              )}
             </div>
           </div>
         </div>
       </div>
       {/* View link - above the drag overlay */}
       <Link
-        href={`/assignments/${assignment.id}`}
+        href={`/contractors/${assignment.contractorId}`}
         className="absolute top-2 right-3 z-20 text-xs font-medium text-blue-600 hover:text-blue-800 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        View →
+        Open →
       </Link>
     </div>
   );
@@ -181,7 +197,7 @@ function DroppableColumn({
                 : "border-gray-300 bg-gray-50 text-gray-400"
             }`}
           >
-            {isOver ? "✓ Drop here!" : "Drop assignments here"}
+            {isOver ? "✓ Drop here!" : "No one here"}
           </div>
         ) : (
           assignments.map((assignment) => (
@@ -194,7 +210,7 @@ function DroppableColumn({
 }
 
 // ─── Main Kanban Board ─────────────────────────────────────────────
-export function KanbanBoard({
+export function WorkBoard({
   initialAssignments,
 }: {
   initialAssignments: Assignment[];

@@ -83,3 +83,26 @@ export const COMPLIANCE_GATED_STATUSES: ReadonlySet<string> = new Set([
 export function isLiveAssignmentStatus(status: string): boolean {
   return (LIVE_ASSIGNMENT_STATUSES as readonly string[]).includes(status);
 }
+
+/** How far ahead the work board flags an end date as "ending soon". */
+export const ENDING_SOON_DAYS = 14;
+
+/**
+ * True when an assignment ends today or within `days` days. A past end date
+ * is also "soon": the job has run out but nobody has closed it, which is
+ * exactly what the board is there to catch. No end date is never soon.
+ * Compared by calendar day, so the time of day `now` is taken at is irrelevant.
+ */
+export function isEndingSoon(
+  endDate: Date | string | null | undefined,
+  now: Date = new Date(),
+  days: number = ENDING_SOON_DAYS
+): boolean {
+  if (!endDate) return false;
+  const end = new Date(endDate);
+  if (Number.isNaN(end.getTime())) return false;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const endDay = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return (endDay - today) / dayMs <= days;
+}

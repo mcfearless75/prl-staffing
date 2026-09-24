@@ -8,6 +8,8 @@ import {
   IN_PROGRESS_ASSIGNMENT_STATUSES,
   LIVE_ASSIGNMENT_STATUSES,
   isLiveAssignmentStatus,
+  isEndingSoon,
+  ENDING_SOON_DAYS,
 } from "@/lib/assignment-statuses";
 
 /**
@@ -128,5 +130,38 @@ describe("ASSIGNMENT_STATUS_DESCRIPTIONS", () => {
     for (const [status, text] of Object.entries(ASSIGNMENT_STATUS_DESCRIPTIONS)) {
       assert.ok(text.trim().length > 0, `"${status}" has an empty description`);
     }
+  });
+});
+
+describe("isEndingSoon", () => {
+  const now = new Date("2026-09-24T15:30:00Z");
+  const inDays = (n: number) => new Date(Date.UTC(2026, 8, 24 + n));
+
+  test("no end date is never ending soon", () => {
+    assert.equal(isEndingSoon(null, now), false);
+    assert.equal(isEndingSoon(undefined, now), false);
+  });
+
+  test("the window is inclusive of its last day and excludes the day after", () => {
+    assert.equal(isEndingSoon(inDays(ENDING_SOON_DAYS), now), true);
+    assert.equal(isEndingSoon(inDays(ENDING_SOON_DAYS + 1), now), false);
+  });
+
+  test("today, and an end date already passed, both count", () => {
+    assert.equal(isEndingSoon(inDays(0), now), true);
+    assert.equal(isEndingSoon(inDays(-30), now), true);
+  });
+
+  test("time of day does not move the boundary", () => {
+    const lateNow = new Date("2026-09-24T23:59:00Z");
+    const early = new Date("2026-09-24T00:01:00Z");
+    assert.equal(
+      isEndingSoon(inDays(ENDING_SOON_DAYS), lateNow),
+      isEndingSoon(inDays(ENDING_SOON_DAYS), early)
+    );
+  });
+
+  test("accepts ISO strings as they arrive from a server component", () => {
+    assert.equal(isEndingSoon(inDays(3).toISOString(), now), true);
   });
 });

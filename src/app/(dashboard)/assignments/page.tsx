@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
 import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import { Plus } from "lucide-react";
-import { KanbanBoard } from "./kanban-board";
+import { WorkBoard } from "../contractors/work-board";
 import { ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 
 const STATUSES = ASSIGNMENT_STATUSES;
@@ -76,7 +76,7 @@ export default async function AssignmentsPage({
       </div>
 
       {/* Kanban Board - always shows ALL assignments */}
-      <KanbanBoard initialAssignments={JSON.parse(JSON.stringify(allAssignments))} />
+      <WorkBoard initialAssignments={JSON.parse(JSON.stringify(allAssignments))} />
 
       {/* Table View - respects status filter */}
       <div className="mt-8">
