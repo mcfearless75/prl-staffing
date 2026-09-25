@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireStaff } from "@/lib/require-staff";
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { isPlaceholderEmail } from "@/lib/placeholder-email";
+import { logAction, alreadyActedToday } from "@/lib/workflows/engine";
+
+// Same keys as the daily cron chase (src/lib/workflows/compliance-chase.ts),
+// so a manual send and the cron never email the same person twice in a day.
+const CHASE_WORKFLOW = "compliance-chase";
+const CHASE_ACTION = "chase-email";
 
 const PORTAL_URL = "https://www.prismworkforce.online";
 
@@ -101,6 +108,7 @@ export async function POST(req: NextRequest) {
     where: {
       status: { in: ["Verified", "Expiring"] },
       expiryDate: { gte: new Date(), lte: cutoff },
+      contractor: { status: { notIn: ["Left", "Inactive"] } },
     },
     include: { contractor: true },
     orderBy: { expiryDate: "asc" },
@@ -124,12 +132,18 @@ export async function POST(req: NextRequest) {
   }
 
   let sent = 0;
+  let skipped = 0;
   let failed = 0;
 
   for (const { contractor, docs } of byContractor.values()) {
     const email = contractor.email;
-    if (!email) {
+    if (!email || isPlaceholderEmail(email)) {
       failed++;
+      continue;
+    }
+
+    if (await alreadyActedToday(CHASE_WORKFLOW, contractor.id, CHASE_ACTION)) {
+      skipped++;
       continue;
     }
 
@@ -146,6 +160,10 @@ export async function POST(req: NextRequest) {
 
     if (emailResult.success) {
       sent++;
+      // A logging failure must not abort the run mid-way: the email has gone.
+      await logAction(CHASE_WORKFLOW, CHASE_ACTION, "sent", contractor.id,
+        `Manual expiry alert, ${docs.length} doc(s): ${docs.map((d) => d.type).join(", ")}`
+      ).catch((err) => console.error(`Failed to log expiry alert for contractor ${contractor.id}:`, err));
     } else {
       console.error(
         `Failed to send expiry alert to ${email} (contractor ${contractor.id}):`,
@@ -162,6 +180,7 @@ export async function POST(req: NextRequest) {
     success: true,
     summary: {
       sent,
+      skipped,
       failed,
       total: byContractor.size,
       expiringRecords: expiring.length,

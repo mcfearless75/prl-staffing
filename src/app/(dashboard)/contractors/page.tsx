@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/badge";
-import { getInitials } from "@/lib/utils";
+import { formatDate, getInitials } from "@/lib/utils";
 import { Plus, Search, Upload, ArrowUpDown, ArrowUp, ArrowDown, MailWarning } from "lucide-react";
 import { ContractorStatusSelect } from "@/components/contractor-status-select";
 import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
@@ -145,19 +145,37 @@ export default async function ContractorsPage({
     if (!liveByContractor.has(a.contractorId)) liveByContractor.set(a.contractorId, a);
   }
 
+  // Their most recent ENDED job, for people not currently working (mostly
+  // Inactive), so the list can say what they last did and where.
+  const notWorkingIds = found.map((c) => c.id).filter((id) => !liveByContractor.has(id));
+  const pastAssignments = notWorkingIds.length
+    ? await prisma.assignment.findMany({
+        where: { contractorId: { in: notWorkingIds }, status: { notIn: [...LIVE_ASSIGNMENT_STATUSES] } },
+        select: { contractorId: true, role: true, endDate: true, startDate: true, company: { select: { name: true } } },
+        orderBy: [{ endDate: { sort: "desc", nulls: "last" } }, { startDate: "desc" }],
+      })
+    : [];
+  const lastByContractor = new Map<string, (typeof pastAssignments)[number]>();
+  for (const a of pastAssignments) {
+    if (!lastByContractor.has(a.contractorId)) lastByContractor.set(a.contractorId, a);
+  }
+
   // Job title, workplace and compliance are derived per row, so they are
   // filtered and sorted here rather than in the query.
   const allRows = found.map((c) => {
     const live = liveByContractor.get(c.id);
+    const last = live ? undefined : lastByContractor.get(c.id);
     return {
       ...c,
       title: effectiveJobTitle({
         jobTitle: c.jobTitle,
         profileJobRoles: c.jobRoles.map((j) => j.jobRole.name),
         liveAssignmentRole: live?.role ?? null,
+        lastAssignmentRole: last?.role ?? null,
       }),
       client: live?.company.name ?? "",
       workingAt: live ? (live.site?.name ? `${live.company.name} — ${live.site.name}` : live.company.name) : "",
+      lastJob: last ? `${last.company.name}${last.endDate ? ` (ended ${formatDate(last.endDate)})` : ""}` : "",
       compliance: deriveComplianceStatus(c.compliances),
       // Shown in grey when there is no title; never filtered or sorted on.
       appliedFor: appliedForFromNotes(c.notes),
@@ -377,7 +395,7 @@ export default async function ContractorsPage({
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     {contractor.title ? (
-                      <span title={contractor.jobTitle?.trim() ? undefined : "Taken from the profile's Job Roles or current assignment. The Job Title field itself is blank."}>
+                      <span title={contractor.jobTitle?.trim() ? undefined : "Taken from the profile's Job Roles, current job or last job. The Job Title field itself is blank."}>
                         {contractor.title}
                         {!contractor.jobTitle?.trim() && <span className="ml-0.5 text-gray-300">*</span>}
                       </span>
@@ -391,7 +409,10 @@ export default async function ContractorsPage({
                     ) : "—"}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {contractor.workingAt || "—"}
+                    {contractor.workingAt ||
+                      (contractor.lastJob ? (
+                        <span className="italic text-gray-400">Last: {contractor.lastJob}</span>
+                      ) : "—")}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <Link href={`/compliance?search=${encodeURIComponent(contractor.firstName + " " + contractor.lastName)}`}>

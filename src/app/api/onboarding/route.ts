@@ -237,7 +237,7 @@ export async function POST(request: Request) {
         <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;">
           <!-- Header -->
           <div style="background:#005f8c;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0;">
-            <h1 style="margin:0;font-size:20px;">New Supply Agreement Submitted</h1>
+            <h1 style="margin:0;font-size:20px;">New Subcontractor Agreement Submitted</h1>
             <p style="margin:4px 0 0;font-size:13px;opacity:0.9;">PRL Site Solutions — Onboarding</p>
           </div>
 
@@ -346,7 +346,7 @@ export async function POST(request: Request) {
       // A failed send must not fail the submission — the agreement is already saved
       const emailResult = await sendEmail({
         to: ONBOARDING_RECIPIENTS,
-        subject: `${softMatches.length ? "New Supply Agreement [POSSIBLE DUPLICATE]" : "New Supply Agreement"}: ${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
+        subject: `${softMatches.length ? "New Subcontractor Agreement [POSSIBLE DUPLICATE]" : "New Subcontractor Agreement"}: ${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
         html: emailHtml,
         template: "supply-agreement-submitted",
       });
@@ -364,13 +364,13 @@ export async function POST(request: Request) {
       const confirmationHtml = `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
           <div style="background:#005f8c;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0;">
-            <h1 style="margin:0;font-size:20px;">Supply Agreement Received</h1>
+            <h1 style="margin:0;font-size:20px;">Subcontractor Agreement Received</h1>
             <p style="margin:4px 0 0;font-size:13px;opacity:0.9;">PRL Site Solutions — Recruitment Specialists</p>
           </div>
           <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
             <p style="font-size:14px;color:#333;">Hi ${escapeHtml(contactName)},</p>
             <p style="font-size:14px;color:#333;">
-              Thank you for submitting a supply agreement for <strong>${escapeHtml(companyName)}</strong>.
+              Thank you for submitting a subcontractor agreement for <strong>${escapeHtml(companyName)}</strong>.
               We've received it and it's now with our team for review.
             </p>
             <p style="font-size:14px;color:#333;">
@@ -391,7 +391,7 @@ export async function POST(request: Request) {
 
       const confirmationResult = await sendEmail({
         to: contactEmail,
-        subject: "We've received your supply agreement — PRL Site Solutions",
+        subject: "We've received your subcontractor agreement — PRL Site Solutions",
         html: confirmationHtml,
         template: "supply-agreement-confirmation",
         replyTo: ONBOARDING_REPLY_TO,
@@ -407,7 +407,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       id: agreement.id,
-      message: "Supply agreement submitted successfully",
+      message: "Subcontractor agreement submitted successfully",
     });
   } catch (error) {
     console.error("Onboarding submission error:", error);

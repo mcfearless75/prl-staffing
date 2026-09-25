@@ -14,13 +14,19 @@ export function PWARegister() {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Only register SW and prompt on portal pages
-    if (!pathname.startsWith("/portal")) return;
+    const isPortal = pathname.startsWith("/portal");
+    const isInstall = pathname === "/install";
+    if (!isPortal && !isInstall) return;
 
-    // Register service worker
+    // Register service worker. /install gets it too so Chrome can offer
+    // "Install app" there.
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(console.error);
     }
+
+    // /install is public and signed-out: no push prompt, and leave Chrome's
+    // own install prompt alone because installing is the point of the page.
+    if (!isPortal) return;
 
     // Subscribe to push notifications
     subscribeToPush();

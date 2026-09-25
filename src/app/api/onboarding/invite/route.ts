@@ -98,9 +98,9 @@ export async function POST(request: Request) {
 
   // contactName/contactEmail/contactPhone are the client's SITE contact, not
   // the subcontractor. The subcontractor is personName, reached at sendToEmail.
-  if (!personName?.trim() || !companyName || !contactName || !contactPhone?.trim() || !sendToEmail) {
+  if (!personName?.trim() || !supplyOf?.trim() || !companyName || !contactName || !contactPhone?.trim() || !sendToEmail) {
     return NextResponse.json(
-      { error: "Person name, company name, site contact name, contact phone and the subcontractor's email are required" },
+      { error: "Person name, job role, company name, site contact name, contact phone and the subcontractor's email are required" },
       { status: 400 }
     );
   }

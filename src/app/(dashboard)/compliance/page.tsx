@@ -24,16 +24,21 @@ import { ChaseEmailButton } from "./chase-email-button";
 import { ExpiryAlertButton } from "./expiry-alert-button";
 import { ComplianceTypeRows } from "./compliance-type-rows";
 import { COMPLIANCE_CATEGORIES, categoryForType } from "@/lib/compliance-types";
+import { CompliancePeopleList, inTileGroup, type PeopleGroupKey } from "./compliance-people-list";
 
 export default async function CompliancePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ search?: string; status?: string; type?: string }>;
+  searchParams?: Promise<{ search?: string; status?: string; type?: string; group?: string }>;
 }) {
   const params = await searchParams;
   const search = params?.search || "";
   const status = params?.status || "";
   const type = params?.type || "";
+  // A summary tile's people list (see compliance-people-list.tsx).
+  const groupKey = (["compliant", "expiring", "action", "pending"] as const).find((g) => g === params?.group) as
+    | PeopleGroupKey
+    | undefined;
 
   const where: Record<string, unknown> = {};
 
@@ -148,6 +153,22 @@ export default async function CompliancePage({
   const pendingReview = complianceStats.pendingReview;
 
   const noRecords = complianceStats.noRecords;
+
+  const groupPeople = groupKey ? complianceStats.people.filter((p) => inTileGroup(p, groupKey)) : [];
+  const groupNames = groupPeople.length
+    ? await prisma.contractor.findMany({
+        where: { id: { in: groupPeople.map((p) => p.contractorId) } },
+        select: { id: true, firstName: true, lastName: true },
+      })
+    : [];
+  const nameById = new Map(groupNames.map((c) => [c.id, c]));
+  const groupRows = groupPeople
+    .map((p) => ({ ...p, firstName: nameById.get(p.contractorId)?.firstName ?? "", lastName: nameById.get(p.contractorId)?.lastName ?? "" }))
+    .sort((a, b) => a.firstName.localeCompare(b.firstName) || a.lastName.localeCompare(b.lastName));
+  const tileRing = (key: PeopleGroupKey) => (groupKey === key ? " ring-2 ring-offset-1 ring-current" : "");
+
+  // Gaps panel: one row per person per document, so label it as such.
+  const gapPeople = new Set(criticalGaps.map((g) => g.contractorId)).size;
   const riskScore = complianceStats.score;
   // Whole-book number kept as a secondary audit stat (includes anyone not
   // currently assigned, e.g. between placements).
@@ -344,29 +365,29 @@ export default async function CompliancePage({
             Each card links to the matching filtered list below. */}
         <div className="grid grid-cols-5 gap-3 mb-2">
           <Link
-            href="/compliance?status=Verified"
-            className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center transition-shadow hover:shadow-md"
+            href="/compliance?group=compliant#people"
+            className={`rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center transition-shadow hover:shadow-md${tileRing("compliant")}`}
           >
             <p className="text-3xl font-bold text-emerald-700">{fullyCompliant}</p>
             <p className="text-xs font-medium text-emerald-600 mt-1">Fully Compliant</p>
           </Link>
           <Link
-            href="/compliance?status=Expiring"
-            className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-center transition-shadow hover:shadow-md"
+            href="/compliance?group=expiring#people"
+            className={`rounded-xl bg-amber-50 border border-amber-200 p-4 text-center transition-shadow hover:shadow-md${tileRing("expiring")}`}
           >
             <p className="text-3xl font-bold text-amber-700">{contractorExpiring}</p>
             <p className="text-xs font-medium text-amber-600 mt-1">Expiring Soon</p>
           </Link>
           <Link
-            href="/compliance?status=ActionRequired"
-            className="rounded-xl bg-red-50 border border-red-200 p-4 text-center transition-shadow hover:shadow-md"
+            href="/compliance?group=action#people"
+            className={`rounded-xl bg-red-50 border border-red-200 p-4 text-center transition-shadow hover:shadow-md${tileRing("action")}`}
           >
             <p className="text-3xl font-bold text-red-700">{actionRequired}</p>
             <p className="text-xs font-medium text-red-600 mt-1">Action Required</p>
           </Link>
           <Link
-            href="/compliance?status=Pending"
-            className="rounded-xl bg-blue-50 border border-blue-200 p-4 text-center transition-shadow hover:shadow-md"
+            href="/compliance?group=pending#people"
+            className={`rounded-xl bg-blue-50 border border-blue-200 p-4 text-center transition-shadow hover:shadow-md${tileRing("pending")}`}
           >
             <p className="text-3xl font-bold text-blue-700">{pendingReview}</p>
             <p className="text-xs font-medium text-blue-600 mt-1">Pending Review</p>
@@ -391,6 +412,12 @@ export default async function CompliancePage({
             on the books, excluding dormant &amp; leavers ({totalContractors} subcontractors): {wholeWorkforceScore}%
           </p>
         </div>
+
+        {groupKey && (
+          <div className="mb-6">
+            <CompliancePeopleList groupKey={groupKey} rows={groupRows} />
+          </div>
+        )}
 
         {/* Per-Type Progress Bars — rows with chase lists expand to show who to chase */}
         {typeBreakdown.length > 0 ? (
@@ -420,14 +447,14 @@ export default async function CompliancePage({
           <div className="flex items-center gap-3 mb-4">
             <AlertTriangle className="h-5 w-5 text-red-600" />
             <h2 className="text-lg font-semibold text-red-900">
-              Compliance Gaps ({criticalGaps.length})
+              Compliance Gaps
             </h2>
             <span className="text-sm text-red-600">
-              Contractors missing mandatory requirements
+              {criticalGaps.length} missing or expired documents across {gapPeople} people (one row per document)
             </span>
           </div>
-          <div className="space-y-2">
-            {criticalGaps.slice(0, 10).map((gap, i) => (
+          <div className="max-h-[32rem] space-y-2 overflow-y-auto pr-1">
+            {criticalGaps.map((gap, i) => (
               <div
                 key={`${gap.contractorId}-${gap.requiredType}-${i}`}
                 className="flex items-center justify-between rounded-lg border border-red-200 bg-white px-4 py-3"
@@ -455,6 +482,7 @@ export default async function CompliancePage({
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-gray-700">
                     {gap.requiredType}
+                    {!gap.isMandatory && <span className="ml-1 text-xs font-normal text-gray-400">(optional)</span>}
                   </span>
                   <Badge
                     variant={
@@ -472,11 +500,6 @@ export default async function CompliancePage({
                 </div>
               </div>
             ))}
-            {criticalGaps.length > 10 && (
-              <p className="text-center text-sm text-red-600 pt-2">
-                + {criticalGaps.length - 10} more gaps
-              </p>
-            )}
           </div>
         </div>
       )}

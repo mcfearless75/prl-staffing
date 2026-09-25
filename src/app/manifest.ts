@@ -5,7 +5,13 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "PRISM — PRL Site Solutions",
     short_name: "PRISM",
     description: "Workforce Intelligence & Compliance Platform",
+    // /login routes each user on: contractors to /portal, staff to /, and
+    // signed-out users stay put. It is also the start_url existing installs
+    // were made with, so keeping it preserves their app identity.
     start_url: "/login",
+    scope: "/",
+    lang: "en-GB",
+    dir: "ltr",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#005f8c",

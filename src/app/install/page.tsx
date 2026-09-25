@@ -67,15 +67,15 @@ export default function InstallPage() {
             </li>
             <li className="flex items-start gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-600 text-white text-xs font-bold mt-0.5">2</span>
-              <p className="text-sm text-gray-700 leading-relaxed">Tap the <strong>three dots ⋮</strong> menu in the top-right corner</p>
+              <p className="text-sm text-gray-700 leading-relaxed">Tap the <strong>three dots ⋮</strong> menu (top right)</p>
             </li>
             <li className="flex items-start gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-600 text-white text-xs font-bold mt-0.5">3</span>
-              <p className="text-sm text-gray-700 leading-relaxed">Tap <strong>&quot;Add to Home screen&quot;</strong></p>
+              <p className="text-sm text-gray-700 leading-relaxed">Tap <strong>&quot;Install app&quot;</strong> (on some phones it says <strong>&quot;Add to Home screen&quot;</strong>)</p>
             </li>
             <li className="flex items-start gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-600 text-white text-xs font-bold mt-0.5">4</span>
-              <p className="text-sm text-gray-700 leading-relaxed">Tap <strong>Add</strong> — PRISM will appear on your home screen</p>
+              <p className="text-sm text-gray-700 leading-relaxed">Tap <strong>Install</strong> to confirm — PRISM appears on your home screen</p>
             </li>
           </ol>
         </div>

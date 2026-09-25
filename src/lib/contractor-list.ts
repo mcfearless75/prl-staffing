@@ -12,15 +12,17 @@ export interface TitleSources {
   jobTitle: string | null;
   profileJobRoles: string[];
   liveAssignmentRole: string | null;
+  /** Role on their most recent ended job, so Inactive people aren't blank. */
+  lastAssignmentRole?: string | null;
 }
 
-/** First non-blank of: jobTitle, profile Job Roles, current assignment role. */
+/** First non-blank of: jobTitle, profile Job Roles, current job's role, last job's role. */
 export function effectiveJobTitle(s: TitleSources): string {
   const title = s.jobTitle?.trim();
   if (title) return title;
   const roles = s.profileJobRoles.map((r) => r.trim()).filter(Boolean);
   if (roles.length) return roles.join(", ");
-  return s.liveAssignmentRole?.trim() || "";
+  return s.liveAssignmentRole?.trim() || s.lastAssignmentRole?.trim() || "";
 }
 
 /**

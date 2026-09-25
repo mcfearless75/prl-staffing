@@ -121,7 +121,7 @@ export default function OnboardingPage() {
             </div>
             <h1 className="text-xl font-bold text-prism-ink mb-2">Agreement Submitted!</h1>
             <p className="text-sm text-gray-600 mb-4">
-              Thank you, {contactName}. Your supply agreement has been submitted to PRL Site Solutions for review.
+              Thank you, {contactName}. Your subcontractor agreement has been submitted to PRL Site Solutions for review.
             </p>
             <p className="text-xs text-gray-500">
               We&apos;ll be in touch shortly. If you have any questions, call us on <strong>0800 772 3959</strong> or email <strong>info@prlsitesolutions.co.uk</strong>.
@@ -133,7 +133,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <PublicFormShell title="Supply Agreement">
+    <PublicFormShell title="Subcontractor Agreement">
       <div className="mx-auto max-w-3xl px-4 py-6">
         {/* Intro */}
         <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4">

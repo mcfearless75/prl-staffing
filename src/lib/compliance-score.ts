@@ -46,6 +46,23 @@ export type ComplianceScore = {
   score: number;
   /** False when no requirements exist at all — the score cannot mean anything. */
   requirementsConfigured: boolean;
+  /**
+   * The names behind the counts: one entry per person, in exactly one group.
+   * The /compliance tiles list these, so a tile's list always matches its
+   * number (they used to list document rows, which can't show a MISSING doc).
+   */
+  people: CompliancePerson[];
+};
+
+export type ComplianceGroup = "compliant" | "actionRequired" | "noRequirements" | "expiring" | "pending";
+
+export type CompliancePerson = {
+  contractorId: string;
+  group: ComplianceGroup;
+  /** Required documents that are not Verified; a missing one has status "Missing". */
+  issues: { type: string; status: string }[];
+  /** The role the checklist was resolved from, for display. */
+  role: string | null;
 };
 
 const ACTIVE_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
@@ -108,6 +125,7 @@ export function summariseCompliance(
     hasRole: boolean;
     required: string[];
     optionalCount: number;
+    role: string | null;
   };
   const byContractor = new Map<string, Row>();
 
@@ -123,8 +141,10 @@ export function summariseCompliance(
       hasRole: Boolean(resolved.canonical),
       required: checklist.filter((c) => c.isMandatory).map((c) => c.type),
       optionalCount: checklist.filter((c) => !c.isMandatory).length,
+      role: a.role?.trim() || a.contractor.jobTitle?.trim() || null,
     });
   }
+  const people: CompliancePerson[] = [];
 
   let fullyCompliant = 0;
   let actionRequired = 0;
@@ -134,7 +154,7 @@ export function summariseCompliance(
   let noRequirements = 0;
   let unknownRole = 0;
 
-  for (const row of byContractor.values()) {
+  for (const [contractorId, row] of byContractor) {
     if (!row.hasRole) unknownRole++;
     if (row.records.length === 0) noRecords++;
 
@@ -143,21 +163,31 @@ export function summariseCompliance(
       // as not-compliant and reported separately rather than silently scoring as
       // a pass — an unconfigured role must not look like a clean bill of health.
       noRequirements++;
+      people.push({ contractorId, group: "noRequirements", issues: [], role: row.role });
       continue;
     }
 
     const statusByType = new Map(row.records.map((r) => [r.type, r.status]));
     const statuses = row.required.map((t) => statusByType.get(t) ?? "Missing");
+    const issues = row.required
+      .map((type, i) => ({ type, status: statuses[i] }))
+      .filter((x) => x.status !== "Verified");
 
+    let group: ComplianceGroup;
     if (statuses.every((s) => s === "Verified")) {
       fullyCompliant++;
+      group = "compliant";
     } else if (statuses.some((s) => s === "Missing" || s === "Expired" || s === "Non-Compliant")) {
       actionRequired++;
+      group = "actionRequired";
     } else if (statuses.some((s) => s === "Expiring")) {
       expiring++;
+      group = "expiring";
     } else {
       pendingReview++;
+      group = "pending";
     }
+    people.push({ contractorId, group, issues, role: row.role });
   }
 
   const assignedTotal = byContractor.size;
@@ -173,5 +203,6 @@ export function summariseCompliance(
     unknownRole,
     score: assignedTotal > 0 ? Math.round((fullyCompliant / assignedTotal) * 100) : 0,
     requirementsConfigured: matcher.configured,
+    people,
   };
 }

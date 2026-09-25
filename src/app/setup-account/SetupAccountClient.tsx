@@ -295,6 +295,7 @@ export default function SetupAccountClient() {
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 pr-10 text-base sm:text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="At least 10 characters"
                 autoComplete="new-password"
+                aria-describedby="password-rule"
               />
               <button
                 type="button"
@@ -314,6 +315,12 @@ export default function SetupAccountClient() {
                 )}
               </button>
             </div>
+            <p
+              id="password-rule"
+              className={`mt-1 text-xs ${password.length >= 10 ? "text-emerald-600" : "text-gray-500"}`}
+            >
+              {password.length >= 10 ? "✓ " : ""}At least 10 characters.
+            </p>
           </div>
 
           <div>

@@ -213,7 +213,7 @@ export default async function OnboardingSubmissionsPage({
       {/* Public Form Link */}
       <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
         <p className="text-sm text-blue-800">
-          <strong>Share this link with new contractors/suppliers:</strong>
+          <strong>Share this link with new subcontractors:</strong>
         </p>
         <code className="mt-1 block text-sm text-blue-600 bg-white rounded px-3 py-2 border border-blue-200">
           {process.env.NEXTAUTH_URL || "https://prl-staffing-production.up.railway.app"}/onboarding

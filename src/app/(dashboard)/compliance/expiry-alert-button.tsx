@@ -7,6 +7,7 @@ type State = "idle" | "loading" | "done" | "error";
 
 interface Summary {
   sent: number;
+  skipped: number;
   failed: number;
   total: number;
   expiringRecords: number;
@@ -18,6 +19,13 @@ export function ExpiryAlertButton() {
   const [errorMsg, setErrorMsg] = useState<string>("");
 
   async function handleClick() {
+    const ok = window.confirm(
+      "Email every worker with a compliance document expiring in the next 30 days?\n\n" +
+        "Leavers and inactive workers are excluded, and anyone already emailed about " +
+        "their documents today is skipped."
+    );
+    if (!ok) return;
+
     setState("loading");
     setSummary(null);
     setErrorMsg("");
@@ -73,9 +81,9 @@ export function ExpiryAlertButton() {
             <p className="font-medium">Expiry alerts sent</p>
             <p className="mt-0.5">
               {summary.sent} email{summary.sent !== 1 ? "s" : ""} sent to contractors with expiring documents.
-              {summary.failed > 0 && (
-                <span className="ml-1 text-amber-700">({summary.failed} failed)</span>
-              )}
+            </p>
+            <p className="mt-0.5">
+              {summary.skipped} skipped (already emailed today) &middot; {summary.failed} failed
             </p>
             <button
               onClick={() => window.location.reload()}

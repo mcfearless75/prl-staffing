@@ -205,13 +205,13 @@ async function sendRejectionEmail(email: string, name: string, companyName: stri
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
       <div style="background:#005f8c;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0;">
-        <h1 style="margin:0;font-size:20px;">Your Supply Agreement</h1>
+        <h1 style="margin:0;font-size:20px;">Your Subcontractor Agreement</h1>
         <p style="margin:4px 0 0;font-size:13px;opacity:0.9;">PRL Site Solutions — Recruitment Specialists</p>
       </div>
       <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
         <p style="font-size:14px;color:#333;">Hi ${escapeHtml(name.split(" ")[0] || "there")},</p>
         <p style="font-size:14px;color:#333;">
-          Thank you for submitting a supply agreement for <strong>${escapeHtml(companyName)}</strong>.
+          Thank you for submitting a subcontractor agreement for <strong>${escapeHtml(companyName)}</strong>.
           We've reviewed it and unfortunately we're unable to take it forward at this time.
         </p>
         <p style="font-size:14px;color:#333;">
@@ -232,7 +232,7 @@ async function sendRejectionEmail(email: string, name: string, companyName: stri
   try {
     const result = await sendEmail({
       to: email,
-      subject: "Your supply agreement — PRL Site Solutions",
+      subject: "Your subcontractor agreement — PRL Site Solutions",
       html,
       template: "supply-agreement-rejected",
       replyTo: ONBOARDING_REPLY_TO,

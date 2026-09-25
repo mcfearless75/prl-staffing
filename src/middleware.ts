@@ -102,7 +102,7 @@ export default auth((req) => {
 export const config = {
   matcher: [
     // All non-API, non-static routes (existing auth guard)
-    "/((?!api/|_next/static|_next/image|favicon.ico|manifest\\.json|sw\\.js|.*\\.(?:png|jpg|jpeg|svg|ico|webp|json)$).*)",
+    "/((?!api/|_next/static|_next/image|favicon.ico|manifest\\.webmanifest|sw\\.js|.*\\.(?:png|jpg|jpeg|svg|ico|webp|json)$).*)",
     // Specific API routes that need rate limiting
     "/api/admin/:path*",
     "/api/compliance/upload-doc",

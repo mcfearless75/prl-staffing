@@ -44,3 +44,15 @@ test("ties fall back to surname and the input is not mutated", () => {
   assert.deepEqual(sortContractorRows(rows, "status", "desc").map((r) => r.lastName), ["Abb", "Zed"]);
   assert.equal(rows[0].lastName, "Zed");
 });
+
+test("an inactive person falls back to the role from their last job", () => {
+  assert.equal(
+    effectiveJobTitle({ jobTitle: null, profileJobRoles: [], liveAssignmentRole: null, lastAssignmentRole: "Labourer" }),
+    "Labourer"
+  );
+  // A live job still wins over a past one.
+  assert.equal(
+    effectiveJobTitle({ jobTitle: null, profileJobRoles: [], liveAssignmentRole: "Banksman", lastAssignmentRole: "Labourer" }),
+    "Banksman"
+  );
+});

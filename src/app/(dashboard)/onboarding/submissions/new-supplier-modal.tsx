@@ -80,6 +80,7 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
   // The first problem with a step's required fields, or "" when it is complete.
   function problemIn(s: number): string {
     if (s === 1 && !personName.trim()) return "Person Name is required.";
+    if (s === 1 && !supplyOf.trim()) return "Job Role is required.";
     if (s === 2) {
       if (!companyName.trim()) return "Company Name is required.";
       if (!contactName.trim()) return "Site Contact Name is required.";
@@ -224,7 +225,7 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
                 <h3 className="text-base font-semibold text-gray-900 mb-4">Job Details</h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className={LABEL}>Job Role</label>
+                    <label className={LABEL}>Job Role *</label>
                     <input
                       type="text"
                       value={supplyOf}

@@ -261,3 +261,52 @@ describe("the score itself", () => {
     assert.equal(score.score, 100);
   });
 });
+
+describe("people: the names behind each count", () => {
+  // The /compliance tiles used to count PEOPLE but list document ROWS, so
+  // "134 Action required" opened a list that never matched: missing documents
+  // have no row, and people with no requirements configured have none either.
+  // Each tile now lists `people`, which must agree with the counts.
+  const matcher = requires(["CSCS", "Passport"]);
+  const score = summariseCompliance(
+    [
+      assignment("ok", { records: [verified("CSCS"), verified("Passport")] }),
+      assignment("missing", { records: [verified("CSCS")] }),
+      assignment("expired", { records: [verified("CSCS"), { type: "Passport", status: "Expired" }] }),
+      assignment("expiring", { records: [verified("CSCS"), { type: "Passport", status: "Expiring" }] }),
+      assignment("pending", { records: [verified("CSCS"), { type: "Passport", status: "Pending" }] }),
+      assignment("pending", { records: [] }), // second row for the same person is ignored
+    ],
+    matcher
+  );
+  const inGroup = (g: string) => score.people.filter((p) => p.group === g).map((p) => p.contractorId);
+
+  test("every person appears exactly once", () => {
+    assert.equal(score.people.length, score.assignedTotal);
+    assert.equal(new Set(score.people.map((p) => p.contractorId)).size, score.people.length);
+  });
+
+  test("each group's list matches its count", () => {
+    assert.equal(inGroup("compliant").length, score.fullyCompliant);
+    assert.equal(inGroup("actionRequired").length, score.actionRequired);
+    assert.equal(inGroup("expiring").length, score.expiring);
+    assert.equal(inGroup("pending").length, score.pendingReview);
+    assert.equal(inGroup("noRequirements").length, score.noRequirements);
+  });
+
+  test("a missing document is listed as an issue even though it has no record", () => {
+    const p = score.people.find((x) => x.contractorId === "missing")!;
+    assert.equal(p.group, "actionRequired");
+    assert.deepEqual(p.issues, [{ type: "Passport", status: "Missing" }]);
+  });
+
+  test("issues are only the required documents that are not Verified", () => {
+    assert.deepEqual(score.people.find((x) => x.contractorId === "ok")!.issues, []);
+    assert.deepEqual(score.people.find((x) => x.contractorId === "expired")!.issues, [{ type: "Passport", status: "Expired" }]);
+  });
+
+  test("people with nothing required are their own group, not dropped", () => {
+    const s = summariseCompliance([assignment("a")], requiresNothing);
+    assert.deepEqual(s.people.map((p) => p.group), ["noRequirements"]);
+  });
+});

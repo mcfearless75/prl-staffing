@@ -199,7 +199,7 @@ function getInstructionEmail(baseUrl: string): string {
       <h3 style="color:#334155;margin:0 0 8px;font-size:14px;">📱 Add to Your Phone Home Screen</h3>
       <p style="color:#555;font-size:12px;line-height:1.6;margin:0;">
         <strong>iPhone:</strong> Open the login link in Safari → tap the Share button (⬆️) → tap "Add to Home Screen"<br>
-        <strong>Android:</strong> Open the login link in Chrome → tap the three dots (⋮) → tap "Add to Home Screen"<br>
+        <strong>Android:</strong> Open the login link in Chrome → tap the three dots menu (⋮, top right) → tap "Install app" (on some phones it says "Add to Home screen") → tap "Install" to confirm<br>
         This creates an app icon so you can access the portal like a normal app!
       </p>
     </div>

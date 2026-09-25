@@ -14,9 +14,11 @@ import {
   Landmark,
   Users2,
   FileStack,
+  PhoneOff,
 } from "lucide-react";
 import { getRedeploymentReport } from "@/app/api/reports/_lib/redeployment";
 import { getReconciliationReport } from "@/app/api/reports/_lib/reconciliation";
+import { getMissingEmergencyContactsReport } from "@/app/api/reports/_lib/missing-emergency-contacts";
 
 interface ReportTile {
   title: string;
@@ -32,9 +34,10 @@ interface ReportTile {
 }
 
 export default async function ReportsHubPage() {
-  const [redeploymentRows, reconciliationRows] = await Promise.all([
+  const [redeploymentRows, reconciliationRows, emergencyContactRows] = await Promise.all([
     getRedeploymentReport(),
     getReconciliationReport(),
+    getMissingEmergencyContactsReport(),
   ]);
 
   const flaggedInvoices = reconciliationRows.filter((r) => r.flag === "Unreconciled").length;
@@ -124,6 +127,17 @@ export default async function ReportsHubPage() {
       iconBg: "bg-rose-100",
       count: flaggedInvoices,
       countLabel: "invoices flagged",
+    },
+    {
+      title: "Missing Emergency Contacts",
+      description: "People not Left or Inactive with no emergency contact name or phone — on-site workers first.",
+      href: "/reports/emergency-contacts",
+      actionLabel: "Open",
+      icon: PhoneOff,
+      color: "bg-red-50 text-red-600 border-red-200",
+      iconBg: "bg-red-100",
+      count: emergencyContactRows.length,
+      countLabel: "people missing a contact",
     },
     {
       title: "QMS Reports",

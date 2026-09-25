@@ -296,23 +296,23 @@ export default async function DashboardPage({
           )}
         </div>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
+          <Link href="/compliance?group=compliant#people" className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800 hover:bg-green-200 transition-colors">
             <span className="h-2 w-2 rounded-full bg-green-500" />
             Fully Compliant: {displayFullyCompliant}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
+          </Link>
+          <Link href="/compliance?group=pending#people" className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800 hover:bg-blue-200 transition-colors">
             <span className="h-2 w-2 rounded-full bg-blue-500" />
             Pending: {displayPending}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
+          </Link>
+          <Link href="/compliance?group=action#people" className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800 hover:bg-red-200 transition-colors">
             <span className="h-2 w-2 rounded-full bg-red-500" />
             Action Required: {displayActionRequired}
-          </span>
+          </Link>
           {displayNoRecords > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+            <Link href="/compliance#no-records" className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 transition-colors">
               <span className="h-2 w-2 rounded-full bg-gray-400" />
               No Records: {displayNoRecords}
-            </span>
+            </Link>
           )}
         </div>
         {displayPending > 0 && (
