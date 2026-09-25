@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
+import { portalFeatureEnabled } from "@/lib/portal-features";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
         <div style="background: #fff; padding: 30px 24px; border: 1px solid #e5e7eb; border-top: none;">
           <h2 style="color: #1f2937; margin: 0 0 8px; font-size: 20px;">Hi ${name},</h2>
           <p style="color: #6b7280; line-height: 1.6; margin: 0 0 20px; font-size: 14px;">
-            Welcome to PRISM — your contractor portal from PRL Site Solutions. You can now manage your timesheets, upload compliance documents, and track your assignments all from your phone or computer.
+            Welcome to PRISM — your contractor portal from PRL Site Solutions. You can now ${portalFeatureEnabled("timesheets") ? "manage your timesheets, " : ""}upload compliance documents, and track your assignments all from your phone or computer.
           </p>
 
           <!-- Install App Button -->
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
           <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px; margin: 20px 0;">
             <p style="color: #0369a1; font-size: 13px; font-weight: 600; margin: 0 0 8px;">What you can do with PRISM:</p>
             <ul style="color: #374151; font-size: 13px; padding-left: 20px; margin: 0; line-height: 1.8;">
-              <li>Submit your weekly timesheets</li>
+              ${portalFeatureEnabled("timesheets") ? "<li>Submit your weekly timesheets</li>" : ""}
               <li>Upload compliance documents (CSCS, DBS, passport, certs)</li>
               <li>Take photos of cards/certificates with your phone camera</li>
               <li>Track your assignment status</li>

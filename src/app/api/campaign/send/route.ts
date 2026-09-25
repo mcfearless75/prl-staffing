@@ -155,7 +155,7 @@ function buildResendEmailHtml(
       </div>
 
       <p style="color:#4b5563;font-size:14px;line-height:1.7;margin:0 0 20px;">
-        This is a reminder to set up your account on <strong>PRISM</strong> — PRL Site Solutions' contractor management portal. It's the easiest way to manage your timesheets, payslips, and assignment details.
+        This is a reminder to set up your account on <strong>PRISM</strong> — PRL Site Solutions' contractor management portal. It's the easiest way to keep your compliance documents, profile and assignment details up to date.
       </p>
 
       <!-- Already set up? -->

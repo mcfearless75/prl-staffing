@@ -7,6 +7,7 @@ import Link from "next/link";
 import { StatusBadge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { ShieldCheck, FileUp, User, Plus, ChevronRight, Smartphone, MessageSquare } from "lucide-react";
+import { portalFeatureEnabled } from "@/lib/portal-features";
 
 export default async function PortalDashboard() {
   const session = await auth();
@@ -33,6 +34,9 @@ export default async function PortalDashboard() {
   });
 
   if (!contractor) redirect("/login");
+
+  // Timesheets are a hidden future feature (portal-features.ts).
+  const showTimesheets = portalFeatureEnabled("timesheets");
 
   const pendingTimesheets = contractor.timesheets.filter((t) => t.status === "Draft").length;
   const approvedTimesheets = contractor.timesheets.filter((t) => t.status === "Approved").length;
@@ -96,6 +100,7 @@ export default async function PortalDashboard() {
 
       {/* Quick Action Buttons */}
       <div className="grid grid-cols-2 gap-3">
+        {showTimesheets && (
         <Link
           href="/portal/timesheets/new"
           className="flex items-center gap-3 min-h-[44px] rounded-lg border-2 border-prism-ink/20 bg-prism-ink/5 p-4 hover:bg-prism-ink/10 transition-colors"
@@ -108,6 +113,7 @@ export default async function PortalDashboard() {
             <p className="text-[10px] text-prism-ink-muted">Submit your hours</p>
           </div>
         </Link>
+        )}
         <Link
           href="/portal/documents"
           className="flex items-center gap-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 p-4 hover:bg-emerald-100 transition-colors"
@@ -148,7 +154,7 @@ export default async function PortalDashboard() {
           href={`mailto:info@prlsitesolutions.co.uk?subject=${encodeURIComponent(
             `Pay Query — ${contractor.firstName} ${contractor.lastName}`
           )}`}
-          className="col-span-2 flex items-center gap-3 rounded-xl border-2 border-amber-200 bg-amber-50 p-4 hover:bg-amber-100 transition-colors"
+          className={`${showTimesheets ? "col-span-2 " : ""}flex items-center gap-3 rounded-xl border-2 border-amber-200 bg-amber-50 p-4 hover:bg-amber-100 transition-colors`}
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white">
             <MessageSquare className="h-5 w-5" />
@@ -161,7 +167,9 @@ export default async function PortalDashboard() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className={`grid ${showTimesheets ? "grid-cols-3" : "grid-cols-1"} gap-3`}>
+        {showTimesheets && (
+        <>
         <div className="rounded-lg border border-prism-line bg-prism-paper p-4 text-center">
           <p className="text-2xl font-bold text-prism-info">{pendingTimesheets}</p>
           <p className="text-[10px] text-prism-ink-muted mt-1">Draft Timesheets</p>
@@ -170,6 +178,8 @@ export default async function PortalDashboard() {
           <p className="text-2xl font-bold text-prism-ok">{approvedTimesheets}</p>
           <p className="text-[10px] text-prism-ink-muted mt-1">Approved</p>
         </div>
+        </>
+        )}
         <div className="rounded-lg border border-prism-line bg-prism-paper p-4 text-center">
           <p className={`text-2xl font-bold ${expiringCompliance > 0 ? "text-prism-bad" : "text-prism-ink-muted"}`}>
             {expiringCompliance}
@@ -202,6 +212,7 @@ export default async function PortalDashboard() {
       </div>
 
       {/* Recent Timesheets */}
+      {showTimesheets && (
       <div className="rounded-xl border border-gray-200 bg-white">
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-gray-900">Recent Timesheets</h2>
@@ -234,6 +245,7 @@ export default async function PortalDashboard() {
           )}
         </div>
       </div>
+      )}
 
       {/* Compliance Alerts */}
       {expiringCompliance > 0 && (

@@ -6,16 +6,19 @@ import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Clock, ShieldCheck, FileUp, LogOut, User, MessageSquare, Receipt, CalendarDays } from "lucide-react";
 import { useEffect } from "react";
+import { portalFeatureEnabled, type PortalFeature } from "@/lib/portal-features";
 
-const portalNav = [
+const allPortalNav: Array<{ name: string; href: string; icon: typeof LayoutDashboard; feature?: PortalFeature }> = [
   { name: "Home", href: "/portal", icon: LayoutDashboard },
-  { name: "Timesheets", href: "/portal/timesheets", icon: Clock },
-  { name: "Expenses", href: "/portal/expenses", icon: Receipt },
-  { name: "Holiday", href: "/portal/holiday", icon: CalendarDays },
+  { name: "Timesheets", href: "/portal/timesheets", icon: Clock, feature: "timesheets" },
+  { name: "Expenses", href: "/portal/expenses", icon: Receipt, feature: "expenses" },
+  { name: "Holiday", href: "/portal/holiday", icon: CalendarDays, feature: "holiday" },
   { name: "Documents", href: "/portal/documents", icon: FileUp },
   { name: "Compliance", href: "/portal/compliance", icon: ShieldCheck },
   { name: "Profile", href: "/portal/profile", icon: User },
 ];
+// Hidden features (see portal-features.ts) drop out of the bar entirely.
+const portalNav = allPortalNav.filter((item) => !item.feature || portalFeatureEnabled(item.feature));
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -86,3 +86,8 @@ scripts/smoke-timesheets.mjs
 
 .vercel
 .env*
+
+# ruflo (claude-flow) runtime state. Never commit; also keeps Tailwind from
+# scanning its locked HNSW index, which crashes `next build` on Windows.
+.swarm/
+.claude-flow/
