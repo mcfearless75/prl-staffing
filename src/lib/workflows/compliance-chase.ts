@@ -1,5 +1,6 @@
 import { sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/db";
+import { isPlaceholderEmail } from "@/lib/placeholder-email";
 import { logAction, alreadyActedToday } from "./engine";
 import type { WorkflowResult } from "./engine";
 
@@ -93,6 +94,11 @@ export const complianceChaseAgent = {
     }
 
     for (const { contractor, docs } of byContractor.values()) {
+      // Imported without a real email; sending would only bounce back to PRL.
+      if (isPlaceholderEmail(contractor.email)) {
+        result.skipped++;
+        continue;
+      }
       const alreadySent = await alreadyActedToday("compliance-chase", contractor.id, "chase-email");
       if (alreadySent) {
         result.skipped++;

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { PLACEHOLDER_EMAIL_DOMAIN } from "@/lib/placeholder-email";
 import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 import { readFileSync } from "fs";
@@ -288,7 +289,7 @@ export async function GET(request: Request) {
         // Generate a unique email if none provided
         const email =
           c.email ||
-          `${firstName.toLowerCase()}.${lastName.toLowerCase().replace(/\s+/g, "")}@prl-placeholder.co.uk`;
+          `${firstName.toLowerCase()}.${lastName.toLowerCase().replace(/\s+/g, "")}@${PLACEHOLDER_EMAIL_DOMAIN}`;
 
         // Check if already exists
         const existing = await prisma.contractor.findUnique({

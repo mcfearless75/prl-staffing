@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { prisma } from "@/lib/db";
 import { getGraphConfig, sendViaGraph } from "@/lib/email-graph";
+import { isPlaceholderEmail } from "@/lib/placeholder-email";
 
 export const DEFAULT_EMAIL_FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
 
@@ -126,7 +127,15 @@ export async function sendEmail(opts: {
   replyTo?: string | string[];
   text?: string;
 }): Promise<SendEmailResult> {
-  const recipients = Array.isArray(opts.to) ? opts.to : [opts.to];
+  const requested = Array.isArray(opts.to) ? opts.to : [opts.to];
+  // Invented import addresses can never be delivered; sending to them only
+  // bounces back into the PRL mailbox. Drop them here so no sender can.
+  const recipients = requested.filter((r) => !isPlaceholderEmail(r));
+  if (recipients.length === 0) {
+    const error = "No real email address on file (placeholder address skipped)";
+    await logEmail({ to: requested.join(", "), subject: opts.subject, template: opts.template, status: "skipped", error });
+    return { success: false, error };
+  }
   const toLabel = recipients.join(", ");
 
   const graphConfig = getGraphConfig();
