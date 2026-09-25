@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { parseAssignmentRateFields } from "@/lib/assignment-rates";
+import { emailConfirmationError } from "@/lib/email-confirmation";
 import { activateContractorForAssignment } from "@/lib/contractor-status";
 
 type AssignResult = { type: "ok" | "moved" | "duplicate" | "error"; message: string } | null;
@@ -120,13 +121,14 @@ export type ContractorFormState = { error?: string };
 
 // Authoritative gate behind the form's confirm-email field — a direct POST
 // bypassing the browser could otherwise skip the client-side check entirely.
-function validateEmailConfirmation(formData: FormData): string | null {
-  const email = ((formData.get("email") as string) || "").trim().toLowerCase();
-  const confirmEmail = ((formData.get("confirmEmail") as string) || "").trim().toLowerCase();
-  if (email !== confirmEmail) {
-    return "Email and Confirm Email do not match. Please re-check and try again.";
-  }
-  return null;
+// `original` is the stored email (null when creating): an unchanged email on
+// edit needs no confirmation, so a role-only edit saves without retyping it.
+function validateEmailConfirmation(formData: FormData, original: string | null): string | null {
+  return emailConfirmationError(
+    original,
+    (formData.get("email") as string) || "",
+    (formData.get("confirmEmail") as string) || ""
+  );
 }
 
 function isUniqueEmailError(error: unknown): boolean {
@@ -190,7 +192,7 @@ export async function createContractor(
 ): Promise<ContractorFormState> {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  const confirmError = validateEmailConfirmation(formData);
+  const confirmError = validateEmailConfirmation(formData, null);
   if (confirmError) return { error: confirmError };
   try {
     const data = extractContractorData(formData);
@@ -266,7 +268,9 @@ export async function updateContractor(
 ): Promise<ContractorFormState> {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  const confirmError = validateEmailConfirmation(formData);
+  const existing = await prisma.contractor.findUnique({ where: { id }, select: { email: true } });
+  if (!existing) return { error: "Contractor not found." };
+  const confirmError = validateEmailConfirmation(formData, existing.email);
   if (confirmError) return { error: confirmError };
   try {
     const data = extractContractorData(formData);

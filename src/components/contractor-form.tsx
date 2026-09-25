@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { RolePicker } from "@/components/role-picker";
 import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
+import { needsEmailConfirmation } from "@/lib/email-confirmation";
 
 type ContractorFormState = { error?: string };
 
@@ -40,8 +41,11 @@ export function ContractorForm({
   // valid) has to be made twice in a row to slip through.
   const [email, setEmail] = useState(contractor?.email ?? "");
   const [confirmEmail, setConfirmEmail] = useState("");
+  // Only asked for on a new contractor or when the email is being changed;
+  // editing just a role must not need the existing address retyped.
+  const confirmNeeded = needsEmailConfirmation(contractor ? contractor.email ?? "" : null, email);
   const emailMismatch =
-    confirmEmail.length > 0 && email.trim().toLowerCase() !== confirmEmail.trim().toLowerCase();
+    confirmNeeded && confirmEmail.length > 0 && email.trim().toLowerCase() !== confirmEmail.trim().toLowerCase();
 
   return (
     <form action={formAction}>
@@ -107,7 +111,9 @@ export function ContractorForm({
             />
           </div>
 
-          {/* Confirm Email */}
+          {/* Confirm Email: not rendered at all when unchanged, so its
+              `required` can't block a role-only save */}
+          {confirmNeeded && (
           <div>
             <label
               htmlFor="confirmEmail"
@@ -135,6 +141,7 @@ export function ContractorForm({
               <p className="mt-1 text-xs text-red-600">Email addresses do not match.</p>
             )}
           </div>
+          )}
 
           {/* Personal / secondary email */}
           <div>
@@ -488,7 +495,7 @@ export function ContractorForm({
           </Link>
           <button
             type="submit"
-            disabled={pending || confirmEmail.trim() === "" || emailMismatch}
+            disabled={pending || (confirmNeeded && (confirmEmail.trim() === "" || emailMismatch))}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {pending ? "Saving..." : "Save Contractor"}
