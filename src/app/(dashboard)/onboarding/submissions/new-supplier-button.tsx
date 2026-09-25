@@ -16,7 +16,7 @@ export function NewSupplierButton() {
         className="inline-flex items-center gap-2 rounded-lg bg-[#005f8c] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#004d72] transition-colors"
       >
         <Plus className="h-4 w-4" />
-        Send Supply Agreement
+        Send Subcontractor Agreement
       </button>
 
       <NewSupplierModal

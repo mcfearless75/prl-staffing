@@ -24,9 +24,12 @@ export default function DashboardLayout({
             className="select-none"
           />
         </div>
-        <div className="relative z-10 p-4 lg:p-8">{children}</div>
+        {/* No z-index on this or the footer: a z-index here traps every page
+            modal's z-50 inside it, and the footer then paints over (and
+            swallows clicks on) the bottom of the modal. */}
+        <div className="relative p-4 lg:p-8">{children}</div>
         {/* Footer */}
-        <footer className="relative z-10 border-t border-prism-line mt-8 px-4 lg:px-8 py-4 flex items-center gap-4">
+        <footer className="relative border-t border-prism-line mt-8 px-4 lg:px-8 py-4 flex items-center gap-4">
           <img
             src="/cyber-essentials-white.png"
             alt="Cyber Essentials Certified"

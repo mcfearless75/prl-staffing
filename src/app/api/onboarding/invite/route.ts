@@ -3,6 +3,7 @@ import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 import { sendEmail, ONBOARDING_REPLY_TO } from "@/lib/email";
 import { createSetPasswordUrl, DAY_MS } from "@/lib/set-password-link";
+import { formatGbpRate } from "@/lib/rate-format";
 
 // The supplier may not open the email the same day; a staff-sent invite is
 // trusted, so give them a week rather than the 24h of a password reset.
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
   }
 
   const {
+    personName,
     companyName,
     companyAddress,
     contactName,
@@ -43,6 +45,7 @@ export async function POST(request: Request) {
     additionalInfo,
     sendToEmail,
   } = body as {
+    personName?: string;
     companyName?: string;
     companyAddress?: string;
     contactName?: string;
@@ -57,12 +60,15 @@ export async function POST(request: Request) {
     sendToEmail?: string;
   };
 
-  if (!companyName || !contactName || !contactEmail || !sendToEmail) {
+  // contactName/contactEmail/contactPhone are the client's SITE contact, not
+  // the subcontractor. The subcontractor is personName, reached at sendToEmail.
+  if (!personName?.trim() || !companyName || !contactName || !contactPhone?.trim() || !sendToEmail) {
     return NextResponse.json(
-      { error: "companyName, contactName, contactEmail, and sendToEmail are required" },
+      { error: "Person name, company name, site contact name, contact phone and the subcontractor's email are required" },
       { status: 400 }
     );
   }
+  const cleanRates = (rates || []).map((r) => ({ ...r, rate: formatGbpRate(r.rate) }));
 
   /**
    * PRL wrote this agreement, so there is no review step: the recipient gets
@@ -80,7 +86,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const nameParts = contactName.trim().split(/\s+/);
+  const nameParts = personName.trim().split(/\s+/);
+  const firstName = nameParts[0] || "Unknown";
+  const lastName = nameParts.slice(1).join(" ") || "Unknown";
   let contractor = await prisma.contractor.findFirst({
     where: { email: { equals: loginEmail, mode: "insensitive" } },
     select: { id: true },
@@ -88,14 +96,15 @@ export async function POST(request: Request) {
   if (!contractor) {
     contractor = await prisma.contractor.create({
       data: {
-        firstName: nameParts[0] || "Unknown",
-        lastName: nameParts.slice(1).join(" ") || "Unknown",
+        firstName,
+        lastName,
         email: loginEmail,
-        phone: contactPhone || null,
+        // contactPhone is the site contact's number, not the subcontractor's.
+        phone: null,
         status: "Active",
         jobTitle: supplyOf || null,
         ir35Status: "TBD",
-        notes: `Created from a supply agreement sent by ${session.user.email || "staff"} on ${new Date().toLocaleDateString("en-GB")}. Company: ${companyName}.`,
+        notes: `Created from a subcontractor agreement sent by ${session.user.email || "staff"} on ${new Date().toLocaleDateString("en-GB")}. Company: ${companyName}.`,
       },
       select: { id: true },
     });
@@ -114,19 +123,21 @@ export async function POST(request: Request) {
       supplyOf: supplyOf || null,
       siteLocation: siteLocation || null,
       startDate: startDate ? new Date(startDate) : null,
-      rates: rates ? JSON.stringify(rates) : null,
+      rates: rates ? JSON.stringify(cleanRates) : null,
       breakdown: breakdown ? JSON.stringify(breakdown) : null,
       additionalInfo: additionalInfo || null,
+      firstName,
+      lastName,
       status: "Approved",
       reviewedBy: session.user.email || "staff",
       reviewedAt: new Date(),
       notes: `Sent from PRISM to ${loginEmail}. Contractor ${contractor.id}.${
-        contactEmail.toLowerCase().trim() !== loginEmail ? ` Contact email given: ${contactEmail}.` : ""
+        contactEmail?.trim() ? ` Site contact email: ${contactEmail.trim()}.` : ""
       }`,
     },
   });
 
-  const ratesData = (rates || []) as Array<{ description: string; rate: string; basis: string }>;
+  const ratesData = cleanRates;
     const breakdownData = (breakdown || []) as string[];
 
     const ratesRowsHtml = ratesData
@@ -188,14 +199,14 @@ export async function POST(request: Request) {
           <!-- Intro -->
           <tr>
             <td style="padding:32px 40px 0;">
-              <p style="margin:0 0 10px;color:#333;font-size:15px;line-height:1.6;">Hi ${escapeHtml(contactName)},</p>
+              <p style="margin:0 0 10px;color:#333;font-size:15px;line-height:1.6;">Hi ${escapeHtml(personName)},</p>
               <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.6;">
-                Here is your supply agreement with PRL Site Solutions. Please check the details below, then set up your PRISM login to upload your compliance documents.
+                Here is your subcontractor agreement with PRL Site Solutions. Please check the details below, then set up your PRISM login to upload your compliance documents.
               </p>
             </td>
           </tr>
 
-          <!-- Supply Agreement Summary -->
+          <!-- Subcontractor Agreement Summary -->
           <tr>
             <td style="padding:0 40px;">
               <div style="background:#f8fafc;border:1px solid #e0e6ed;border-radius:6px;padding:20px 24px;">
@@ -207,26 +218,23 @@ export async function POST(request: Request) {
                     <td style="padding:4px 0;color:#666;width:140px;">Company</td>
                     <td style="padding:4px 0;color:#333;font-weight:600;">${escapeHtml(companyName)}</td>
                   </tr>
-                  ${companyAddress ? `<tr><td style="padding:4px 0;color:#666;">Address</td><td style="padding:4px 0;color:#333;">${escapeHtml(companyAddress)}</td></tr>` : ""}
+                  ${companyAddress ? `<tr><td style="padding:4px 0;color:#666;">Site Address</td><td style="padding:4px 0;color:#333;">${escapeHtml(companyAddress)}</td></tr>` : ""}
                   <tr>
-                    <td style="padding:4px 0;color:#666;">Contact</td>
+                    <td style="padding:4px 0;color:#666;">Site Contact</td>
                     <td style="padding:4px 0;color:#333;">${escapeHtml(contactName)}</td>
                   </tr>
-                  <tr>
-                    <td style="padding:4px 0;color:#666;">Email</td>
-                    <td style="padding:4px 0;color:#333;">${escapeHtml(contactEmail!)}</td>
-                  </tr>
+                  ${contactEmail?.trim() ? `<tr><td style="padding:4px 0;color:#666;">Email</td><td style="padding:4px 0;color:#333;">${escapeHtml(contactEmail.trim())}</td></tr>` : ""}
                   ${contactPhone ? `<tr><td style="padding:4px 0;color:#666;">Phone</td><td style="padding:4px 0;color:#333;">${escapeHtml(contactPhone)}</td></tr>` : ""}
                 </table>
 
-                ${supplyOf || siteLocation || startDate ? `
                 <hr style="border:none;border-top:1px solid #e0e6ed;margin:16px 0;">
-                <h3 style="margin:0 0 10px;font-size:13px;font-weight:700;color:#005f8c;text-transform:uppercase;letter-spacing:0.05em;">Supply Details</h3>
+                <h3 style="margin:0 0 10px;font-size:13px;font-weight:700;color:#005f8c;text-transform:uppercase;letter-spacing:0.05em;">Job Details</h3>
                 <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;">
-                  ${supplyOf ? `<tr><td style="padding:4px 0;color:#666;width:140px;">Supply of</td><td style="padding:4px 0;color:#333;">${escapeHtml(supplyOf)}</td></tr>` : ""}
-                  ${siteLocation ? `<tr><td style="padding:4px 0;color:#666;">Site Location</td><td style="padding:4px 0;color:#333;">${escapeHtml(siteLocation)}</td></tr>` : ""}
+                  <tr><td style="padding:4px 0;color:#666;width:140px;">Name</td><td style="padding:4px 0;color:#333;font-weight:600;">${escapeHtml(personName)}</td></tr>
+                  ${supplyOf ? `<tr><td style="padding:4px 0;color:#666;">Job Role</td><td style="padding:4px 0;color:#333;">${escapeHtml(supplyOf)}</td></tr>` : ""}
+                  ${siteLocation ? `<tr><td style="padding:4px 0;color:#666;">Site Name</td><td style="padding:4px 0;color:#333;">${escapeHtml(siteLocation)}</td></tr>` : ""}
                   ${startDate ? `<tr><td style="padding:4px 0;color:#666;">Start Date</td><td style="padding:4px 0;color:#333;">${new Date(startDate).toLocaleDateString("en-GB")}</td></tr>` : ""}
-                </table>` : ""}
+                </table>
 
                 ${ratesTableHtml ? `<hr style="border:none;border-top:1px solid #e0e6ed;margin:16px 0;">${ratesTableHtml}` : ""}
                 ${breakdownHtml ? `<hr style="border:none;border-top:1px solid #e0e6ed;margin:16px 0;">${breakdownHtml}` : ""}
@@ -283,7 +291,7 @@ export async function POST(request: Request) {
 </html>`;
 
     const setupUrl = await createSetPasswordUrl(loginEmail, SETUP_LINK_TTL_MS);
-    const subject = `Your Supply Agreement — ${companyName}`;
+    const subject = `Your Subcontractor Agreement — ${companyName}`;
 
     const emailResult = await sendEmail({
       to: loginEmail,

@@ -34,6 +34,10 @@ export default async function SubmissionDetailPage({
     breakdown = [];
   }
 
+  // Staff-sent agreements hold the subcontractor in firstName/lastName and the
+  // client's site contact in contactName; public submissions only have contactName.
+  const personName = [submission.firstName, submission.lastName].filter(Boolean).join(" ") || submission.contactName;
+
   // Check if contractor already created from this submission
   const existingContractor = submission.contactEmail
     ? await prisma.contractor.findFirst({
@@ -50,7 +54,7 @@ export default async function SubmissionDetailPage({
             ← Back to Submissions
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">
-            {submission.contactName}
+            {personName}
             {submission.status === "Pending" && (
               <span className="ml-3 inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 animate-pulse">
                 NEW
@@ -89,7 +93,7 @@ export default async function SubmissionDetailPage({
               <form action={sendAppInvite}>
                 <input type="hidden" name="contractorId" value={existingContractor.id} />
                 <input type="hidden" name="email" value={submission.contactEmail} />
-                <input type="hidden" name="name" value={submission.contactName} />
+                <input type="hidden" name="name" value={personName} />
                 <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
                   📧 Send App Invite
                 </button>
@@ -121,13 +125,13 @@ export default async function SubmissionDetailPage({
             <p className="text-sm text-emerald-800">
               ✓ Approved and contractor created —{" "}
               <Link href={`/contractors/${existingContractor.id}`} className="font-medium underline">
-                View {submission.contactName}&apos;s Profile
+                View {personName}&apos;s Profile
               </Link>
             </p>
             <form action={sendAppInvite}>
               <input type="hidden" name="contractorId" value={existingContractor.id} />
               <input type="hidden" name="email" value={submission.contactEmail} />
-              <input type="hidden" name="name" value={submission.contactName} />
+              <input type="hidden" name="name" value={personName} />
               <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors">
                 📧 Send App Invite
               </button>

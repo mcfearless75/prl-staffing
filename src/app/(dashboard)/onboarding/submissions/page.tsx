@@ -157,10 +157,10 @@ export default async function OnboardingSubmissionsPage({
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-medium text-white">
-                        {getInitials(sub.contactName.split(" ")[0] || "", sub.contactName.split(" ").slice(1).join(" ") || "")}
+                        {getInitials(personOf(sub).split(" ")[0] || "", personOf(sub).split(" ").slice(1).join(" ") || "")}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{sub.contactName}</p>
+                        <p className="text-sm font-medium text-gray-900">{personOf(sub)}</p>
                         <p className="text-xs text-gray-500">{sub.contactEmail}</p>
                       </div>
                     </div>
@@ -221,4 +221,11 @@ export default async function OnboardingSubmissionsPage({
       </div>
     </div>
   );
+}
+
+// A staff-sent agreement names the subcontractor in firstName/lastName and puts
+// the client's site contact in contactName; a public-form submission only has
+// contactName, which there is the person themselves.
+function personOf(sub: { firstName: string | null; lastName: string | null; contactName: string }): string {
+  return [sub.firstName, sub.lastName].filter(Boolean).join(" ") || sub.contactName;
 }
