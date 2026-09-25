@@ -85,6 +85,11 @@ export const CALL_ENQUIRY_RECIPIENTS = recipientList(process.env.CALL_ENQUIRY_RE
   "infotech@prlsitesolutions.co.uk", // TODO: remove once AI call system testing is done
 ]);
 
+// "Request workers" form on the public website (/api/enquiry).
+export const CLIENT_ENQUIRY_RECIPIENTS = recipientList(process.env.CLIENT_ENQUIRY_RECIPIENTS, [
+  "info@prlsitesolutions.co.uk",
+]);
+
 async function logEmail(entry: {
   to: string;
   subject: string;
