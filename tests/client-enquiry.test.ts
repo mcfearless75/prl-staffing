@@ -110,6 +110,14 @@ describe("enquiryEmailHtml", () => {
     assert.ok(html.includes("&lt;script&gt;"));
   });
 
+  test("shows which website page the enquiry came from", () => {
+    const r = validateClientEnquiry({ ...valid, page: "/energy-from-waste-recruitment/" }, NOW);
+    if (!r.ok) return assert.fail("expected valid");
+    const html = enquiryEmailHtml(r.enquiry);
+    assert.ok(html.includes("Sent from page"));
+    assert.ok(html.includes("/energy-from-waste-recruitment/"));
+  });
+
   test("omits rows for optional fields left blank", () => {
     const r = validateClientEnquiry({ ...valid, workers: "" }, NOW);
     if (!r.ok) return assert.fail("expected valid");

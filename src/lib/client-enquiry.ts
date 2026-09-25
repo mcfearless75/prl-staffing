@@ -26,6 +26,7 @@ const LIMITS = {
   location: 150,
   startDate: 60,
   message: 3000,
+  page: 200,
 } as const;
 
 export interface ClientEnquiry {
@@ -37,6 +38,8 @@ export interface ClientEnquiry {
   location: string | null;
   startDate: string | null;
   message: string;
+  /** Website path the form was sent from, e.g. /energy-from-waste-recruitment/ */
+  page: string | null;
 }
 
 export type EnquiryResult =
@@ -103,6 +106,7 @@ export function validateClientEnquiry(body: unknown, now: number): EnquiryResult
       workers: clean(b.workers, LIMITS.workers),
       location: clean(b.location, LIMITS.location),
       startDate: clean(b.startDate, LIMITS.startDate),
+      page: clean(b.page, LIMITS.page),
     },
   };
 }
@@ -128,6 +132,7 @@ export function enquiryEmailHtml(e: ClientEnquiry): string {
     ["Workers needed", e.workers],
     ["Site location", e.location],
     ["Start date", e.startDate],
+    ["Sent from page", e.page],
   ];
   const cell = "border:1px solid #e5e7eb;padding:8px 12px;font-size:14px;vertical-align:top";
   const tableRows = rows
