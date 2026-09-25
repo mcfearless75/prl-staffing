@@ -9,6 +9,42 @@ import { formatGbpRate } from "@/lib/rate-format";
 // trusted, so give them a week rather than the 24h of a password reset.
 const SETUP_LINK_TTL_MS = 7 * DAY_MS;
 
+// Fixed wording from Jenni (25/09/2026), added to every subcontractor
+// agreement so staff never retype it and it stays off the PRISM form.
+// Edit the wording here.
+const PAY_QUERY_URL = "https://www.prismworkforce.online/portal/pay-query";
+const INFO_H3 = "margin:16px 0 6px;font-size:13px;font-weight:700;color:#005f8c;text-transform:uppercase;letter-spacing:0.05em;";
+const INFO_P = "margin:0;font-size:13px;color:#333;line-height:1.6;";
+const STANDING_INFO_HTML = `
+<div style="background:#fff8e6;border:1px solid #f3d98b;border-radius:6px;padding:4px 24px 20px;">
+  <h3 style="${INFO_H3}">Any Questions</h3>
+  <p style="${INFO_P}">
+    Call the team on <strong>0800 772 3959</strong> or email
+    <a href="mailto:admin@prlsitesolutions.co.uk" style="color:#005f8c;">admin@prlsitesolutions.co.uk</a>.
+  </p>
+
+  <h3 style="${INFO_H3}">Pay Queries</h3>
+  <p style="${INFO_P}">
+    Please call Jenni on <strong>07359 021 801</strong>, or complete a pay query form in the PRISM app:
+    <a href="${PAY_QUERY_URL}" style="color:#005f8c;">log a pay query</a>.
+  </p>
+
+  <h3 style="${INFO_H3}">How You Will Be Paid</h3>
+  <p style="${INFO_P}">
+    You will be paid via <strong>New Red Planet</strong>, who will contact you to get your details for payments
+    to be made, so please look out for them calling.
+  </p>
+
+  <h3 style="${INFO_H3}">Timesheets</h3>
+  <p style="${INFO_P}">
+    Please submit a timesheet each week by no later than <strong>Tuesday 12pm</strong> of the following week
+    to your contact on site. This will then be processed for authorisation.
+  </p>
+  <p style="${INFO_P}margin-top:8px;">
+    You will be paid the following <strong>Friday</strong> of every week worked, by no later than <strong>5pm</strong>.
+  </p>
+</div>`;
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -267,10 +303,13 @@ export async function POST(request: Request) {
               <p style="margin:0;color:#333;font-size:14px;line-height:1.6;">
                 <strong>Staff copy.</strong> The PRISM login link was sent only to ${escapeHtml(loginEmail)}.
               </p>`}
-              <p style="margin:24px 0 0;color:#888;font-size:13px;line-height:1.6;">
-                Questions? Call us on <strong>0800 772 3959</strong> or email
-                <a href="mailto:info@prlsitesolutions.co.uk" style="color:#005f8c;">info@prlsitesolutions.co.uk</a>.
-              </p>
+            </td>
+          </tr>
+
+          <!-- Standing information: same on every agreement, never on the staff form -->
+          <tr>
+            <td style="padding:0 40px 32px;">
+              ${STANDING_INFO_HTML}
             </td>
           </tr>
 
@@ -278,7 +317,7 @@ export async function POST(request: Request) {
           <tr>
             <td style="background:#f4f7fa;padding:16px 40px;border-top:1px solid #e0e6ed;">
               <p style="margin:0;color:#999;font-size:12px;">
-                PRL Site Solutions &nbsp;|&nbsp; 0800 772 3959 &nbsp;|&nbsp; info@prlsitesolutions.co.uk
+                PRL Site Solutions &nbsp;|&nbsp; 0800 772 3959 &nbsp;|&nbsp; admin@prlsitesolutions.co.uk
               </p>
             </td>
           </tr>
