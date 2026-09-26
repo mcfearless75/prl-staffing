@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ComplianceRecordRow } from "./types";
+import { ItemActionsMenu } from "../item-actions-menu";
 
 export function ComplianceRecordCard({ rec }: { rec: ComplianceRecordRow }) {
   return (
@@ -61,12 +62,19 @@ export function ComplianceRecordCard({ rec }: { rec: ComplianceRecordRow }) {
             )
           )}
         </div>
-        <Link
-          href={`/compliance/${rec.id}/edit`}
-          className="text-xs font-medium text-gray-500 hover:text-gray-800 shrink-0"
-        >
-          Edit
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href={`/compliance/${rec.id}/edit`}
+            className="text-xs font-medium text-gray-500 hover:text-gray-800"
+          >
+            Edit
+          </Link>
+          <ItemActionsMenu
+            contractorId={rec.contractorId}
+            target={{ kind: "record", id: rec.id }}
+            label={`${rec.type} record`}
+          />
+        </div>
       </div>
     </div>
   );

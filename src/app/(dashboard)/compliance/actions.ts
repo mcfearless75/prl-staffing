@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { requireStaff } from "@/lib/require-staff";
+import { logActivity } from "@/lib/activity-log";
 
 export async function createComplianceRecord(formData: FormData) {
   const session = await auth();
@@ -79,12 +81,19 @@ export async function updateComplianceRecord(id: string, formData: FormData) {
 }
 
 export async function deleteComplianceRecord(id: string) {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
+  // Staff only: a bare session check also admitted logged-in contractors.
+  const guard = await requireStaff();
+  if (!guard.ok) redirect(guard.reason === "forbidden" ? "/" : "/login");
   try {
-    await prisma.complianceRecord.delete({
+    const deleted = await prisma.complianceRecord.delete({
       where: { id },
     });
+    await logActivity(
+      "Deleted Compliance Record",
+      "Contractor",
+      deleted.contractorId,
+      JSON.stringify({ item: `${deleted.type} record`, from: "compliance page" })
+    );
 
     revalidatePath("/compliance");
     redirect("/compliance");

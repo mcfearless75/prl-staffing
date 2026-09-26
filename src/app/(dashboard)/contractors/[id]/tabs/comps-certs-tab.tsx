@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { categoryForType } from "@/lib/compliance-types";
 import { BulkDocUploader } from "../bulk-doc-uploader";
+import { ItemActionsMenu } from "../item-actions-menu";
 import type { ContractorWithRelations, ComplianceRecordRow, DocumentRow } from "./types";
 import { ComplianceRecordsSummary, GroupedComplianceRecords } from "./compliance-record-card";
 
@@ -133,6 +134,11 @@ export function CompsCertsTab({
                       <Link href={`/compliance/${compliance.id}/edit`} className="text-xs font-medium text-gray-500 hover:text-gray-800">
                         Edit
                       </Link>
+                      <ItemActionsMenu
+                        contractorId={contractorId}
+                        target={{ kind: "record", id: compliance.id }}
+                        label={`${compliance.type} record`}
+                      />
                     </div>
                   </div>
                   {/* Uploaded documents for this compliance type */}
@@ -141,7 +147,7 @@ export function CompsCertsTab({
                       {compDocs.map((doc) => (
                         <div key={doc.id} className="flex items-center justify-between text-xs text-gray-600">
                           <span className="truncate max-w-[60%]">📎 {doc.fileName}</span>
-                          <div className="flex gap-2 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0">
                             <a
                               href={`/api/documents/download?id=${doc.id}&view=true`}
                               target="_blank"
@@ -153,6 +159,11 @@ export function CompsCertsTab({
                             <a href={`/api/documents/download?id=${doc.id}`} className="text-gray-500 hover:underline">
                               Download
                             </a>
+                            <ItemActionsMenu
+                              contractorId={contractorId}
+                              target={{ kind: "document", id: doc.id }}
+                              label={`${doc.type} file "${doc.fileName}"`}
+                            />
                           </div>
                         </div>
                       ))}
@@ -171,7 +182,7 @@ export function CompsCertsTab({
                       <span className="truncate max-w-[60%]">
                         {doc.type} — {doc.fileName}
                       </span>
-                      <div className="flex gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <a
                           href={`/api/documents/download?id=${doc.id}&view=true`}
                           target="_blank"
@@ -183,6 +194,11 @@ export function CompsCertsTab({
                         <a href={`/api/documents/download?id=${doc.id}`} className="text-gray-500 hover:underline">
                           Download
                         </a>
+                        <ItemActionsMenu
+                          contractorId={contractorId}
+                          target={{ kind: "document", id: doc.id }}
+                          label={`${doc.type} file "${doc.fileName}"`}
+                        />
                       </div>
                     </div>
                   ))}
