@@ -507,8 +507,12 @@ export function ContractorForm({
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex items-center justify-end gap-3">
+        {/* Actions — pinned to the bottom of the screen: the form is long enough
+            that staff were scrolling past a whole page to find Save. */}
+        <div className="sticky bottom-0 z-10 -mx-6 -mb-6 mt-6 flex items-center justify-end gap-3 rounded-b-xl border-t border-gray-200 bg-white/95 px-6 py-4 backdrop-blur">
+          {state?.error && (
+            <span className="mr-auto text-sm text-red-600">{state.error}</span>
+          )}
           <Link
             href="/contractors"
             className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
