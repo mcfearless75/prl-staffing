@@ -8,6 +8,8 @@ import { StatusBadge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { ShieldCheck, FileUp, User, Plus, ChevronRight, Smartphone, MessageSquare } from "lucide-react";
 import { portalFeatureEnabled } from "@/lib/portal-features";
+import { greetingName } from "@/lib/contractor-name";
+import { ProfileBanner } from "./profile-banner";
 
 export default async function PortalDashboard() {
   const session = await auth();
@@ -50,12 +52,14 @@ export default async function PortalDashboard() {
       {/* Welcome */}
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-prism-ink">
-          Hello, {contractor.firstName}
+          Hello, {greetingName(contractor)}
         </h1>
         <p className="text-sm text-prism-ink-muted">
           Welcome to your contractor portal
         </p>
       </div>
+
+      <ProfileBanner contractorId={contractorId} />
 
       {/* Install banner */}
       <details className="rounded-xl border border-blue-200 bg-blue-50">
@@ -127,7 +131,7 @@ export default async function PortalDashboard() {
           </div>
         </Link>
         <Link
-          href="/portal/compliance"
+          href="/portal/documents"
           className="flex items-center gap-3 rounded-xl border-2 border-orange-200 bg-orange-50 p-4 hover:bg-orange-100 transition-colors"
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white">
@@ -252,7 +256,7 @@ export default async function PortalDashboard() {
         <div className="rounded-xl border border-red-200 bg-red-50">
           <div className="flex items-center justify-between border-b border-red-200 px-4 py-3">
             <h2 className="text-sm font-semibold text-red-800">Compliance Alerts</h2>
-            <Link href="/portal/compliance" className="flex items-center gap-1 text-xs font-medium text-red-600">
+            <Link href="/portal/documents" className="flex items-center gap-1 text-xs font-medium text-red-600">
               View all <ChevronRight className="h-3 w-3" />
             </Link>
           </div>

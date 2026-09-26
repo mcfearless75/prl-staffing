@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Clock, ShieldCheck, FileUp, LogOut, User, MessageSquare, Receipt, CalendarDays } from "lucide-react";
+import { LayoutDashboard, Clock, FileUp, LogOut, User, MessageSquare, Receipt, CalendarDays } from "lucide-react";
 import { useEffect } from "react";
 import { portalFeatureEnabled, type PortalFeature } from "@/lib/portal-features";
 
@@ -14,7 +14,7 @@ const allPortalNav: Array<{ name: string; href: string; icon: typeof LayoutDashb
   { name: "Expenses", href: "/portal/expenses", icon: Receipt, feature: "expenses" },
   { name: "Holiday", href: "/portal/holiday", icon: CalendarDays, feature: "holiday" },
   { name: "Documents", href: "/portal/documents", icon: FileUp },
-  { name: "Compliance", href: "/portal/compliance", icon: ShieldCheck },
+  // Compliance was folded into Documents (App Invite Form); /portal/compliance redirects there.
   { name: "Profile", href: "/portal/profile", icon: User },
 ];
 // Hidden features (see portal-features.ts) drop out of the bar entirely.
