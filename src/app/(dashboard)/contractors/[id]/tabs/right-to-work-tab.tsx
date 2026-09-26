@@ -4,6 +4,7 @@ import { maskPassportNumber } from "@/lib/utils";
 import type { ComplianceRecordRow } from "./types";
 import { ComplianceRecordsSummary, GroupedComplianceRecords } from "./compliance-record-card";
 import { BulkDocUploader } from "../bulk-doc-uploader";
+import { RTW_ROUTES, formatShareCode, parseRtwRoute } from "@/lib/rtw-route";
 
 /** What the applicant declared on /apply, as opposed to documents later uploaded. */
 export type DeclaredRightToWork = {
@@ -55,6 +56,8 @@ export function RightToWorkTab({
   crPending,
   crActionRequired,
   declared,
+  rtwRoute,
+  shareCode,
 }: {
   contractorId: string;
   complianceRecords: ComplianceRecordRow[];
@@ -62,7 +65,12 @@ export function RightToWorkTab({
   crPending: number;
   crActionRequired: number;
   declared?: DeclaredRightToWork;
+  /** What the worker chose on the portal (App Invite Form). */
+  rtwRoute?: string | null;
+  /** Shown in full: staff need it to run the Home Office check. */
+  shareCode?: string | null;
 }) {
+  const route = parseRtwRoute(rtwRoute);
   const rtwRecords = complianceRecords.filter((r) => categoryForType(r.type) === "Right to Work");
 
   // Before this existed, an applicant could supply a passport number and expiry
@@ -82,6 +90,29 @@ export function RightToWorkTab({
         pending={crPending}
         actionRequired={crActionRequired}
       />
+
+      {(route || shareCode) && (
+        <section className="mb-6 rounded-lg border border-blue-100 bg-blue-50/50 px-4 py-3 text-sm">
+          <p className="text-gray-800">
+            <span className="font-medium">Worker&apos;s route:</span>{" "}
+            {route ? RTW_ROUTES[route].label : "not chosen"}
+          </p>
+          {shareCode && (
+            <p className="mt-1 text-gray-800">
+              <span className="font-medium">Share code:</span>{" "}
+              <span className="font-mono">{formatShareCode(shareCode)}</span>
+              <a
+                href="https://www.gov.uk/view-right-to-work"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-2 text-xs text-blue-600 hover:underline"
+              >
+                Check on GOV.UK →
+              </a>
+            </p>
+          )}
+        </section>
+      )}
 
       <details className="mb-6">
         <summary className="cursor-pointer select-none text-xs font-medium text-blue-600 hover:text-blue-800">

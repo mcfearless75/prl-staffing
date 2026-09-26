@@ -251,6 +251,8 @@ export default async function ContractorDetailPage({
             visaNumber: contractor.visaNumber,
             visaExpiry: contractor.visaExpiry,
           }}
+          rtwRoute={contractor.rtwRoute}
+          shareCode={contractor.shareCode}
         />
       )}
       {activeTab === "Comps & Certs" && (
