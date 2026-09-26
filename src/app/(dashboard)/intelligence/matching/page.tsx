@@ -2,30 +2,83 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { matchContractors } from "@/lib/intelligence-engine";
+import { matchContractors, DEFAULT_RADIUS_MILES } from "@/lib/intelligence-engine";
+import { geocodePostcodesBulk, type GeoPoint } from "@/lib/geocode";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
 }
 
+function parseRadius(raw: string | undefined): number {
+  const n = raw ? parseFloat(raw) : NaN;
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_RADIUS_MILES;
+  return Math.min(n, 500);
+}
+
+// Where "within N miles" is measured from. A site without cached coordinates
+// is looked up on the fly (read-only here; saving the site caches them).
+async function resolveOrigin(
+  siteId: string,
+  postcode: string
+): Promise<{ origin: GeoPoint | null; label: string; error?: string }> {
+  if (siteId) {
+    const site = await prisma.site.findUnique({
+      where: { id: siteId },
+      select: { name: true, postcode: true, latitude: true, longitude: true, company: { select: { name: true } } },
+    });
+    if (!site) return { origin: null, label: "", error: "That site no longer exists." };
+    const label = `${site.name} (${site.company.name})`;
+    if (site.latitude != null && site.longitude != null) {
+      return { origin: { lat: site.latitude, lng: site.longitude }, label };
+    }
+    if (!site.postcode) {
+      return { origin: null, label, error: `${label} has no postcode, so distance can't be measured. Add one on the site page.` };
+    }
+    postcode = site.postcode;
+  }
+  if (!postcode) return { origin: null, label: "" };
+  try {
+    const point = (await geocodePostcodesBulk([postcode], { timeoutMs: 5000 })).get(postcode.trim().toUpperCase());
+    if (point) return { origin: point, label: postcode.toUpperCase() };
+  } catch {
+    // fall through to the error below
+  }
+  return { origin: null, label: postcode, error: `Couldn't find the postcode "${postcode}". Check it and try again.` };
+}
+
 export default async function SmartMatchingPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ role?: string; location?: string; maxRate?: string }>;
+  searchParams?: Promise<{ role?: string; siteId?: string; postcode?: string; radius?: string; maxRate?: string }>;
 }) {
   const params = searchParams ? await searchParams : {};
   const role = params?.role || "";
-  const location = params?.location || "";
+  const siteId = params?.siteId || "";
+  const postcode = (params?.postcode || "").trim();
+  const radiusMiles = parseRadius(params?.radius);
   const maxRate = params?.maxRate ? parseFloat(params.maxRate) : undefined;
 
-  // Get existing roles for suggestions
-  const existingRoles = await prisma.assignment.findMany({
-    select: { role: true },
-    distinct: ["role"],
-    orderBy: { role: "asc" },
-  });
+  // Get existing roles for suggestions, and the sites you can measure from
+  const [existingRoles, sites] = await Promise.all([
+    prisma.assignment.findMany({
+      select: { role: true },
+      distinct: ["role"],
+      orderBy: { role: "asc" },
+    }),
+    prisma.site.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, postcode: true, company: { select: { name: true } } },
+      orderBy: [{ company: { name: "asc" } }, { name: "asc" }],
+    }),
+  ]);
 
-  const matches = role ? await matchContractors(role, location, undefined, maxRate) : [];
+  const place = role ? await resolveOrigin(siteId, postcode) : { origin: null, label: "" };
+  // An unresolvable site/postcode shows an error instead of silently
+  // matching across the whole country.
+  const matches =
+    role && !place.error
+      ? await matchContractors({ role, maxRate, origin: place.origin, radiusMiles })
+      : [];
 
   return (
     <div className="space-y-6">
@@ -44,7 +97,7 @@ export default async function SmartMatchingPage({
 
       {/* Search Form */}
       <div className="rounded-xl border border-gray-200 bg-white p-6">
-        <form className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <form className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <div>
             <label htmlFor="role" className="block text-sm font-medium text-gray-700">
               Role Required <span className="text-red-500">*</span>
@@ -65,14 +118,44 @@ export default async function SmartMatchingPage({
               ))}
             </datalist>
           </div>
+          <div className="lg:col-span-2">
+            <label htmlFor="siteId" className="block text-sm font-medium text-gray-700">Site</label>
+            <select
+              id="siteId"
+              name="siteId"
+              defaultValue={siteId}
+              className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Any location / use postcode</option>
+              {sites.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.company.name} – {s.name}
+                  {s.postcode ? ` (${s.postcode})` : " (no postcode)"}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
-            <label htmlFor="location" className="block text-sm font-medium text-gray-700">Location</label>
+            <label htmlFor="postcode" className="block text-sm font-medium text-gray-700">or Postcode</label>
             <input
               type="text"
-              id="location"
-              name="location"
-              defaultValue={location}
-              placeholder="e.g. Manchester, London"
+              id="postcode"
+              name="postcode"
+              defaultValue={postcode}
+              placeholder="e.g. M1 1AA"
+              className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="radius" className="block text-sm font-medium text-gray-700">Within (miles)</label>
+            <input
+              type="number"
+              id="radius"
+              name="radius"
+              defaultValue={radiusMiles}
+              step={1}
+              min={1}
+              max={500}
               className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
@@ -101,9 +184,18 @@ export default async function SmartMatchingPage({
       </div>
 
       {/* Results */}
-      {role && matches.length === 0 && (
+      {place.error && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-6 py-4">
+          <p className="text-sm text-amber-800">{place.error}</p>
+        </div>
+      )}
+
+      {role && !place.error && matches.length === 0 && (
         <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center">
-          <p className="text-sm text-gray-500">No matching contractors found for &quot;{role}&quot;.</p>
+          <p className="text-sm text-gray-500">
+            No matching contractors found for &quot;{role}&quot;
+            {place.origin ? ` within ${radiusMiles} miles of ${place.label}` : ""}.
+          </p>
         </div>
       )}
 
@@ -111,8 +203,17 @@ export default async function SmartMatchingPage({
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-gray-900">
             Top Matches for &quot;{role}&quot;
+            {place.origin && (
+              <span className="font-normal"> within {radiusMiles} miles of {place.label}</span>
+            )}
             <span className="ml-2 text-sm font-normal text-gray-500">({matches.length} results)</span>
           </h2>
+          {place.origin && (
+            <p className="text-xs text-gray-500">
+              Distance is straight-line from the worker&apos;s home postcode. Workers with no known
+              postcode location are still listed, marked &quot;Location unknown&quot;.
+            </p>
+          )}
 
           {matches.map((match, index) => {
             const scoreColor =
@@ -155,6 +256,11 @@ export default async function SmartMatchingPage({
                         <span>{formatCurrency(match.chargeRate)}/h</span>
                       )}
                       <span>Compliance: {match.complianceScore}%</span>
+                      {place.origin && (
+                        <span className={match.miles === null ? "text-gray-400" : "font-medium text-gray-700"}>
+                          {match.miles === null ? "Location unknown" : `${match.miles.toFixed(1)} mi`}
+                        </span>
+                      )}
                       <span className={match.availableFrom === null ? "text-emerald-600 font-medium" : "text-amber-600"}>
                         {match.availableFrom === null ? "Available now" : `Busy until ${match.availableFrom ? new Date(match.availableFrom).toLocaleDateString("en-GB") : "TBD"}`}
                       </span>

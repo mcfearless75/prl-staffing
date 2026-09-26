@@ -27,7 +27,10 @@ function normalize(postcode: string): string {
  * map rather than throwing, so callers can distinguish "not found" from
  * "lookup failed".
  */
-export async function geocodePostcodesBulk(postcodes: string[]): Promise<Map<string, GeoPoint>> {
+export async function geocodePostcodesBulk(
+  postcodes: string[],
+  options: { timeoutMs?: number } = {}
+): Promise<Map<string, GeoPoint>> {
   const unique = Array.from(new Set(postcodes.map(normalize).filter(Boolean)));
   const results = new Map<string, GeoPoint>();
 
@@ -37,6 +40,8 @@ export async function geocodePostcodesBulk(postcodes: string[]): Promise<Map<str
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ postcodes: batch }),
+      // Callers inside a save pass a timeout so a slow postcodes.io can't hang the form.
+      ...(options.timeoutMs ? { signal: AbortSignal.timeout(options.timeoutMs) } : {}),
     });
     if (!res.ok) continue; // skip this batch, leave those postcodes ungeocoded rather than throwing
 

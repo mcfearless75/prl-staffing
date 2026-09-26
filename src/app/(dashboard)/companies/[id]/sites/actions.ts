@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { postcodeGeoReset, refreshGeocode } from "@/lib/geo-refresh";
 // This file writes assignments directly, so it owns both halves of the
 // contractor working-status rule. It previously did neither: assigning someone
 // here left an Inactive contractor Inactive while they were on site, and ending
@@ -25,7 +26,7 @@ export async function createSite(companyId: string, formData: FormData) {
 
   if (!name?.trim()) throw new Error("Site name is required");
 
-  await prisma.site.create({
+  const site = await prisma.site.create({
     data: {
       name: name.trim(),
       address: address?.trim() || null,
@@ -34,6 +35,7 @@ export async function createSite(companyId: string, formData: FormData) {
       companyId,
     },
   });
+  await refreshGeocode("site", site.id);
 
   revalidatePath(`/companies/${companyId}`);
 }
@@ -197,15 +199,19 @@ export async function updateSite(siteId: string, companyId: string, formData: Fo
 
   if (!name?.trim()) throw new Error("Site name is required");
 
+  const existing = await prisma.site.findUnique({ where: { id: siteId }, select: { postcode: true } });
+  const newPostcode = postcode?.trim() || null;
   await prisma.site.update({
     where: { id: siteId },
     data: {
       name: name.trim(),
       address: address?.trim() || null,
       city: city?.trim() || null,
-      postcode: postcode?.trim() || null,
+      postcode: newPostcode,
+      ...postcodeGeoReset(existing?.postcode, newPostcode),
     },
   });
+  await refreshGeocode("site", siteId);
 
   revalidatePath(`/companies/${companyId}/sites/${siteId}`);
   revalidatePath(`/companies/${companyId}`);

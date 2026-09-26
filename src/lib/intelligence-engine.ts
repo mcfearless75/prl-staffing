@@ -10,6 +10,10 @@ import {
   LIVE_ASSIGNMENT_STATUSES,
   IN_PROGRESS_ASSIGNMENT_STATUSES,
 } from "@/lib/assignment-statuses";
+import { locationFactor } from "@/lib/distance";
+import type { GeoPoint } from "@/lib/geocode";
+
+export const DEFAULT_RADIUS_MILES = 25;
 
 // ─── Types ───
 
@@ -36,6 +40,7 @@ export interface ContractorMatch {
   ir35Status: string | null;
   complianceScore: number;
   availableFrom?: Date | null;
+  miles: number | null; // home postcode to the chosen site; null when unknown or no site chosen
 }
 
 export interface RiskItem {
@@ -331,12 +336,19 @@ export async function generateInsights(): Promise<Insight[]> {
 
 // ─── Smart Contractor Matching ───
 
-export async function matchContractors(
-  role: string,
-  location?: string,
-  companyId?: string,
-  maxRate?: number
-): Promise<ContractorMatch[]> {
+export interface MatchOptions {
+  role: string;
+  maxRate?: number;
+  origin?: GeoPoint | null; // the site (or typed postcode) to measure from
+  radiusMiles?: number; // hard filter: workers further than this are dropped
+}
+
+export async function matchContractors({
+  role,
+  maxRate,
+  origin = null,
+  radiusMiles = DEFAULT_RADIUS_MILES,
+}: MatchOptions): Promise<ContractorMatch[]> {
   // Get all active contractors
   const contractors = await prisma.contractor.findMany({
     where: { status: "Active" },
@@ -352,6 +364,11 @@ export async function matchContractors(
   const matches: ContractorMatch[] = [];
 
   for (const c of contractors) {
+    // Location first: the radius is a hard filter, so skip scoring anyone outside it.
+    const home = c.latitude != null && c.longitude != null ? { lat: c.latitude, lng: c.longitude } : null;
+    const location = locationFactor(origin, home, radiusMiles);
+    if (location.excluded) continue;
+
     const factors: { label: string; score: number; weight: number }[] = [];
 
     // 1. Role match (weight: 30)
@@ -384,15 +401,10 @@ export async function matchContractors(
     }
     factors.push({ label: "Rate Fit", score: rateScore, weight: 15 });
 
-    // 5. Location match (weight: 10)
-    let locationScore = 50;
-    if (location && c.assignments.length > 0) {
-      const hasLocationMatch = c.assignments.some(
-        (a) => a.location?.toLowerCase().includes(location.toLowerCase())
-      );
-      locationScore = hasLocationMatch ? 90 : 40;
-    }
-    factors.push({ label: "Location", score: locationScore, weight: 10 });
+    // 5. Location (weight: 10) — miles from the worker's home postcode to the
+    // site. It used to match typed text against the worker's CURRENT jobs, so
+    // anyone free always scored 50% whatever was typed.
+    factors.push({ label: "Location", score: location.score, weight: 10 });
 
     // Calculate weighted total
     const totalWeight = factors.reduce((s, f) => s + f.weight, 0);
@@ -411,6 +423,7 @@ export async function matchContractors(
       ir35Status: c.ir35Status,
       complianceScore: compScore,
       availableFrom: isAvailable ? null : c.assignments[0]?.endDate,
+      miles: location.miles,
     });
   }
 

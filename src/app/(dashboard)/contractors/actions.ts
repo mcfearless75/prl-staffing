@@ -10,6 +10,7 @@ import { parseAssignmentRateFields } from "@/lib/assignment-rates";
 import { emailConfirmationError } from "@/lib/email-confirmation";
 import { activateContractorForAssignment } from "@/lib/contractor-status";
 import { normaliseKnownAs } from "@/lib/contractor-name";
+import { postcodeGeoReset, refreshGeocode } from "@/lib/geo-refresh";
 import { NATIONALITY_OPTIONS, PRONOUN_OPTIONS, TITLE_OPTIONS, pickOption } from "@/lib/profile-options";
 
 type AssignResult = { type: "ok" | "moved" | "duplicate" | "error"; message: string } | null;
@@ -220,6 +221,7 @@ export async function createContractor(
       await syncContractorJobRoles(tx, created.id, roleIds);
       return created;
     });
+    await refreshGeocode("contractor", contractor.id);
 
     // Auto-create contractor portal login (password set via forgot-password flow)
     let loginCreateFailed = false;
@@ -274,7 +276,7 @@ export async function updateContractor(
 ): Promise<ContractorFormState> {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  const existing = await prisma.contractor.findUnique({ where: { id }, select: { email: true } });
+  const existing = await prisma.contractor.findUnique({ where: { id }, select: { email: true, postcode: true } });
   if (!existing) return { error: "Contractor not found." };
   const confirmError = validateEmailConfirmation(formData, existing.email);
   if (confirmError) return { error: confirmError };
@@ -293,11 +295,13 @@ export async function updateContractor(
         where: { id },
         data: {
           ...data,
+          ...postcodeGeoReset(existing.postcode, data.postcode),
           supplierId: data.supplierId === "" ? null : data.supplierId,
         },
       });
       await syncContractorJobRoles(tx, id, roleIds);
     });
+    await refreshGeocode("contractor", id);
 
     revalidatePath(`/contractors/${id}`);
     redirect(`/contractors/${id}`);

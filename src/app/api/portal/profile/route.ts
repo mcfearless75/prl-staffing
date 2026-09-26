@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { normaliseKnownAs } from "@/lib/contractor-name";
 import { missingProfileFields, nameChange } from "@/lib/profile-completion";
 import { NATIONALITY_OPTIONS, PRONOUN_OPTIONS, TITLE_OPTIONS, pickOption } from "@/lib/profile-options";
+import { postcodeGeoReset, refreshGeocode } from "@/lib/geo-refresh";
 
 function text(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
@@ -33,7 +34,7 @@ export async function PUT(request: Request) {
 
     const existing = await prisma.contractor.findUnique({
       where: { id: contractorId },
-      select: { firstName: true, lastName: true, nameChangedAt: true, nameChangedFrom: true, profileSubmittedAt: true },
+      select: { firstName: true, lastName: true, nameChangedAt: true, nameChangedFrom: true, profileSubmittedAt: true, postcode: true },
     });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -94,6 +95,7 @@ export async function PUT(request: Request) {
         where: { id: contractorId },
         data: {
           ...data,
+          ...postcodeGeoReset(existing.postcode, data.postcode),
           ...(change.changed
             ? {
                 nameChangedAt: new Date(),
@@ -114,6 +116,7 @@ export async function PUT(request: Request) {
       }
       throw error;
     }
+    await refreshGeocode("contractor", contractorId);
 
     // Log the activity
     try {
