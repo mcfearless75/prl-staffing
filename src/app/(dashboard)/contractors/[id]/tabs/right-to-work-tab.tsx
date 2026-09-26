@@ -3,6 +3,7 @@ import { categoryForType } from "@/lib/compliance-types";
 import { maskPassportNumber } from "@/lib/utils";
 import type { ComplianceRecordRow } from "./types";
 import { ComplianceRecordsSummary, GroupedComplianceRecords } from "./compliance-record-card";
+import { BulkDocUploader } from "../bulk-doc-uploader";
 
 /** What the applicant declared on /apply, as opposed to documents later uploaded. */
 export type DeclaredRightToWork = {
@@ -81,6 +82,15 @@ export function RightToWorkTab({
         pending={crPending}
         actionRequired={crActionRequired}
       />
+
+      <details className="mb-6">
+        <summary className="cursor-pointer select-none text-xs font-medium text-blue-600 hover:text-blue-800">
+          📥 Upload Right to Work documents
+        </summary>
+        <div className="mt-3">
+          <BulkDocUploader contractorId={contractorId} onlyCategory="Right to Work" />
+        </div>
+      </details>
 
       {hasDeclared && declared && (
         <section className="mb-6">

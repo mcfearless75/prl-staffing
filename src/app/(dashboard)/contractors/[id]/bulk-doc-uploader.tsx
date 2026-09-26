@@ -3,25 +3,9 @@
 import { useState, useRef } from "react";
 import { Upload, X, Check, AlertCircle, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { COMPLIANCE_TYPE_GROUPS, categoryForType } from "@/lib/compliance-types";
+import { categoryForType, type ComplianceCategory } from "@/lib/compliance-types";
+import { guessDocTypeWithin, typeGroupsFor } from "@/lib/doc-type-guess";
 
-function guessType(fileName: string): string {
-  const name = fileName.toLowerCase();
-  if (name.includes("passport")) return "Passport";
-  if (name.includes("cscs")) return "CSCS";
-  if (name.includes("ccnsg")) return "CCNSG";
-  if (name.includes("npors")) return "NPORS";
-  if (name.includes("sharecode") || name.includes("share code") || name.includes("share_code")) return "Share Code";
-  if (name.includes("dbs")) return "DBS";
-  if (/\bp45\b/.test(name)) return "P45";
-  if (/\bp60\b/.test(name)) return "P60";
-  if (name.includes("insurance")) return "Insurance";
-  if (name.includes("qualification") || name.includes("nvq") || name.includes("cert")) return "Qualification";
-  if (name.includes("rtw") || name.includes("right to work") || name.includes("visa")) return "Right to Work";
-  if (name.includes("ir35")) return "IR35 Assessment";
-  if (/\bcv\b/.test(name) || name.includes("resume")) return "CV";
-  return "Other";
-}
 
 type RowStatus = "pending" | "uploading" | "done" | "error";
 
@@ -32,7 +16,14 @@ interface Row {
   error?: string;
 }
 
-export function BulkDocUploader({ contractorId }: { contractorId: string }) {
+export function BulkDocUploader({
+  contractorId,
+  onlyCategory,
+}: {
+  contractorId: string;
+  /** Limit the type dropdown (and guesses) to one category, e.g. on the RTW tab. */
+  onlyCategory?: ComplianceCategory;
+}) {
   const [rows, setRows] = useState<Row[]>([]);
   const [uploading, setUploading] = useState(false);
   const [attested, setAttested] = useState(false);
@@ -47,7 +38,7 @@ export function BulkDocUploader({ contractorId }: { contractorId: string }) {
     if (files.length === 0) return;
     const newRows: Row[] = files.map((file) => ({
       file,
-      type: guessType(file.name),
+      type: guessDocTypeWithin(file.name, onlyCategory),
       status: "pending",
     }));
     setRows((prev) => [...prev, ...newRows]);
@@ -94,7 +85,9 @@ export function BulkDocUploader({ contractorId }: { contractorId: string }) {
   return (
     <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-6 space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-blue-900">📥 Bulk Upload Documents</h2>
+        <h2 className="text-sm font-semibold text-blue-900">
+          📥 Bulk Upload {onlyCategory ? `${onlyCategory} ` : ""}Documents
+        </h2>
         <p className="text-xs text-blue-600 mt-1">
           Select several files at once (e.g. everything WhatsApp&apos;d from a contractor) — each gets its own
           document type, auto-guessed from the filename. Check them before uploading.
@@ -132,7 +125,7 @@ export function BulkDocUploader({ contractorId }: { contractorId: string }) {
                 disabled={row.status === "uploading" || row.status === "done"}
                 className="shrink-0 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
               >
-                {COMPLIANCE_TYPE_GROUPS.map((group) => (
+                {typeGroupsFor(onlyCategory).map((group) => (
                   <optgroup key={group.category} label={group.category}>
                     {group.types.map((t) => (
                       <option key={t} value={t}>{t}</option>
