@@ -6,6 +6,7 @@ import { maskNI, maskPassportNumber, maskBankAccount, maskSortCode } from "@/lib
 import { checkPublicFormRateLimit } from "@/lib/rate-limit";
 import { parseDate } from "@/lib/parse-date";
 import { emailMatches } from "@/lib/contractor-email";
+import { refreshGeocode } from "@/lib/geo-refresh";
 import {
   findPotentialDuplicates,
   describeReasons,
@@ -239,6 +240,7 @@ export async function POST(request: Request) {
         },
       });
       contractorId = contractor.id;
+      await refreshGeocode("contractor", contractor.id); // never throws; 3s cap
 
       // Link the selected roles properly via ContractorJobRole. The readable
       // names stay in the application blob too, but these ids are what lets

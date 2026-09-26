@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { emailMatches } from "@/lib/contractor-email";
+import { refreshGeocode } from "@/lib/geo-refresh";
 
 export type NewStarterActionState = { error?: string; ok?: string } | null;
 
@@ -91,6 +92,10 @@ export async function convertToContractor(
       return { error: "Could not create the subcontractor record. Please try again." };
     }
   }
+
+  // Covers both branches: a new record, or an existing one whose blank
+  // postcode was just filled from the checklist.
+  await refreshGeocode("contractor", contractorId);
 
   await prisma.newStarterSubmission.update({
     where: { id: submissionId },

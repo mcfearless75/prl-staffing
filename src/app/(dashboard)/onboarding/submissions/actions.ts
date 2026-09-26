@@ -10,6 +10,7 @@ import { sendEmail, sendPasswordResetEmail, ONBOARDING_REPLY_TO } from "@/lib/em
 import { escapeHtml } from "@/lib/utils";
 import { createSetPasswordUrl } from "@/lib/set-password-link";
 import { findPotentialDuplicates, describeReasons } from "@/lib/duplicate-check";
+import { refreshGeocode } from "@/lib/geo-refresh";
 
 async function requireStaffSession() {
   const session = await auth();
@@ -142,6 +143,8 @@ export async function approveAndCreateContractor(formData: FormData) {
         notes: `Created from onboarding submission on ${new Date().toLocaleDateString("en-GB")}. Company: ${submission.companyName}.${duplicateNote}`,
       },
     });
+
+    await refreshGeocode("contractor", contractor.id);
 
     // Create login account with random temp password
     const tempPassword = crypto.randomBytes(16).toString("hex");
