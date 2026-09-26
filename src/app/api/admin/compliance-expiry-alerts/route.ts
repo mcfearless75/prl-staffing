@@ -8,8 +8,7 @@ import { greetingName } from "@/lib/contractor-name";
 
 // Same keys as the daily cron chase (src/lib/workflows/compliance-chase.ts),
 // so a manual send and the cron never email the same person twice in a day.
-const CHASE_WORKFLOW = "compliance-chase";
-const CHASE_ACTION = "chase-email";
+import { CHASE_WORKFLOW, CHASE_ACTION } from "@/lib/compliance-reminder";
 
 const PORTAL_URL = "https://www.prismworkforce.online";
 

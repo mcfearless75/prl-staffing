@@ -6,6 +6,8 @@ import { formatDate } from "@/lib/utils";
 import { DeleteContractorButton } from "./delete-contractor-button";
 import { SendAppInviteButton } from "./send-app-invite-button";
 import { PortalLinkButton } from "./portal-link-button";
+import { ComplianceReminderButton } from "./compliance-reminder-button";
+import { checkComplianceReminder } from "@/lib/workflows/compliance-chase";
 import { TabNav } from "./tabs/tab-nav";
 import { OverviewTab } from "./tabs/overview-tab";
 import { RightToWorkTab } from "./tabs/right-to-work-tab";
@@ -28,7 +30,7 @@ export default async function ContractorDetailPage({
   const tabParams = searchParams ? await searchParams : {};
   const activeTab: TabLabel = isTabLabel(tabParams.tab) ? tabParams.tab : "Overview";
 
-  const [contractor, activityLogs, documents, complianceRecords, companies, projects] = await Promise.all([
+  const [contractor, activityLogs, documents, complianceRecords, companies, projects, reminder] = await Promise.all([
     prisma.contractor.findUnique({
       where: { id },
       include: {
@@ -67,6 +69,7 @@ export default async function ContractorDetailPage({
       orderBy: { code: "asc" },
       select: { id: true, code: true, name: true },
     }),
+    checkComplianceReminder(id),
   ]);
 
   if (!contractor) {
@@ -130,7 +133,7 @@ export default async function ContractorDetailPage({
     <div className="space-y-6">
       {/* Header Card */}
       <div className="rounded-xl border bg-white p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-xl font-bold text-blue-700">
               {initials}
@@ -174,7 +177,7 @@ export default async function ContractorDetailPage({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-3 gap-y-5">
             <Link
               href="/contractors"
               className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
@@ -195,6 +198,13 @@ export default async function ContractorDetailPage({
             </Link>
             <PortalLinkButton portalUrl={portalUrl} hasPortalAccount={hasPortalAccount} />
             <SendAppInviteButton contractorId={contractor.id} />
+            {reminder && (
+              <ComplianceReminderButton
+                contractorId={contractor.id}
+                blockReason={reminder.blockReason}
+                docTypes={reminder.docs.map((d) => d.type)}
+              />
+            )}
             <DeleteContractorButton contractorId={contractor.id} />
           </div>
         </div>

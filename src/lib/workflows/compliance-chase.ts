@@ -3,6 +3,14 @@ import { prisma } from "@/lib/db";
 import { isPlaceholderEmail } from "@/lib/placeholder-email";
 import { logAction, alreadyActedToday } from "./engine";
 import type { WorkflowResult } from "./engine";
+import {
+  CHASE_ACTION,
+  CHASE_STATUSES,
+  CHASE_WORKFLOW,
+  chaseCutoff,
+  docsToChase,
+  reminderBlockReason,
+} from "@/lib/compliance-reminder";
 import { greetingName } from "@/lib/contractor-name";
 
 const PORTAL_URL = "https://www.prismworkforce.online";
@@ -19,7 +27,7 @@ function urgencyLabel(expiryDate: Date): { label: string; daysOut: number } {
   return { label: "expires in " + daysOut + " days", daysOut };
 }
 
-function buildEmail(firstName: string, docs: Array<{ type: string; expiryDate: Date }>): string {
+export function buildComplianceChaseEmail(firstName: string, docs: Array<{ type: string; expiryDate: Date }>): string {
   const rows = docs.map((d) => {
     const { label, daysOut } = urgencyLabel(d.expiryDate);
     const color = daysOut < 0 ? "#DC2626" : daysOut <= 7 ? "#D97706" : "#374151";
@@ -73,13 +81,10 @@ export const complianceChaseAgent = {
   async run(): Promise<WorkflowResult> {
     const result: WorkflowResult = { workflow: "compliance-chase", acted: 0, skipped: 0, failed: 0, log: [] };
 
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() + 30);
-
     const expiring = await prisma.complianceRecord.findMany({
       where: {
-        status: { in: ["Verified", "Expiring", "Expired"] },
-        expiryDate: { lte: cutoff },
+        status: { in: [...CHASE_STATUSES] },
+        expiryDate: { lte: chaseCutoff() },
       },
       include: { contractor: true },
       orderBy: { expiryDate: "asc" },
@@ -100,7 +105,7 @@ export const complianceChaseAgent = {
         result.skipped++;
         continue;
       }
-      const alreadySent = await alreadyActedToday("compliance-chase", contractor.id, "chase-email");
+      const alreadySent = await alreadyActedToday(CHASE_WORKFLOW, contractor.id, CHASE_ACTION);
       if (alreadySent) {
         result.skipped++;
         continue;
@@ -110,18 +115,18 @@ export const complianceChaseAgent = {
         const emailResult = await sendEmail({
           to: contractor.email,
           subject: "Action Required: Compliance Documents Need Attention — PRL Site Solutions",
-          html: buildEmail(greetingName(contractor), docs),
+          html: buildComplianceChaseEmail(greetingName(contractor), docs),
           template: "compliance-chase",
         });
         if (!emailResult.success) throw new Error(emailResult.error ?? "Email send failed");
-        await logAction("compliance-chase", "chase-email", "sent", contractor.id,
+        await logAction(CHASE_WORKFLOW, CHASE_ACTION, "sent", contractor.id,
           `${docs.length} doc(s): ${docs.map(d => d.type).join(", ")}`);
         result.acted++;
         result.log.push(`✓ Chased ${contractor.firstName} ${contractor.lastName} (${docs.length} docs)`);
         await new Promise(r => setTimeout(r, 200));
       } catch (err) {
         console.error(`[compliance-chase] Chase email failed for ${contractor.email}:`, err);
-        await logAction("compliance-chase", "chase-email", "failed", contractor.id, String(err));
+        await logAction(CHASE_WORKFLOW, CHASE_ACTION, "failed", contractor.id, String(err));
         result.failed++;
         result.log.push(`✗ Failed: ${contractor.email} — ${String(err)}`);
       }
@@ -134,3 +139,71 @@ export const complianceChaseAgent = {
     return result;
   },
 };
+
+export type ReminderCheck = {
+  docs: Array<{ type: string; expiryDate: Date }>;
+  blockReason: string | null;
+};
+
+/** What a manual reminder for one contractor would send, and whether it can. */
+export async function checkComplianceReminder(contractorId: string): Promise<ReminderCheck | null> {
+  const contractor = await prisma.contractor.findUnique({
+    where: { id: contractorId },
+    select: {
+      email: true,
+      emailBounced: true,
+      compliances: { select: { type: true, status: true, expiryDate: true } },
+    },
+  });
+  if (!contractor) return null;
+  const docs = docsToChase(contractor.compliances);
+  const alreadyChasedToday = await alreadyActedToday(CHASE_WORKFLOW, contractorId, CHASE_ACTION);
+  return {
+    docs,
+    blockReason: reminderBlockReason({
+      email: contractor.email,
+      emailBounced: contractor.emailBounced,
+      docCount: docs.length,
+      alreadyChasedToday,
+    }),
+  };
+}
+
+/**
+ * Send the compliance-chase email to one contractor, on a staff member's
+ * say-so. Logged under the daily chase's own keys, so the daily run skips this
+ * person today and a second click is refused.
+ */
+export async function sendComplianceReminder(
+  contractorId: string,
+  sentBy: string
+): Promise<{ ok: true; docCount: number } | { ok: false; error: string }> {
+  const check = await checkComplianceReminder(contractorId);
+  if (!check) return { ok: false, error: "Contractor not found" };
+  if (check.blockReason) return { ok: false, error: check.blockReason };
+
+  const contractor = await prisma.contractor.findUniqueOrThrow({
+    where: { id: contractorId },
+    select: { email: true, firstName: true, knownAs: true },
+  });
+
+  const emailResult = await sendEmail({
+    to: contractor.email,
+    subject: "Action Required: Compliance Documents Need Attention — PRL Site Solutions",
+    html: buildComplianceChaseEmail(greetingName(contractor), check.docs),
+    template: "compliance-chase",
+  });
+  if (!emailResult.success) {
+    const error = emailResult.error ?? "Email send failed";
+    await logAction(CHASE_WORKFLOW, CHASE_ACTION, "failed", contractorId, `manual by ${sentBy}: ${error}`);
+    return { ok: false, error };
+  }
+  await logAction(
+    CHASE_WORKFLOW,
+    CHASE_ACTION,
+    "sent",
+    contractorId,
+    `manual by ${sentBy} — ${check.docs.length} doc(s): ${check.docs.map((d) => d.type).join(", ")}`
+  );
+  return { ok: true, docCount: check.docs.length };
+}
