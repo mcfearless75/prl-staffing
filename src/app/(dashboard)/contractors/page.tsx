@@ -29,6 +29,8 @@ const STATUS_TAB_COLORS: Record<string, string> = {
 // `status` query param is read/written rather than added to
 // SETTABLE_CONTRACTOR_STATUSES (which drives the actual status dropdown).
 const BENCH_FILTER = "Bench";
+// Workers who edited their own name on the portal; staff check it against ID.
+const NAME_CHECK_FILTER = "NameCheck";
 
 // Filter value meaning "blank" for the Job Title and Working At dropdowns.
 const NONE = "__none";
@@ -120,6 +122,8 @@ export default async function ContractorsPage({
   if (status === BENCH_FILTER) {
     where.status = { in: ["Active", "Inactive"] };
     where.assignments = { none: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } } };
+  } else if (status === NAME_CHECK_FILTER) {
+    where.nameChangedAt = { not: null };
   } else if (status) {
     where.status = status;
   }
@@ -295,6 +299,7 @@ export default async function ContractorsPage({
             </option>
           ))}
           <option value={BENCH_FILTER}>Bench (unassigned)</option>
+          <option value={NAME_CHECK_FILTER}>Name changes to check</option>
         </select>
         <select name="title" defaultValue={titleFilter} className={`${selectCls} max-w-[220px]`} aria-label="Job title">
           <option value="">All Job Titles</option>

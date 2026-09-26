@@ -66,6 +66,15 @@ model Contractor {
   // The name they actually go by ("Bob" for Robert). Emails greet by it and the
   // contractor list searches it — see src/lib/contractor-name.ts.
   knownAs                  String?
+  // App Invite Form (portal /portal/profile) — docs/superpowers/specs/2026-09-26-app-invite-form-design.md
+  title                    String?
+  pronouns                 String?
+  nationality              String?
+  profileSubmittedAt       DateTime? // first complete Submit; drives the portal banner
+  nameChangedAt            DateTime? // worker edited their name; cleared when staff mark it checked
+  nameChangedFrom          String? // full name before the worker's edit
+  rtwRoute                 String? // uk-irish-passport | passport-share-code | birth-cert-ni
+  shareCode                String? // Home Office share code, normalised (9 chars, no spaces)
   email                    String              @unique
   // Set by the bounce-check workflow agent when a hard bounce (SMTP 5xx) for
   // this address comes back through the infotech@ mailbox — e.g. a typo'd

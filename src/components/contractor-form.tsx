@@ -1,5 +1,6 @@
 "use client";
 
+import { NATIONALITY_OPTIONS, PRONOUN_OPTIONS, TITLE_OPTIONS } from "@/lib/profile-options";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { RolePicker } from "@/components/role-picker";
@@ -112,6 +113,69 @@ export function ContractorForm({
             <p className="mt-1 text-xs text-gray-500">
               The name they go by. Emails greet them by it.
             </p>
+          </div>
+
+          {/* Title */}
+          <div>
+            <label
+              htmlFor="title"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Title
+            </label>
+            <select
+              id="title"
+              name="title"
+              defaultValue={contractor?.title ?? ""}
+              className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Not given</option>
+              {TITLE_OPTIONS.map((o) => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Pronouns */}
+          <div>
+            <label
+              htmlFor="pronouns"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Pronouns
+            </label>
+            <select
+              id="pronouns"
+              name="pronouns"
+              defaultValue={contractor?.pronouns ?? ""}
+              className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Not given</option>
+              {PRONOUN_OPTIONS.map((o) => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Nationality */}
+          <div>
+            <label
+              htmlFor="nationality"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Nationality
+            </label>
+            <select
+              id="nationality"
+              name="nationality"
+              defaultValue={contractor?.nationality ?? ""}
+              className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Not given</option>
+              {NATIONALITY_OPTIONS.map((o) => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
           </div>
 
           {/* Email */}

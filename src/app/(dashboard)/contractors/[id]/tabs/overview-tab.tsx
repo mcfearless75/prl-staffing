@@ -117,6 +117,18 @@ export function OverviewTab({ contractor }: { contractor: ContractorWithRelation
         <h2 className="mb-4 text-lg font-semibold text-gray-900">Personal Details</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <div>
+            <p className="text-sm font-medium text-gray-500">Title</p>
+            <p className="text-sm text-gray-900">{contractor.title || "-"}</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Pronouns</p>
+            <p className="text-sm text-gray-900">{contractor.pronouns || "-"}</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Nationality</p>
+            <p className="text-sm text-gray-900">{contractor.nationality || "-"}</p>
+          </div>
+          <div>
             <p className="text-sm font-medium text-gray-500">Date of Birth</p>
             <p className="text-sm text-gray-900">
               {contractor.dateOfBirth ? new Date(contractor.dateOfBirth).toLocaleDateString("en-GB") : "-"}

@@ -7,6 +7,7 @@ import { DeleteContractorButton } from "./delete-contractor-button";
 import { SendAppInviteButton } from "./send-app-invite-button";
 import { PortalLinkButton } from "./portal-link-button";
 import { ComplianceReminderButton } from "./compliance-reminder-button";
+import { NameCheckButton } from "./name-check-button";
 import { checkComplianceReminder } from "@/lib/workflows/compliance-chase";
 import { TabNav } from "./tabs/tab-nav";
 import { OverviewTab } from "./tabs/overview-tab";
@@ -166,6 +167,22 @@ export default async function ContractorDetailPage({
                 <span className={`h-1.5 w-1.5 rounded-full ${overallStatusDot}`} />
                 Compliance: {overallStatus}
               </span>
+              <span
+                className={`mt-1 ml-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  contractor.profileSubmittedAt ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {contractor.profileSubmittedAt
+                  ? `Profile submitted ${formatDate(contractor.profileSubmittedAt)}`
+                  : "Profile not yet submitted"}
+              </span>
+              {contractor.nameChangedAt && (
+                <p className="mt-2 flex flex-wrap items-center rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs text-amber-900">
+                  Name changed by worker {formatDate(contractor.nameChangedAt)} — check against ID
+                  {contractor.nameChangedFrom && <> (was <strong className="ml-1">{contractor.nameChangedFrom}</strong>)</>}
+                  <NameCheckButton contractorId={contractor.id} />
+                </p>
+              )}
               {contractor.emailBounced && (
                 <span
                   title={contractor.emailBounceReason ?? undefined}

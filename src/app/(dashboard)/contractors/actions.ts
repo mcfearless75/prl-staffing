@@ -10,6 +10,7 @@ import { parseAssignmentRateFields } from "@/lib/assignment-rates";
 import { emailConfirmationError } from "@/lib/email-confirmation";
 import { activateContractorForAssignment } from "@/lib/contractor-status";
 import { normaliseKnownAs } from "@/lib/contractor-name";
+import { NATIONALITY_OPTIONS, PRONOUN_OPTIONS, TITLE_OPTIONS, pickOption } from "@/lib/profile-options";
 
 type AssignResult = { type: "ok" | "moved" | "duplicate" | "error"; message: string } | null;
 
@@ -90,6 +91,9 @@ function extractContractorData(formData: FormData) {
     firstName: formData.get("firstName") as string,
     lastName: formData.get("lastName") as string,
     knownAs: normaliseKnownAs(formData.get("knownAs"), (formData.get("firstName") as string) || ""),
+    title: pickOption(formData.get("title"), TITLE_OPTIONS),
+    pronouns: pickOption(formData.get("pronouns"), PRONOUN_OPTIONS),
+    nationality: pickOption(formData.get("nationality"), NATIONALITY_OPTIONS),
     email: (formData.get("email") as string).toLowerCase().trim(),
     personalEmail: (formData.get("personalEmail") as string || "").toLowerCase().trim() || null,
     phone: formData.get("phone") as string,
