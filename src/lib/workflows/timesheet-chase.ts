@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { prisma } from "@/lib/db";
+import { greetingName } from "@/lib/contractor-name";
 
 const FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
 const PORTAL_URL = "https://www.prismworkforce.online";
@@ -21,6 +22,7 @@ function toMonday(date: Date): Date {
 export interface OverdueContractor {
   contractorId: string;
   contractorName: string;
+  greetingName: string;
   email: string | null;
   missingWeeks: Date[]; // ascending, Monday-start
   lastChased: Date | null;
@@ -114,6 +116,7 @@ export async function computeOverdueTimesheets(): Promise<OverdueContractor[]> {
     results.push({
       contractorId,
       contractorName: `${contractor.firstName} ${contractor.lastName}`,
+      greetingName: greetingName(contractor),
       email: contractor.email,
       missingWeeks,
       lastChased: lastChase?.sentAt ?? null,
@@ -196,7 +199,7 @@ export async function sendTimesheetChaseEmails(
     }
 
     try {
-      const firstName = contractor.contractorName.split(" ")[0];
+      const firstName = contractor.greetingName;
       const html = buildChaseEmail(firstName, contractor.missingWeeks);
 
       const { error } = await resend.emails.send({

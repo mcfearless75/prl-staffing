@@ -63,6 +63,9 @@ model Contractor {
   id                       String              @id @default(cuid())
   firstName                String
   lastName                 String
+  // The name they actually go by ("Bob" for Robert). Emails greet by it and the
+  // contractor list searches it — see src/lib/contractor-name.ts.
+  knownAs                  String?
   email                    String              @unique
   // Set by the bounce-check workflow agent when a hard bounce (SMTP 5xx) for
   // this address comes back through the infotech@ mailbox — e.g. a typo'd

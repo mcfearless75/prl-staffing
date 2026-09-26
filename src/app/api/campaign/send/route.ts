@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { greetingName } from "@/lib/contractor-name";
 
 const APP_URL = "https://www.prismworkforce.online";
 const FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
@@ -572,6 +573,7 @@ export async function POST(request: Request) {
         id: true,
         firstName: true,
         lastName: true,
+        knownAs: true,
         email: true,
         phone: true,
         address: true,
@@ -607,7 +609,7 @@ export async function POST(request: Request) {
         if (isNoCompliance) {
           const isActivated = !!contractor.contractorLogin;
           html = buildNoComplianceHtml(
-            contractor.firstName,
+            greetingName(contractor),
             `${APP_URL}/portal`,
             isActivated,
             trackingToken
@@ -626,7 +628,7 @@ export async function POST(request: Request) {
           }
 
           html = buildProfileCompletionHtml(
-            contractor.firstName,
+            greetingName(contractor),
             `${APP_URL}/portal`,
             missingFields,
             hasDocs,
@@ -648,8 +650,8 @@ export async function POST(request: Request) {
 
           const setupUrl = `${APP_URL}/setup-account`;
           html = isResend
-            ? buildResendEmailHtml(contractor.firstName, setupUrl, trackingToken)
-            : buildEmailHtml(contractor.firstName, setupUrl, trackingToken);
+            ? buildResendEmailHtml(greetingName(contractor), setupUrl, trackingToken)
+            : buildEmailHtml(greetingName(contractor), setupUrl, trackingToken);
           subject = isResend
             ? "Important Update: Your PRL Site Solutions Contractor Portal Access"
             : "Welcome to the PRL Site Solutions Contractor Portal";

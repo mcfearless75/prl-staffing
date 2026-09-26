@@ -10,6 +10,7 @@ import { TabNav } from "./tabs/tab-nav";
 import { OverviewTab } from "./tabs/overview-tab";
 import { RightToWorkTab } from "./tabs/right-to-work-tab";
 import { CompsCertsTab } from "./tabs/comps-certs-tab";
+import { effectiveKnownAs } from "@/lib/contractor-name";
 import { AssignmentsTab } from "./tabs/assignments-tab";
 import { ApplicationTab } from "./tabs/application-tab";
 import { ActivityTab } from "./tabs/activity-tab";
@@ -137,6 +138,11 @@ export default async function ContractorDetailPage({
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 {contractor.firstName} {contractor.lastName}
+                {effectiveKnownAs(contractor) && (
+                  <span className="ml-2 align-middle text-base font-normal text-gray-500">
+                    (known as &ldquo;{effectiveKnownAs(contractor)}&rdquo;)
+                  </span>
+                )}
                 {contractor.ref && (
                   <span className="ml-2 align-middle rounded-full bg-gray-100 px-2 py-0.5 font-mono text-xs font-normal text-gray-500">
                     {contractor.ref}

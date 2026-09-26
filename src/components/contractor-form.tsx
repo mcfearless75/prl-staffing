@@ -92,6 +92,28 @@ export function ContractorForm({
             />
           </div>
 
+          {/* Known As */}
+          <div>
+            <label
+              htmlFor="knownAs"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Known As <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <input
+              type="text"
+              id="knownAs"
+              name="knownAs"
+              maxLength={60}
+              placeholder="e.g. Bob"
+              defaultValue={contractor?.knownAs ?? ""}
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              The name they go by. Emails greet them by it.
+            </p>
+          </div>
+
           {/* Email */}
           <div>
             <label

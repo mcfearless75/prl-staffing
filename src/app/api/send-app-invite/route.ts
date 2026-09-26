@@ -3,6 +3,7 @@ import { requireStaff } from "@/lib/require-staff";
 import { portalFeatureEnabled } from "@/lib/portal-features";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { greetingName } from "@/lib/contractor-name";
 
 function escapeHtml(str: string): string {
   return str
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     if (!email) {
       return NextResponse.json({ error: "This contractor has no email address on file" }, { status: 400 });
     }
-    const name = escapeHtml(contractor.firstName);
+    const name = escapeHtml(greetingName(contractor));
     const appUrl = process.env.NEXTAUTH_URL || "https://www.prismworkforce.online";
     const installUrl = `${appUrl}/install`;
     const loginUrl = `${appUrl}/login`;

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { isPlaceholderEmail } from "@/lib/placeholder-email";
 import { logAction, alreadyActedToday } from "./engine";
 import type { WorkflowResult } from "./engine";
+import { greetingName } from "@/lib/contractor-name";
 
 const PORTAL_URL = "https://www.prismworkforce.online";
 
@@ -109,7 +110,7 @@ export const complianceChaseAgent = {
         const emailResult = await sendEmail({
           to: contractor.email,
           subject: "Action Required: Compliance Documents Need Attention — PRL Site Solutions",
-          html: buildEmail(contractor.firstName, docs),
+          html: buildEmail(greetingName(contractor), docs),
           template: "compliance-chase",
         });
         if (!emailResult.success) throw new Error(emailResult.error ?? "Email send failed");

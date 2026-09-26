@@ -112,6 +112,7 @@ export default async function ContractorsPage({
     where.OR = [
       { firstName: { contains: search, mode: "insensitive" } },
       { lastName: { contains: search, mode: "insensitive" } },
+      { knownAs: { contains: search, mode: "insensitive" } },
       { email: { contains: search, mode: "insensitive" } },
     ];
   }

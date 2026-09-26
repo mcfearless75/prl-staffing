@@ -1,6 +1,7 @@
 import { sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/db";
 import { escapeHtml } from "@/lib/utils";
+import { greetingName } from "@/lib/contractor-name";
 
 /**
  * Tells a contractor when staff have acted against their timesheet in a way
@@ -108,6 +109,7 @@ async function recipientFor(timesheetId: string): Promise<
       contractor: {
         select: {
           firstName: true,
+          knownAs: true,
           email: true,
           contractorLogin: { select: { email: true } },
         },
@@ -120,7 +122,7 @@ async function recipientFor(timesheetId: string): Promise<
 
   return {
     email,
-    firstName: timesheet.contractor.firstName || "there",
+    firstName: greetingName(timesheet.contractor),
     weekStarting: timesheet.weekStarting,
   };
 }

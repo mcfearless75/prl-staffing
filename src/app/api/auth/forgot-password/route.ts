@@ -3,6 +3,7 @@ import { sendPasswordResetEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { greetingName } from "@/lib/contractor-name";
 
 export async function POST(request: Request) {
   try {
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     }
 
     const name = contractorLogin
-      ? `${contractorLogin.contractor.firstName}`
+      ? greetingName(contractorLogin.contractor)
       : staffUser!.name;
 
     // Generate token

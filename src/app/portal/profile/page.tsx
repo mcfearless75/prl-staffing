@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
+import { effectiveKnownAs } from "@/lib/contractor-name";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { formatDate, maskNI, maskUTR } from "@/lib/utils";
@@ -43,6 +44,9 @@ export default async function PortalProfilePage() {
         <h1 className="mt-3 text-lg font-bold text-gray-900">
           {contractor.firstName} {contractor.lastName}
         </h1>
+        {effectiveKnownAs(contractor) && (
+          <p className="text-sm text-gray-600">Known as {effectiveKnownAs(contractor)}</p>
+        )}
         <p className="text-sm text-gray-500">{contractor.jobTitle || "Contractor"}</p>
         <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium ${
           contractor.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"

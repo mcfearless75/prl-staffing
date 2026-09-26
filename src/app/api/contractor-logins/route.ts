@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/require-staff";
+import { greetingName } from "@/lib/contractor-name";
 
 /**
  * Create contractor login accounts and send welcome emails
@@ -104,7 +105,7 @@ export async function GET(request: Request) {
           const resetUrl = `${baseUrl}/set-password?token=${token}`;
           const result = await sendPasswordResetEmail(
             c.email,
-            c.firstName,
+            greetingName(c),
             resetUrl,
             true // isNewAccount
           );

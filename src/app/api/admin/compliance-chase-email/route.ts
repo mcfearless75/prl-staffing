@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { greetingName } from "@/lib/contractor-name";
 
 const APP_URL = "https://www.prismworkforce.online";
 const FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
@@ -148,6 +149,7 @@ export async function POST() {
         id: true,
         firstName: true,
         lastName: true,
+        knownAs: true,
         email: true,
       },
     });
@@ -165,7 +167,7 @@ export async function POST() {
           continue;
         }
 
-        const html = buildChaseEmailHtml(contractor.firstName);
+        const html = buildChaseEmailHtml(greetingName(contractor));
 
         const { error } = await resend.emails.send({
           from: FROM,

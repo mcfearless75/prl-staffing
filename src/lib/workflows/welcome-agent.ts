@@ -2,6 +2,7 @@ import { sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/db";
 import { logAction, everActed } from "./engine";
 import type { WorkflowResult } from "./engine";
+import { greetingName } from "@/lib/contractor-name";
 
 const PORTAL_URL = "https://www.prismworkforce.online";
 
@@ -107,7 +108,7 @@ export const welcomeAgent = {
         const emailResult = await sendEmail({
           to: contractor.email,
           subject: "You're approved — Welcome to PRL Site Solutions",
-          html: buildWelcomeEmail(contractor.firstName),
+          html: buildWelcomeEmail(greetingName(contractor)),
           template: "welcome",
         });
         if (!emailResult.success) throw new Error(emailResult.error ?? "Email send failed");

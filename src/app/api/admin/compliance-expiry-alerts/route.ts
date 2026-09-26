@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { isPlaceholderEmail } from "@/lib/placeholder-email";
 import { logAction, alreadyActedToday } from "@/lib/workflows/engine";
+import { greetingName } from "@/lib/contractor-name";
 
 // Same keys as the daily cron chase (src/lib/workflows/compliance-chase.ts),
 // so a manual send and the cron never email the same person twice in a day.
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    const firstName = contractor.firstName ?? "Contractor";
+    const firstName = greetingName(contractor, "Contractor");
     const html = buildEmailHtml(firstName, docs);
 
     const emailResult = await sendEmail({
