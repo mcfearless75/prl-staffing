@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { uploadToR2 } from "@/lib/r2";
+import { validateWorkerExpiry } from "@/lib/doc-expiry";
 import { auth } from "@/lib/auth";
 import { isValidComplianceType } from "@/lib/compliance-types";
 
@@ -73,6 +74,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized — you can only upload to your own profile" }, { status: 403 });
     }
 
+    // Workers must give an in-date expiry (or tick "no expiry") on card types.
+    // Checked before anything is stored, so a refused upload leaves no file.
+    // Staff uploads are not subject to this.
+    let workerExpiry: { expiryDate: Date | null; indefinite: boolean } | null = null;
+    if (sessionUser.userType === "contractor") {
+      const check = validateWorkerExpiry({
+        type,
+        expiryDate: (formData.get("expiryDate") as string | null) || null,
+        noExpiry: formData.get("noExpiry") === "true",
+      });
+      if (!check.ok) return NextResponse.json({ error: check.error }, { status: 400 });
+      workerExpiry = check;
+    }
+    const expiryFields = workerExpiry
+      ? workerExpiry.indefinite
+        ? { expiryDate: null, indefiniteExpiry: true }
+        : workerExpiry.expiryDate
+          ? { expiryDate: workerExpiry.expiryDate, indefiniteExpiry: false }
+          : {}
+      : {};
+
     // Check contractor exists
     const contractor = await prisma.contractor.findUnique({
       where: { id: contractorId },
@@ -142,6 +164,7 @@ export async function POST(request: NextRequest) {
             status: "Pending",
             documentName: file.name,
             filePath: storageKey,
+            ...expiryFields,
             notes: `Document uploaded by contractor (v${version}) on ${new Date().toISOString().split("T")[0]}. Awaiting verification.`,
           },
         });
@@ -154,6 +177,7 @@ export async function POST(request: NextRequest) {
             documentName: file.name,
             status: "Pending", // Staff needs to verify
             filePath: storageKey,
+            ...expiryFields,
             notes: `Document uploaded by contractor (v${version}) on ${new Date().toISOString().split("T")[0]}. Awaiting verification.`,
           },
         });

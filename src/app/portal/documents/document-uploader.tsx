@@ -4,11 +4,13 @@ import { useState, useRef } from "react";
 import { Camera, Upload, FileText, Check, AlertCircle, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { COMPLIANCE_TYPE_GROUPS } from "@/lib/compliance-types";
+import { EMPTY_EXPIRY, ExpiryFields, appendExpiry, expiryReady, type ExpiryValue } from "./expiry-fields";
 
 const REQUIRES_DESCRIPTION = ["Qualification", "Other"];
 
 export function DocumentUploader({ contractorId }: { contractorId: string }) {
   const [selectedType, setSelectedType] = useState("");
+  const [expiry, setExpiry] = useState<ExpiryValue>(EMPTY_EXPIRY);
   const [customDescription, setCustomDescription] = useState("");
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -53,6 +55,10 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
       setMessage({ type: "error", text: "Please select a document type and at least one file." });
       return;
     }
+    if (!expiryReady(selectedType, expiry)) {
+      setMessage({ type: "error", text: "Enter the expiry date, or tick 'This document has no expiry date'." });
+      return;
+    }
     if (needsDescription && !customDescription.trim()) {
       setMessage({ type: "error", text: "Please enter a description for this document." });
       return;
@@ -70,6 +76,7 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
         formData.append("file", files[i].file);
         formData.append("type", selectedType);
         formData.append("contractorId", contractorId);
+        appendExpiry(formData, expiry);
         const pageNote = files.length > 1 ? (i === 0 ? "Front" : i === 1 ? "Back" : `Page ${i + 1}`) : "";
         const descNote = customDescription.trim() ? customDescription.trim() : "";
         const combinedNotes = [descNote, pageNote].filter(Boolean).join(" — ");
@@ -96,6 +103,7 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
       });
       setFiles([]);
       setSelectedType("");
+      setExpiry(EMPTY_EXPIRY);
       setCustomDescription("");
       router.refresh();
     } catch (error) {
@@ -112,8 +120,11 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
 
   return (
     <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 space-y-4">
-      <h2 className="text-sm font-semibold text-blue-900">Upload Document</h2>
-      <p className="text-xs text-blue-700">Need front and back? Add multiple images before uploading.</p>
+      <h2 className="text-sm font-semibold text-blue-900">Upload another card or certificate</h2>
+      <p className="text-xs text-blue-700">
+        Please upload all valid and in-date cards and certificates. Make sure the expiry date is clear.
+        Need front and back? Add both images before uploading.
+      </p>
 
       {/* Document Type Selector */}
       <div>
@@ -135,6 +146,8 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
           ))}
         </select>
       </div>
+
+      <ExpiryFields type={selectedType} value={expiry} onChange={setExpiry} />
 
       {/* Description field for bespoke certs */}
       {needsDescription && (
