@@ -9,6 +9,8 @@ import { PortalLinkButton } from "./portal-link-button";
 import { ComplianceReminderButton } from "./compliance-reminder-button";
 import { NameCheckButton } from "./name-check-button";
 import { checkComplianceReminder } from "@/lib/workflows/compliance-chase";
+import { loadRtwStatus } from "@/lib/rtw-reminder";
+import { RtwFlag } from "./rtw-flag";
 import { TabNav } from "./tabs/tab-nav";
 import { OverviewTab } from "./tabs/overview-tab";
 import { RightToWorkTab } from "./tabs/right-to-work-tab";
@@ -31,7 +33,7 @@ export default async function ContractorDetailPage({
   const tabParams = searchParams ? await searchParams : {};
   const activeTab: TabLabel = isTabLabel(tabParams.tab) ? tabParams.tab : "Overview";
 
-  const [contractor, activityLogs, documents, complianceRecords, companies, projects, reminder] = await Promise.all([
+  const [contractor, activityLogs, documents, complianceRecords, companies, projects, reminder, rtw] = await Promise.all([
     prisma.contractor.findUnique({
       where: { id },
       include: {
@@ -71,6 +73,7 @@ export default async function ContractorDetailPage({
       select: { id: true, code: true, name: true },
     }),
     checkComplianceReminder(id),
+    loadRtwStatus(id),
   ]);
 
   if (!contractor) {
@@ -176,6 +179,15 @@ export default async function ContractorDetailPage({
                   ? `Profile submitted ${formatDate(contractor.profileSubmittedAt)}`
                   : "Profile not yet submitted"}
               </span>
+              {/* Inactive people aren't being placed, so a red flag there is noise. */}
+              {rtw && !rtw.coverage.covered && contractor.status !== "Inactive" && (
+                <RtwFlag
+                  contractorId={contractor.id}
+                  reason={rtw.coverage.reason ?? "Right to Work not covered"}
+                  blockReason={rtw.blockReason}
+                  lastSentLabel={rtw.lastSentAt ? `Last reminder ${formatDate(rtw.lastSentAt)}` : null}
+                />
+              )}
               {contractor.nameChangedAt && (
                 <p className="mt-2 flex flex-wrap items-center rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs text-amber-900">
                   Name changed by worker {formatDate(contractor.nameChangedAt)} — check against ID
