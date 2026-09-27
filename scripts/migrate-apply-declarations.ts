@@ -46,6 +46,23 @@ async function main() {
   console.log(`  with an actual answer to move:     ${withAnswers.length}`);
   console.log(`  not JSON (left alone, check by hand): ${rows.length - parsed.length}`);
 
+  // Verification: every stored row must decrypt with the configured key.
+  const stored = await prisma.sensitiveDeclaration.findMany({ select: { payload: true } });
+  const checkKey = loadSensitiveKey();
+  let readable = 0;
+  if (checkKey) {
+    for (const s of stored) {
+      try {
+        decryptJson(s.payload, checkKey);
+        readable++;
+      } catch {
+        // counted as unreadable below
+      }
+    }
+  }
+  console.log(`Encrypted declaration rows:         ${stored.length}` +
+    (checkKey ? ` (decrypt OK: ${readable}, FAILED: ${stored.length - readable})` : " (no key here, not decrypt-checked)"));
+
   if (!APPLY) {
     console.log("\nDry run — nothing written.");
     return;
