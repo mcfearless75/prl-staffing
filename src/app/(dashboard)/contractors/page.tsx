@@ -15,20 +15,17 @@ import { appliedForFromNotes, effectiveJobTitle, parseContractorSort, sortContra
 // A status with no entry here still gets a working tab, just a neutral one.
 const STATUS_TAB_COLORS: Record<string, string> = {
   "":          "bg-gray-100 text-gray-700 hover:bg-gray-200",
-  New:         "bg-indigo-100 text-indigo-700 hover:bg-indigo-200",
   Active:      "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
-  "On Hold":   "bg-amber-100 text-amber-700 hover:bg-amber-200",
-  Suspended:   "bg-red-100 text-red-700 hover:bg-red-200",
   Inactive:    "bg-gray-100 text-gray-600 hover:bg-gray-200",
-  Left:        "bg-rose-100 text-rose-700 hover:bg-rose-200",
-  Bench:       "bg-slate-200 text-slate-800 hover:bg-slate-300",
+  Available:   "bg-slate-200 text-slate-800 hover:bg-slate-300",
 };
 
-// "Bench" isn't a real status — it's Active or Inactive with no live
-// assignment. Not a plain status filter, so it's special-cased wherever the
+// "Available" isn't a real status — it's Active or Inactive with no live
+// assignment (called "Bench" until 2026-09-27; old ?status=Bench links still
+// work). Not a plain status filter, so it's special-cased wherever the
 // `status` query param is read/written rather than added to
 // SETTABLE_CONTRACTOR_STATUSES (which drives the actual status dropdown).
-const BENCH_FILTER = "Bench";
+const AVAILABLE_FILTER = "Available";
 // Workers who edited their own name on the portal; staff check it against ID.
 const NAME_CHECK_FILTER = "NameCheck";
 
@@ -101,7 +98,7 @@ export default async function ContractorsPage({
     );
   }
   const search = params?.search || "";
-  const status = params?.status || "";
+  const status = params?.status === "Bench" ? AVAILABLE_FILTER : params?.status || "";
   const titleFilter = params?.title || "";
   const workingFilter = params?.working || "";
   const complianceFilter = params?.compliance || "";
@@ -119,7 +116,7 @@ export default async function ContractorsPage({
     ];
   }
 
-  if (status === BENCH_FILTER) {
+  if (status === AVAILABLE_FILTER) {
     where.status = { in: ["Active", "Inactive"] };
     where.assignments = { none: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } } };
   } else if (status === NAME_CHECK_FILTER) {
@@ -265,7 +262,7 @@ export default async function ContractorsPage({
 
       {/* Quick-filter tabs */}
       <div className="flex flex-wrap gap-2">
-        {["", ...SETTABLE_CONTRACTOR_STATUSES, BENCH_FILTER].map((value) => (
+        {["", ...SETTABLE_CONTRACTOR_STATUSES, AVAILABLE_FILTER].map((value) => (
           <Link
             key={value}
             href={hrefWith({ status: value })}
@@ -298,7 +295,7 @@ export default async function ContractorsPage({
               {s}
             </option>
           ))}
-          <option value={BENCH_FILTER}>Bench (unassigned)</option>
+          <option value={AVAILABLE_FILTER}>Available (no live work)</option>
           <option value={NAME_CHECK_FILTER}>Name changes to check</option>
         </select>
         <select name="title" defaultValue={titleFilter} className={`${selectCls} max-w-[220px]`} aria-label="Job title">

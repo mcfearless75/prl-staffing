@@ -90,7 +90,8 @@ model Contractor {
   dayRate                  Float?
   payRate                  Float? // hourly pay rate
   chargeRate               Float? // hourly charge rate
-  status                   String              @default("Inactive") // See src/lib/contractor-statuses.ts — New, Active, On Hold, Suspended, Inactive, Left, plus pipeline Applied/Looking
+  status                   String              @default("Inactive") // See src/lib/contractor-statuses.ts — Active, Inactive, plus pipeline Applied/Looking (New/On Hold/Suspended/Left retired 2026-09-27)
+  leavingDate              DateTime? // once passed, the daily run makes them Inactive (src/lib/leaving-date.ts)
   // When staff explicitly approved this applicant. Set ONLY by a deliberate
   // individual approval — never by bulk import, onboarding create, or a
   // contractor going back to work. welcomeAgent keys off this; `updatedAt` was

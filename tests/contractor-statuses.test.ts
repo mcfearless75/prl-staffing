@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   PIPELINE_CONTRACTOR_STATUSES,
+  RETIRED_CONTRACTOR_STATUSES,
   SETTABLE_CONTRACTOR_STATUSES,
   VALID_CONTRACTOR_STATUSES,
   isValidContractorStatus,
@@ -20,23 +21,34 @@ const pipeline: readonly string[] = PIPELINE_CONTRACTOR_STATUSES;
 const valid: readonly string[] = VALID_CONTRACTOR_STATUSES;
 
 describe("SETTABLE_CONTRACTOR_STATUSES", () => {
-  test('includes "On Hold"', () => {
-    // The whole reason this file exists. "On Hold" is a deliberate staff flag
-    // that deactivateContractorIfNoLiveWork refuses to overwrite, so staff must
-    // be able to set it — and to filter for it — from every status UI.
-    assert.ok(settable.includes("On Hold"));
+  test("is exactly Active and Inactive — the two statuses automation moves between", () => {
+    // 2026-09-27 clean-up: anything else settable would be a state automation
+    // can neither enter nor leave (as On Hold and Left were).
+    assert.deepEqual([...settable].sort(), ["Active", "Inactive"]);
   });
 
-  test('includes both statuses the compliance denominators exclude', () => {
-    // Every compliance query is scoped `notIn ["Left","Inactive"]`. If either
-    // became unsettable, staff could not move anyone out of the denominator.
-    assert.ok(settable.includes("Left"));
+  test("still lets staff move someone out of the compliance denominator", () => {
+    // Every compliance query is scoped `notIn ["Left","Inactive"]`.
     assert.ok(settable.includes("Inactive"));
   });
+});
 
-  test("includes Active, the status automation derives from live work", () => {
-    assert.ok(settable.includes("Active"));
+describe("RETIRED_CONTRACTOR_STATUSES", () => {
+  test("can no longer be written through any path", () => {
+    for (const status of RETIRED_CONTRACTOR_STATUSES) {
+      assert.equal(isValidContractorStatus(status), false, `"${status}" was retired`);
+      assert.equal(settable.includes(status), false, `"${status}" must not be offered`);
+    }
   });
+
+  test("covers every status the clean-up removed", () => {
+    for (const s of ["New", "On Hold", "Suspended", "Left"]) {
+      assert.ok((RETIRED_CONTRACTOR_STATUSES as readonly string[]).includes(s), s);
+    }
+  });
+});
+
+describe("SETTABLE_CONTRACTOR_STATUSES (shape)", () => {
 
   test("contains no duplicates", () => {
     assert.equal(new Set(settable).size, settable.length);
@@ -78,10 +90,6 @@ describe("isValidContractorStatus", () => {
     for (const status of valid) {
       assert.ok(isValidContractorStatus(status), `"${status}" should be accepted`);
     }
-  });
-
-  test('accepts "On Hold" — the case the PATCH route used to reject', () => {
-    assert.ok(isValidContractorStatus("On Hold"));
   });
 
   test("rejects unknown, empty and wrongly-cased input", () => {

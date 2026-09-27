@@ -11,6 +11,8 @@ import { emailConfirmationError } from "@/lib/email-confirmation";
 import { activateContractorForAssignment } from "@/lib/contractor-status";
 import { normaliseKnownAs } from "@/lib/contractor-name";
 import { postcodeGeoReset, refreshGeocode } from "@/lib/geo-refresh";
+import { isValidContractorStatus } from "@/lib/contractor-statuses";
+import { parseLeavingDate, applyLeavingDate } from "@/lib/leaving-date";
 import { NATIONALITY_OPTIONS, PRONOUN_OPTIONS, TITLE_OPTIONS, pickOption } from "@/lib/profile-options";
 
 type AssignResult = { type: "ok" | "moved" | "duplicate" | "error"; message: string } | null;
@@ -102,7 +104,11 @@ function extractContractorData(formData: FormData) {
     dayRate: parseFloat(formData.get("dayRate") as string) || null,
     payRate: parseFloat(formData.get("payRate") as string) || null,
     chargeRate: parseFloat(formData.get("chargeRate") as string) || null,
-    status: formData.get("status") as string,
+    // Allowlisted: this path used to write any posted value. An invalid or
+    // retired status is ignored (undefined = Prisma leaves the column alone).
+    status: isValidContractorStatus((formData.get("status") as string) || "")
+      ? (formData.get("status") as string)
+      : undefined,
     supplierId: (formData.get("supplierId") as string) || null,
     niNumber: formData.get("niNumber") as string,
     utrNumber: formData.get("utrNumber") as string,
@@ -117,6 +123,7 @@ function extractContractorData(formData: FormData) {
     emergencyContactRelation: formData.get("emergencyContactRelation") as string || null,
     // Personal details
     dateOfBirth: dobRaw ? new Date(dobRaw) : null,
+    leavingDate: parseLeavingDate(formData.get("leavingDate") as string | null),
     address: formData.get("address") as string || null,
     postcode: formData.get("postcode") as string || null,
     nextOfKin: formData.get("nextOfKin") as string || null,
@@ -222,6 +229,7 @@ export async function createContractor(
       return created;
     });
     await refreshGeocode("contractor", contractor.id);
+    await applyLeavingDate(contractor.id);
 
     // Auto-create contractor portal login (password set via forgot-password flow)
     let loginCreateFailed = false;
@@ -302,6 +310,7 @@ export async function updateContractor(
       await syncContractorJobRoles(tx, id, roleIds);
     });
     await refreshGeocode("contractor", id);
+    await applyLeavingDate(id);
 
     revalidatePath(`/contractors/${id}`);
     redirect(`/contractors/${id}`);

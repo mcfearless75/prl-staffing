@@ -120,7 +120,9 @@ export async function POST(request: NextRequest) {
             firstName: row.firstName,
             lastName: row.lastName,
             email: row.email,
-            status: "New",
+            // Imported lists are applicants (e.g. Indeed / CV-Library) — "New"
+            // was retired into "Applied" on 2026-09-27.
+            status: "Applied",
           },
         });
         await prisma.activityLog.create({

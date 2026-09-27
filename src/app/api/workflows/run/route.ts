@@ -7,6 +7,7 @@ import { welcomeAgent } from "@/lib/workflows/welcome-agent";
 import { staleApplicantAgent } from "@/lib/workflows/stale-applicant";
 import { placedToActiveAgent } from "@/lib/workflows/placed-to-active";
 import { bounceCheckAgent } from "@/lib/workflows/bounce-check";
+import { leavingDateAgent } from "@/lib/workflows/leaving-date";
 
 const agents = [
   // Runs first: flags any contractor whose email hard-bounced since the last
@@ -17,6 +18,8 @@ const agents = [
   // Runs next: the status flips it makes are read by the compliance agents
   // below, so a contractor starting today is chased as working, not as pending.
   placedToActiveAgent,
+  // Straight after: leavers go Inactive before anyone is chased as working.
+  leavingDateAgent,
   complianceChaseAgent,
   complianceDigestAgent,
   welcomeAgent,

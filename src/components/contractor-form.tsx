@@ -362,12 +362,36 @@ export function ContractorForm({
               defaultValue={contractor?.status ?? "Active"}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
+              {/* Keep a pipeline status (Applied/Looking) as an option, or the
+                  browser selects "Active" and saving any edit would silently
+                  pull an applicant out of the funnel. */}
+              {contractor?.status &&
+                !(SETTABLE_CONTRACTOR_STATUSES as readonly string[]).includes(contractor.status) && (
+                  <option value={contractor.status}>{contractor.status} (current)</option>
+                )}
               {SETTABLE_CONTRACTOR_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Leaving date — once passed they go Inactive automatically */}
+          <div>
+            <label htmlFor="leavingDate" className="block text-sm font-medium text-gray-700">
+              Leaving date
+            </label>
+            <input
+              type="date"
+              id="leavingDate"
+              name="leavingDate"
+              defaultValue={contractor?.leavingDate ? new Date(contractor.leavingDate).toISOString().split("T")[0] : ""}
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Once this date passes they become Inactive, unless they are still on a live job.
+            </p>
           </div>
 
           {/* Supplier */}

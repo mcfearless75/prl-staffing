@@ -21,21 +21,24 @@
  */
 
 /**
- * Statuses staff set by hand, in lifecycle order, with the terminal state last.
+ * Statuses staff set by hand.
  *
- * "On Hold" is a deliberate staff flag meaning "keep them, but they are not
- * available right now"; `deactivateContractorIfNoLiveWork` skips it precisely so
- * automation cannot overwrite that intent. It therefore has to be settable —
- * and filterable — from every status UI, not just the full edit form.
+ * Just two since the 2026-09-27 clean-up (Paul): Active = working or ready to
+ * work, Inactive = not. Automation moves people between them as work starts
+ * and ends (`contractor-status.ts`), and an end date on the profile turns
+ * someone Inactive once it passes. "Bench" was never a status — it is the
+ * Available filter (no live work) on the Subcontractors list.
  */
-export const SETTABLE_CONTRACTOR_STATUSES = [
-  "New",
-  "Active",
-  "On Hold",
-  "Suspended",
-  "Inactive",
-  "Left",
-] as const;
+export const SETTABLE_CONTRACTOR_STATUSES = ["Active", "Inactive"] as const;
+
+/**
+ * Retired on 2026-09-27 and no longer writable. On Hold, Suspended and Left
+ * became Inactive; "New" (set only by the CSV import) became Applied for
+ * genuine applicants, or Active/Inactive for existing workers
+ * (scripts/migrate-contractor-statuses.mjs). Kept only so labels and colours
+ * still render if an old value is ever read back, e.g. from an audit log.
+ */
+export const RETIRED_CONTRACTOR_STATUSES = ["New", "On Hold", "Suspended", "Left"] as const;
 
 /**
  * Applicant-pipeline statuses. Valid to hold and valid to write, but NOT
