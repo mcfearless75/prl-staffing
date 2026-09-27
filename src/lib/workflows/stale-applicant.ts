@@ -4,7 +4,7 @@ import { logAction, alreadyActedToday } from "./engine";
 import type { WorkflowResult } from "./engine";
 
 const PORTAL_URL = "https://www.prismworkforce.online";
-const STAFF_EMAIL = "infotech@prlsitesolutions.co.uk";
+const STAFF_EMAIL = "prism@prlsitesolutions.co.uk";
 const STALE_DAYS = 7;
 
 function buildStaffAlertEmail(stale: Array<{ name: string; email: string; status: string; daysSince: number; jobTitle: string }>): string {

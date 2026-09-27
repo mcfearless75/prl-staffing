@@ -74,7 +74,7 @@ function buildEmailHtml(
               </tr>
             </table>
             <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">
-              If you have any questions or need assistance, please contact us at <a href="mailto:infotech@prlsitesolutions.co.uk" style="color:#1F4E79;">infotech@prlsitesolutions.co.uk</a>.
+              If you have any questions or need assistance, please contact us at <a href="mailto:prism@prlsitesolutions.co.uk" style="color:#1F4E79;">prism@prlsitesolutions.co.uk</a>.
             </p>
           </td>
         </tr>
@@ -83,7 +83,7 @@ function buildEmailHtml(
           <td style="background:#F9FAFB;padding:20px 32px;border-top:1px solid #E5E7EB;">
             <p style="margin:0;font-size:12px;color:#9CA3AF;">
               &copy; ${new Date().getFullYear()} PRL Site Solutions. PRISM Workforce Management Portal.<br>
-              <a href="mailto:infotech@prlsitesolutions.co.uk" style="color:#6B7280;">infotech@prlsitesolutions.co.uk</a>
+              <a href="mailto:prism@prlsitesolutions.co.uk" style="color:#6B7280;">prism@prlsitesolutions.co.uk</a>
             </p>
           </td>
         </tr>

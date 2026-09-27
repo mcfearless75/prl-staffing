@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "The password reset service is temporarily unavailable. Please try again shortly, or contact infotech@prlsitesolutions.co.uk for help.",
+            "The password reset service is temporarily unavailable. Please try again shortly, or contact prism@prlsitesolutions.co.uk for help.",
         },
         { status: 500 }
       );

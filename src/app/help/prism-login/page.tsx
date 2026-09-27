@@ -196,8 +196,8 @@ export default function PrismLoginHelpPage() {
           <div className="mt-8 pt-6 border-t border-gray-200 text-center">
             <p className="text-sm text-gray-500">
               Still stuck? Ask the PRL office to help you, or email{" "}
-              <a href="mailto:infotech@prlsitesolutions.co.uk" className="text-blue-600 hover:text-blue-700">
-                infotech@prlsitesolutions.co.uk
+              <a href="mailto:prism@prlsitesolutions.co.uk" className="text-blue-600 hover:text-blue-700">
+                prism@prlsitesolutions.co.uk
               </a>
               .
             </p>

@@ -100,8 +100,8 @@ export default function InstallPage() {
           <p>
             <a href="tel:08007723959" className="text-blue-600 font-medium">0800 772 3959</a>
             {" · "}
-            <a href="mailto:infotech@prlsitesolutions.co.uk" className="text-blue-600">
-              infotech@prlsitesolutions.co.uk
+            <a href="mailto:prism@prlsitesolutions.co.uk" className="text-blue-600">
+              prism@prlsitesolutions.co.uk
             </a>
           </p>
         </div>

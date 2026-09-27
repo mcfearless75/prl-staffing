@@ -6,7 +6,7 @@ import { greetingName } from "@/lib/contractor-name";
 
 const APP_URL = "https://www.prismworkforce.online";
 const FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
-const HELP_EMAIL = "infotech@prlsitesolutions.co.uk";
+const HELP_EMAIL = "prism@prlsitesolutions.co.uk";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
