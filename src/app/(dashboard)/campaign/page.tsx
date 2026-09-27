@@ -380,7 +380,7 @@ export default function CampaignPage() {
             Email Preview — No Compliance
           </h2>
           <div className="space-y-3 text-sm text-gray-600">
-            <div className="flex gap-2"><span className="font-medium w-16 shrink-0">From:</span><span>PRL Site Solutions &lt;infotech@prlsitesolutions.co.uk&gt;</span></div>
+            <div className="flex gap-2"><span className="font-medium w-16 shrink-0">From:</span><span>PRL Site Solutions &lt;prism@prlsitesolutions.co.uk&gt;</span></div>
             <div className="flex gap-2"><span className="font-medium w-16 shrink-0">Subject:</span><span className="font-semibold text-orange-700">Action Required: No compliance documents on file — PRISM</span></div>
             <hr />
             <div className="rounded-lg bg-[#1F4E79] p-3 text-center">

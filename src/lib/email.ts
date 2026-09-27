@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getGraphConfig, sendViaGraph } from "@/lib/email-graph";
 import { isPlaceholderEmail } from "@/lib/placeholder-email";
 
-export const DEFAULT_EMAIL_FROM = "PRL Site Solutions <infotech@prlsitesolutions.co.uk>";
+export const DEFAULT_EMAIL_FROM = "PRL Site Solutions <prism@prlsitesolutions.co.uk>";
 
 export interface SendEmailResult {
   success: boolean;
