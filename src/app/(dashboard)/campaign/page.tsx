@@ -208,11 +208,17 @@ export default function CampaignPage() {
           <h1 className="text-2xl font-bold text-gray-900">Campaign — Incomplete Contractors</h1>
           <p className="mt-1 text-sm text-gray-500">Chase all contractors who still have incomplete profiles or missing documents</p>
         </div>
-        <button onClick={fetchStats} disabled={loading}
-          className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50">
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <a href="/campaign/compose"
+            className="rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-purple-700">
+            Custom email
+          </a>
+          <button onClick={fetchStats} disabled={loading}
+            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
