@@ -1,7 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
-import { milesBetween, distanceScore, locationFactor } from "@/lib/distance";
+import { milesBetween, distanceScore, locationFactor, siteOriginPostcode } from "@/lib/distance";
 import { postcodeGeoReset } from "@/lib/geo-refresh";
 
 /**
@@ -68,6 +68,31 @@ describe("locationFactor", () => {
   test("exactly on the radius is still within", () => {
     const miles = milesBetween(MANCHESTER, LIVERPOOL);
     assert.equal(locationFactor(MANCHESTER, LIVERPOOL, miles).excluded, false);
+  });
+});
+
+describe("siteOriginPostcode", () => {
+  test("the site's own postcode wins", () => {
+    assert.deepEqual(siteOriginPostcode({ postcode: "M1 1AA", company: { postcode: "L1 8JQ" } }), {
+      postcode: "M1 1AA",
+      source: "site",
+    });
+  });
+
+  test("falls back to the company postcode when the site has none", () => {
+    assert.deepEqual(siteOriginPostcode({ postcode: null, company: { postcode: "L1 8JQ" } }), {
+      postcode: "L1 8JQ",
+      source: "company",
+    });
+    assert.deepEqual(siteOriginPostcode({ postcode: "  ", company: { postcode: "L1 8JQ" } }), {
+      postcode: "L1 8JQ",
+      source: "company",
+    });
+  });
+
+  test("null when neither has one", () => {
+    assert.equal(siteOriginPostcode({ postcode: null, company: { postcode: " " } }), null);
+    assert.equal(siteOriginPostcode({ postcode: null, company: { postcode: null } }), null);
   });
 });
 

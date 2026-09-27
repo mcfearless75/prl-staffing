@@ -52,13 +52,16 @@ const [contractors, sites] = await Promise.all([
 ]);
 const withCoords = await prisma.contractor.count({ where: { latitude: { not: null } } });
 
-const [siteTotal, siteWithPostcode, siteWithCoords] = await Promise.all([
+const [siteTotal, siteWithPostcode, siteWithCoords, siteCompanyFallback] = await Promise.all([
   prisma.site.count({ where: { isActive: true } }),
   prisma.site.count({ where: { isActive: true, postcode: { not: null } } }),
   prisma.site.count({ where: { isActive: true, latitude: { not: null } } }),
+  // Smart matching measures these from the company postcode instead (siteOriginPostcode)
+  prisma.site.count({ where: { isActive: true, postcode: null, company: { postcode: { not: null } } } }),
 ]);
 
 console.log(`Active sites: ${siteTotal} (with postcode ${siteWithPostcode}, geocoded ${siteWithCoords})`);
+console.log(`Sites with no postcode but a company postcode to fall back on: ${siteCompanyFallback}`);
 console.log(`Contractors already geocoded: ${withCoords}`);
 console.log(`Missing coordinates: ${contractors.length} contractors, ${sites.length} sites`);
 

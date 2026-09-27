@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { matchContractors, DEFAULT_RADIUS_MILES } from "@/lib/intelligence-engine";
 import { geocodePostcodesBulk, type GeoPoint } from "@/lib/geocode";
+import { siteOriginPostcode } from "@/lib/distance";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
@@ -15,34 +16,65 @@ function parseRadius(raw: string | undefined): number {
   return Math.min(n, 500);
 }
 
+type Place = { origin: GeoPoint | null; label: string; error?: string; note?: string };
+
+async function geocodeOne(postcode: string): Promise<GeoPoint | null> {
+  try {
+    return (await geocodePostcodesBulk([postcode], { timeoutMs: 5000 })).get(postcode.trim().toUpperCase()) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // Where "within N miles" is measured from. A site without cached coordinates
-// is looked up on the fly (read-only here; saving the site caches them).
-async function resolveOrigin(
-  siteId: string,
-  postcode: string
-): Promise<{ origin: GeoPoint | null; label: string; error?: string }> {
+// is looked up on the fly (read-only here; saving the site caches them). A
+// site with no postcode falls back to its company's postcode, flagged in the
+// results because that is usually a head office, not the site.
+async function resolveOrigin(siteId: string, postcode: string): Promise<Place> {
   if (siteId) {
     const site = await prisma.site.findUnique({
       where: { id: siteId },
-      select: { name: true, postcode: true, latitude: true, longitude: true, company: { select: { name: true } } },
+      select: {
+        name: true,
+        postcode: true,
+        latitude: true,
+        longitude: true,
+        company: { select: { name: true, postcode: true } },
+      },
     });
     if (!site) return { origin: null, label: "", error: "That site no longer exists." };
     const label = `${site.name} (${site.company.name})`;
     if (site.latitude != null && site.longitude != null) {
       return { origin: { lat: site.latitude, lng: site.longitude }, label };
     }
-    if (!site.postcode) {
-      return { origin: null, label, error: `${label} has no postcode, so distance can't be measured. Add one on the site page.` };
+    const from = siteOriginPostcode(site);
+    if (!from) {
+      return {
+        origin: null,
+        label,
+        error: `Neither ${site.name} nor ${site.company.name} has a postcode, so distance can't be measured. Add one on the site page.`,
+      };
     }
-    postcode = site.postcode;
+    const point = await geocodeOne(from.postcode);
+    if (!point) {
+      return {
+        origin: null,
+        label,
+        error: `Couldn't find the ${from.source} postcode "${from.postcode}" for ${label}. Check it on the ${from.source} page.`,
+      };
+    }
+    return {
+      origin: point,
+      label,
+      note:
+        from.source === "company"
+          ? `${site.name} has no postcode, so distances are measured from ${site.company.name}'s postcode (${from.postcode.toUpperCase()}), which may not be where the work is. Add the site's postcode for accurate results.`
+          : undefined,
+    };
   }
   if (!postcode) return { origin: null, label: "" };
-  try {
-    const point = (await geocodePostcodesBulk([postcode], { timeoutMs: 5000 })).get(postcode.trim().toUpperCase());
-    if (point) return { origin: point, label: postcode.toUpperCase() };
-  } catch {
-    // fall through to the error below
-  }
+  const point = await geocodeOne(postcode);
+  if (point) return { origin: point, label: postcode.toUpperCase() };
   return { origin: null, label: postcode, error: `Couldn't find the postcode "${postcode}". Check it and try again.` };
 }
 
@@ -67,12 +99,12 @@ export default async function SmartMatchingPage({
     }),
     prisma.site.findMany({
       where: { isActive: true },
-      select: { id: true, name: true, postcode: true, company: { select: { name: true } } },
+      select: { id: true, name: true, postcode: true, company: { select: { name: true, postcode: true } } },
       orderBy: [{ company: { name: "asc" } }, { name: "asc" }],
     }),
   ]);
 
-  const place = role ? await resolveOrigin(siteId, postcode) : { origin: null, label: "" };
+  const place: Place = role ? await resolveOrigin(siteId, postcode) : { origin: null, label: "" };
   // An unresolvable site/postcode shows an error instead of silently
   // matching across the whole country.
   const matches =
@@ -130,7 +162,11 @@ export default async function SmartMatchingPage({
               {sites.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.company.name} – {s.name}
-                  {s.postcode ? ` (${s.postcode})` : " (no postcode)"}
+                  {s.postcode
+                    ? ` (${s.postcode})`
+                    : s.company.postcode
+                      ? ` (company postcode ${s.company.postcode})`
+                      : " (no postcode)"}
                 </option>
               ))}
             </select>
@@ -184,6 +220,12 @@ export default async function SmartMatchingPage({
       </div>
 
       {/* Results */}
+      {place.note && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-6 py-3">
+          <p className="text-sm text-amber-800">{place.note}</p>
+        </div>
+      )}
+
       {place.error && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 px-6 py-4">
           <p className="text-sm text-amber-800">{place.error}</p>

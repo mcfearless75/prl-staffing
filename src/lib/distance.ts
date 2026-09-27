@@ -29,6 +29,22 @@ export function distanceScore(miles: number, radiusMiles: number): number {
   return Math.max(0, Math.round(100 - (miles / radiusMiles) * 50));
 }
 
+/**
+ * Which postcode to measure a site from. None of PRL's sites had a postcode
+ * when distance matching shipped, so the client company's postcode stands in
+ * (Paul, 2026-09-27). That is usually a head office, so callers must say so.
+ */
+export function siteOriginPostcode(site: {
+  postcode: string | null;
+  company: { postcode: string | null };
+}): { postcode: string; source: "site" | "company" } | null {
+  const own = site.postcode?.trim();
+  if (own) return { postcode: own, source: "site" };
+  const company = site.company.postcode?.trim();
+  if (company) return { postcode: company, source: "company" };
+  return null;
+}
+
 export interface LocationFactor {
   miles: number | null; // null when either end has no coordinates
   score: number;
