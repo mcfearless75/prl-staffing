@@ -196,7 +196,7 @@ export default async function SmartMatchingPage({
             />
           </div>
           <div>
-            <label htmlFor="maxRate" className="block text-sm font-medium text-gray-700">Max Rate (£/h)</label>
+            <label htmlFor="maxRate" className="block text-sm font-medium text-gray-700">Max charge rate (£/h)</label>
             <input
               type="number"
               id="maxRate"
@@ -218,6 +218,18 @@ export default async function SmartMatchingPage({
           </div>
         </form>
       </div>
+
+      {/* PRL asked "What is Rate fit?" and "is Location miles or journey time?" */}
+      <details className="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm text-gray-700">
+        <summary className="cursor-pointer font-medium text-gray-900">How the scores work</summary>
+        <ul className="mt-3 space-y-1.5 text-xs text-gray-600">
+          <li><strong>Role Match (30%)</strong>: how closely their job title matches the role, including the same trade (e.g. joiner and carpenter).</li>
+          <li><strong>Availability (25%)</strong>: 100% if they have no live job, 20% if they are working now.</li>
+          <li><strong>Compliance (20%)</strong>: the share of their documents that are verified.</li>
+          <li><strong>Rate Fit (15%)</strong>: their <em>charge</em> rate (what we bill the client) against the Max charge rate you enter. 100% at or under it, 60% up to 20% over, 20% beyond. With no max entered: 70% if a charge rate is set, 50% if not.</li>
+          <li><strong>Location (10%)</strong>: straight-line miles from their home postcode to the site, not journey time. 100% on site, 50% at the edge of your radius. Anyone further than the radius is left out.</li>
+        </ul>
+      </details>
 
       {/* Results */}
       {place.note && (
