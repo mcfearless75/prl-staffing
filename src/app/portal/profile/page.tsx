@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { formatDate } from "@/lib/utils";
 import { ProfileForm } from "./profile-form";
+import { DeclarationsForm } from "./declarations-form";
 
 export default async function PortalProfilePage() {
   const session = await auth();
@@ -69,6 +70,10 @@ export default async function PortalProfilePage() {
           emergencyContactRelation: contractor.emergencyContactRelation ?? "",
         }}
       />
+
+      {/* Medical, drugs & alcohol, criminal record — encrypted, admins only.
+          Hides itself if the encryption key isn't configured. */}
+      <DeclarationsForm />
 
       {/* Compliance Summary */}
       <div className="rounded-xl border border-gray-200 bg-white">

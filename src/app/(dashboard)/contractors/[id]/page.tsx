@@ -11,6 +11,9 @@ import { NameCheckButton } from "./name-check-button";
 import { checkComplianceReminder } from "@/lib/workflows/compliance-chase";
 import { loadRtwStatus } from "@/lib/rtw-reminder";
 import { RtwFlag } from "./rtw-flag";
+import { auth } from "@/lib/auth";
+import { canViewSensitive } from "@/lib/sensitive-crypto";
+import { DeclarationsPanel } from "./declarations-panel";
 import { TabNav } from "./tabs/tab-nav";
 import { OverviewTab } from "./tabs/overview-tab";
 import { RightToWorkTab } from "./tabs/right-to-work-tab";
@@ -79,6 +82,20 @@ export default async function ContractorDetailPage({
   if (!contractor) {
     notFound();
   }
+
+  // Health & declarations: only named admins see the panel at all.
+  const session = await auth();
+  const showDeclarations = !!session?.user && canViewSensitive(session.user as { role?: string; email?: string });
+  const [declarationMeta, lastDeclarationView] = showDeclarations
+    ? await Promise.all([
+        prisma.sensitiveDeclaration.findUnique({ where: { contractorId: id }, select: { completedAt: true } }),
+        prisma.sensitiveAccessLog.findFirst({
+          where: { contractorId: id, action: "view" },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true, actorEmail: true },
+        }),
+      ])
+    : [null, null];
 
   const initials =
     (contractor.firstName?.[0] ?? "") + (contractor.lastName?.[0] ?? "");
@@ -238,6 +255,18 @@ export default async function ContractorDetailPage({
           </div>
         </div>
       </div>
+
+      {showDeclarations && (
+        <DeclarationsPanel
+          contractorId={contractor.id}
+          status={!declarationMeta ? "none" : declarationMeta.completedAt ? "complete" : "incomplete"}
+          lastViewed={
+            lastDeclarationView
+              ? `${formatDate(lastDeclarationView.createdAt)} by ${lastDeclarationView.actorEmail ?? "unknown"}`
+              : null
+          }
+        />
+      )}
 
       <TabNav
         contractorId={contractor.id}

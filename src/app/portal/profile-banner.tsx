@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { categoryForType } from "@/lib/compliance-types";
 import { RTW_SATISFIED_STATUSES, normaliseShareCode, parseRtwRoute, rtwProgress } from "@/lib/rtw-route";
 import { loadChecklistTypes } from "./documents/compliance-checklist";
+import { sensitiveStorageAvailable } from "@/lib/sensitive-crypto";
 
 /**
  * "Please complete your profile" on the portal home (Paul, 2026-09-26: everyone,
@@ -15,7 +16,13 @@ export async function ProfileBanner({ contractorId }: { contractorId: string }) 
   const [c, records, checklist] = await Promise.all([
     prisma.contractor.findUnique({
       where: { id: contractorId },
-      select: { profileSubmittedAt: true, rtwRoute: true, shareCode: true },
+      select: {
+        profileSubmittedAt: true,
+        rtwRoute: true,
+        shareCode: true,
+        // Plain completion date only — the answers themselves stay encrypted.
+        declaration: { select: { completedAt: true } },
+      },
     }),
     prisma.complianceRecord.findMany({
       where: { contractorId, status: { in: [...RTW_SATISFIED_STATUSES] } },
@@ -28,7 +35,10 @@ export async function ProfileBanner({ contractorId }: { contractorId: string }) 
   const satisfied = new Set(records.map((r) => r.type));
   const detailsDone = !!c.profileSubmittedAt;
   const rtwDone = rtwProgress(parseRtwRoute(c.rtwRoute), satisfied, !!normaliseShareCode(c.shareCode)).complete;
-  if (detailsDone && rtwDone) return null;
+  // Not asked until the encryption key is configured, so it can't hold the banner open.
+  const declarationsAsked = sensitiveStorageAvailable();
+  const declarationsDone = !declarationsAsked || !!c.declaration?.completedAt;
+  if (detailsDone && rtwDone && declarationsDone) return null;
 
   // Right to Work has its own step above, so the cards step skips that category.
   const cardsDone = checklist
@@ -37,6 +47,7 @@ export async function ProfileBanner({ contractorId }: { contractorId: string }) 
 
   const steps = [
     { label: "Your details", done: detailsDone, href: "/portal/profile" },
+    ...(declarationsAsked ? [{ label: "Health & declarations", done: declarationsDone, href: "/portal/profile" }] : []),
     { label: "Right to Work", done: rtwDone, href: "/portal/documents" },
     { label: "Cards and certificates", done: cardsDone, href: "/portal/documents" },
   ];

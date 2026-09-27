@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { canViewSensitive, sensitiveStorageAvailable } from "@/lib/sensitive-crypto";
+import { logSensitiveAccess, readDeclarations } from "@/lib/declaration-store";
 
 function formatDate(d: Date | string | null): string {
   if (!d) return "—";
@@ -192,6 +194,39 @@ export async function GET(request: NextRequest) {
       drawRow(["Type", "File Name", "Version", "Uploaded"], [80, 220, 60, 120], true);
       for (const d of documents) {
         drawRow([d.type, d.fileName, `v${d.version}`, formatDate(d.createdAt)], [80, 220, 60, 120]);
+      }
+    }
+    y -= 10;
+
+    // ── Health & declarations (special-category data) ──
+    // The person is entitled to it, but only a named viewer may decrypt it, so
+    // anyone else's export says it is held and who can include it.
+    drawTitle("9. Health & Declarations");
+    const hasDeclarations = (await prisma.sensitiveDeclaration.count({ where: { contractorId } })) > 0;
+    if (!hasDeclarations) {
+      page.drawText("None held.", { x: margin, y, size: 9, font, color: gray });
+      y -= 16;
+    } else if (!canViewSensitive(session.user) || !sensitiveStorageAvailable()) {
+      page.drawText("Held, restricted. Ask a named administrator to generate this export to include it.", { x: margin, y, size: 9, font, color: gray });
+      y -= 16;
+    } else {
+      await logSensitiveAccess(contractorId, "view-sar", session.user.email ?? null);
+      const d = await readDeclarations(contractorId);
+      drawField("Medical conditions", d?.hasMedicalCondition ?? "—");
+      // Free text: the standard PDF font can't encode emoji etc., so replace them.
+      // drawField cuts at 80 characters, and a SAR must be complete: wrap it.
+      if (d?.medicalConditions) {
+        const text = d.medicalConditions.replace(/\s+/g, " ").replace(/[^\x20-\x7E -ÿ]/g, "?");
+        for (let i = 0; i < text.length; i += 80) {
+          drawField(i === 0 ? "Conditions listed" : "", text.slice(i, i + 80));
+        }
+      }
+      drawField("Can take a drugs & alcohol test", d?.canTakeDaTest ?? "—");
+      drawField("Unspent criminal convictions", d?.hasUnspentConviction ?? "—");
+      drawField("Declaration ticked", d?.declarationTrue ? "Yes" : "No");
+      if (d?.applyAnswers) {
+        drawField("Application: convicted of an offence", d.applyAnswers.hasCriminalConviction ?? "—");
+        drawField("Application: previous convictions", d.applyAnswers.hasPreviousConvictions ?? "—");
       }
     }
     y -= 10;

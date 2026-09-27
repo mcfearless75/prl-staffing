@@ -7,6 +7,8 @@ import { checkPublicFormRateLimit } from "@/lib/rate-limit";
 import { parseDate } from "@/lib/parse-date";
 import { emailMatches } from "@/lib/contractor-email";
 import { refreshGeocode } from "@/lib/geo-refresh";
+import { sensitiveStorageAvailable } from "@/lib/sensitive-crypto";
+import { saveApplyAnswers } from "@/lib/declaration-store";
 import {
   findPotentialDuplicates,
   describeReasons,
@@ -114,8 +116,8 @@ export async function POST(request: Request) {
             hasDbs: body.hasDbs,
             dbsNumber: body.dbsNumber,
             dbsIssued: body.dbsIssued,
-            hasCriminalConviction: body.hasCriminalConviction,
-            hasPreviousConvictions: body.hasPreviousConvictions,
+            // hasCriminalConviction / hasPreviousConvictions: NOT stored here
+            // any more — encrypted in SensitiveDeclaration (see below).
             hasSecurityClearance: body.hasSecurityClearance,
             clearanceLevel: body.clearanceLevel,
             waiverDecision: body.waiverDecision,
@@ -295,6 +297,25 @@ export async function POST(request: Request) {
       }
     }
 
+    // Criminal-record answers go ONLY into the encrypted store. With no key
+    // configured they are dropped rather than kept in the clear.
+    const applyAnswers = {
+      hasCriminalConviction: typeof body.hasCriminalConviction === "string" ? body.hasCriminalConviction : undefined,
+      hasPreviousConvictions: typeof body.hasPreviousConvictions === "string" ? body.hasPreviousConvictions : undefined,
+    };
+    const criminalAnswered = !!(applyAnswers.hasCriminalConviction || applyAnswers.hasPreviousConvictions);
+    if (contractorId && criminalAnswered) {
+      if (sensitiveStorageAvailable()) {
+        try {
+          await saveApplyAnswers(contractorId, applyAnswers);
+        } catch (err) {
+          console.error("Failed to store application declarations:", err instanceof Error ? err.message : "unknown");
+        }
+      } else {
+        console.warn("SENSITIVE_DATA_KEY not set: application criminal-record answers were not stored.");
+      }
+    }
+
     // Create activity log entry
     try {
       await prisma.activityLog.create({
@@ -310,6 +331,10 @@ export async function POST(request: Request) {
             passportNumber: maskPassportNumber(body.passportNumber),
             accountNumber: maskBankAccount(body.accountNumber),
             sortCode: maskSortCode(body.sortCode),
+            // Criminal-record answers are special-category data: held only
+            // in the encrypted SensitiveDeclaration row, never in this log.
+            hasCriminalConviction: undefined,
+            hasPreviousConvictions: undefined,
           }),
           ipAddress,
         },
@@ -426,8 +451,8 @@ export async function POST(request: Request) {
               ["DBS Check (last 3 years)", body.hasDbs],
               ["Enhanced DBS No", body.dbsNumber],
               ["DBS Issued", body.dbsIssued],
-              ["Criminal Conviction", body.hasCriminalConviction],
-              ["Previous Convictions", body.hasPreviousConvictions],
+              // The answers themselves never go in an email.
+              ["Criminal record questions", criminalAnswered ? "Answered: held securely in PRISM (restricted)" : ""],
               ["Security Clearance", body.hasSecurityClearance],
               ["Level of Clearance", body.clearanceLevel],
               ["Date Granted", body.clearanceDateGranted],

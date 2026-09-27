@@ -75,8 +75,15 @@ function ApplicationNotes({ raw }: { raw: string | null }) {
         ["DBS (last 3 years)", data.hasDbs],
         ["DBS Number", data.dbsNumber],
         ["DBS Issued", data.dbsIssued],
-        ["Criminal Conviction", data.hasCriminalConviction],
-        ["Previous Convictions", data.hasPreviousConvictions],
+        // Special-category data: never shown here. New applications store the
+        // answers encrypted (Health & declarations panel, named admins only);
+        // older ones are moved there by scripts/migrate-apply-declarations.ts.
+        [
+          "Criminal record answers",
+          data.hasCriminalConviction || data.hasPreviousConvictions
+            ? "Restricted: see Health & declarations"
+            : undefined,
+        ],
         ["Security Clearance", data.hasSecurityClearance],
         ["Clearance Level", data.clearanceLevel],
       ],

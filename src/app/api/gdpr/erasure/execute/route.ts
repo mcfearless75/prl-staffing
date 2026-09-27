@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/require-staff";
 import { deleteFromR2 } from "@/lib/r2";
+import { eraseDeclarations } from "@/lib/declaration-store";
 
 export async function POST(request: NextRequest) {
   try {
@@ -87,6 +88,9 @@ export async function POST(request: NextRequest) {
     await prisma.contractorLogin.deleteMany({
       where: { contractorId },
     });
+
+    // 2b. Health, drugs & alcohol and criminal-record answers (logged)
+    await eraseDeclarations(contractorId, "erase-request", session.user.email ?? null);
 
     // 3. Anonymise the contractor record
     await prisma.contractor.update({
