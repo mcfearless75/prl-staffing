@@ -51,6 +51,8 @@ export const authConfig = {
       if (account?.provider === "microsoft-entra-id") {
         const email = (profile?.email || user?.email) as string | undefined;
         token.ssoProvider = "microsoft";
+        token.sid = crypto.randomUUID(); // session-monitor id (src/lib/session-monitor.ts)
+        token.loginMethod = "microsoft";
         token.role = "viewer"; // transient default until the DB lookup below sets the real role
         token.userType = "staff";
         if (email) {
@@ -80,6 +82,8 @@ export const authConfig = {
         token.userType = (user as { userType?: string }).userType || "staff";
         token.contractorId = (user as { contractorId?: string }).contractorId;
         token.tokenVersion = (user as { tokenVersion?: number }).tokenVersion ?? 0;
+        token.sid = crypto.randomUUID(); // session-monitor id (src/lib/session-monitor.ts)
+        token.loginMethod = "password";
       }
 
       // Subsequent requests: validate tokenVersion (credentials users only, not SSO)
@@ -118,12 +122,16 @@ export const authConfig = {
           userType?: string;
           contractorId?: string;
           tokenVersion?: number;
+          sid?: string;
+          loginMethod?: string;
         };
         u.id = token.id as string;
         u.role = token.role as string;
         u.userType = token.userType as string;
         u.contractorId = token.contractorId as string | undefined;
         u.tokenVersion = token.tokenVersion as number;
+        u.sid = token.sid as string | undefined;
+        u.loginMethod = token.loginMethod as string | undefined;
       }
       return session;
     },

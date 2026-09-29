@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { LayoutDashboard, Clock, FileUp, LogOut, User, MessageSquare, Receipt, CalendarDays } from "lucide-react";
 import { useEffect } from "react";
 import { portalFeatureEnabled, type PortalFeature } from "@/lib/portal-features";
+import { SessionHeartbeat } from "@/components/session-heartbeat";
 
 const allPortalNav: Array<{ name: string; href: string; icon: typeof LayoutDashboard; feature?: PortalFeature }> = [
   { name: "Home", href: "/portal", icon: LayoutDashboard },
@@ -37,6 +38,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="min-h-screen bg-prism-canvas">
+      <SessionHeartbeat />
       {/* Mobile-first top nav */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-prism-ink">
         <div className="mx-auto max-w-3xl px-4">

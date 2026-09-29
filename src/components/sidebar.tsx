@@ -29,7 +29,9 @@ import {
   HelpCircle,
   Phone,
   ChevronDown,
+  MonitorDot,
 } from "lucide-react";
+import { canViewSessions } from "@/lib/session-monitor";
 
 // Grouped so staff can jump to a labeled section instead of scanning one long
 // flat list — same items, same hrefs, same badges, just sectioned.
@@ -260,6 +262,21 @@ export function Sidebar() {
           <p className="mb-2 truncate px-3 text-xs text-white/40">
             Signed in as <span className="font-medium text-white/70">{session.user.email}</span>
           </p>
+        )}
+        {/* infotech@ only — not in navigationSections so nobody else sees it exists */}
+        {canViewSessions(session?.user?.email) && (
+          <Link
+            href="/sessions"
+            className={cn(
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 lg:py-2 text-sm font-medium transition-colors",
+              pathname.startsWith("/sessions")
+                ? "bg-white/10 text-prism-paper"
+                : "text-white/60 hover:bg-white/5 hover:text-prism-paper"
+            )}
+          >
+            <MonitorDot className="h-5 w-5" />
+            Sessions
+          </Link>
         )}
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}

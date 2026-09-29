@@ -549,6 +549,29 @@ model ActivityLog {
   createdAt  DateTime @default(now())
 }
 
+// ─── Login sessions (session monitor at /sessions, infotech@ only) ───
+// One row per continuous period of use. Sessions are JWTs, so the server has
+// no record of who is "logged in" — this is fed by a client heartbeat
+// (/api/session/heartbeat) and closed by sign-out. See src/lib/session-monitor.ts.
+model UserSession {
+  id         String    @id @default(cuid())
+  tokenId    String // the JWT's sid; one sign-in can span several rows if it goes idle
+  userType   String // "staff" | "contractor"
+  userId     String? // User.id or ContractorLogin.id
+  email      String
+  name       String?
+  method     String // "password" | "microsoft" | "resumed" | "existing"
+  ipAddress  String?
+  userAgent  String?
+  startedAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  endedAt    DateTime?
+
+  @@index([tokenId])
+  @@index([lastSeenAt])
+  @@index([email])
+}
+
 // ─── Contractor Login (self-service portal) ───
 model ContractorLogin {
   id             String     @id @default(cuid())

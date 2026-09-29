@@ -13,6 +13,17 @@ const IP_ATTEMPT_LIMIT = 20;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  events: {
+    // Close this sign-in's row in the session monitor (/sessions)
+    async signOut(message) {
+      const sid = "token" in message ? (message.token?.sid as string | undefined) : undefined;
+      if (!sid) return;
+      const now = new Date();
+      await prisma.userSession
+        .updateMany({ where: { tokenId: sid, endedAt: null }, data: { endedAt: now, lastSeenAt: now } })
+        .catch(() => {});
+    },
+  },
   providers: [
     // Microsoft SSO for @prlsitesolutions.co.uk staff
     ...(process.env.AZURE_AD_CLIENT_ID ? [
