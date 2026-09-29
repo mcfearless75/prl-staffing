@@ -10,6 +10,7 @@ import {
   sessionDurationMs,
   sessionStatus,
   startOfUkDay,
+  reconstructSessions,
 } from "@/lib/session-monitor";
 
 /**
@@ -114,5 +115,38 @@ describe("startOfUkDay", () => {
   test("just after UK midnight in BST stays on the new day", () => {
     const now = new Date("2026-09-28T23:05:00Z"); // 00:05 BST on the 29th
     assert.equal(startOfUkDay(now).toISOString(), "2026-09-28T23:00:00.000Z");
+  });
+});
+
+describe("reconstructSessions", () => {
+  const t = (hhmm: string) => new Date(`2026-09-28T${hhmm}:00Z`);
+  const ev = (email: string, hhmm: string, action = "Updated Contractor") =>
+    ({ email, name: null, action, at: t(hhmm), ipAddress: null });
+
+  test("splits one person's day at gaps longer than 30 minutes", () => {
+    const s = reconstructSessions([
+      ev("a@x.com", "09:00", "Staff Login"), ev("a@x.com", "09:20"), ev("a@x.com", "09:50"),
+      ev("a@x.com", "10:21"), // 31 min later → new session
+    ]);
+    assert.equal(s.length, 2);
+    assert.equal(s[0].startedAt.toISOString(), t("09:00").toISOString());
+    assert.equal(s[0].lastSeenAt.toISOString(), t("09:50").toISOString());
+    assert.equal(s[0].actions, 3);
+    assert.equal(s[0].signedIn, true);
+    assert.equal(s[1].signedIn, false);
+  });
+
+  test("keeps people apart even when interleaved, and ignores email casing", () => {
+    const s = reconstructSessions([ev("a@x.com", "09:00"), ev("B@x.com", "09:05"), ev("b@x.com", "09:10"), ev("a@x.com", "09:15")]);
+    assert.equal(s.length, 2);
+    assert.deepEqual(s.map((x) => [x.email, x.actions]), [["a@x.com", 2], ["b@x.com", 2]]);
+  });
+
+  test("failed and blocked logins are not sessions", () => {
+    const s = reconstructSessions([
+      ev("a@x.com", "09:00", "Staff Login Failed — Wrong Password"),
+      ev("a@x.com", "09:01", "Contractor Login Blocked — Account Locked"),
+    ]);
+    assert.equal(s.length, 0);
   });
 });

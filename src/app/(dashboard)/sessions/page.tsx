@@ -10,6 +10,8 @@ import {
   sessionDurationMs,
   sessionStatus,
   startOfUkDay,
+  reconstructSessions,
+  TRACKING_STARTED_AT,
   type SessionStatus,
 } from "@/lib/session-monitor";
 
@@ -18,6 +20,7 @@ import {
 
 const PERIODS = [
   { value: "1", label: "Today" },
+  { value: "y", label: "Yesterday" },
   { value: "7", label: "7 days" },
   { value: "30", label: "30 days" },
 ];
@@ -54,6 +57,14 @@ const METHOD_LABEL: Record<string, string> = {
   microsoft: "Microsoft",
   resumed: "Came back",
   existing: "Already signed in",
+  estimated: "From Activity Log",
+};
+
+const PERIOD_PHRASE: Record<string, string> = {
+  "1": "today",
+  y: "yesterday",
+  "7": "in the last 7 days",
+  "30": "in the last 30 days",
 };
 
 function StatusPill({ status }: { status: SessionStatus }) {
@@ -86,20 +97,64 @@ export default async function SessionsPage({
   const type = params.type === "staff" || params.type === "contractor" ? params.type : "";
 
   const now = new Date();
-  // "Today" means since midnight UK time, not the last 24 hours
-  const since = days === "1" ? startOfUkDay(now) : new Date(now.getTime() - Number(days) * 86_400_000);
+  // "Today" and "Yesterday" are UK calendar days, not rolling 24 hours
+  const todayStart = startOfUkDay(now);
+  const since =
+    days === "1" ? todayStart
+    : days === "y" ? startOfUkDay(new Date(todayStart.getTime() - 1))
+    : new Date(now.getTime() - Number(days) * 86_400_000);
+  const until = days === "y" ? todayStart : now;
 
   const rows = await prisma.userSession.findMany({
-    where: { lastSeenAt: { gte: since }, ...(type ? { userType: type } : {}) },
+    where: { lastSeenAt: { gte: since }, startedAt: { lt: until }, ...(type ? { userType: type } : {}) },
     orderBy: { startedAt: "desc" },
     take: 1000,
   });
 
-  const sessions = rows.map((r) => ({
-    ...r,
-    status: sessionStatus(r, now),
-    durationMs: sessionDurationMs(r),
-  }));
+  // Before the heartbeat went live there is no session data, so rebuild
+  // approximate sessions from the Activity Log for that part of the period.
+  const logUntil = until < TRACKING_STARTED_AT ? until : TRACKING_STARTED_AT;
+  const logEvents = since < logUntil
+    ? await prisma.activityLog.findMany({
+        where: { createdAt: { gte: since, lt: logUntil }, userEmail: { not: null } },
+        select: { userEmail: true, userName: true, action: true, createdAt: true, ipAddress: true },
+        take: 20000,
+      })
+    : [];
+  const estimated = reconstructSessions(
+    logEvents.map((e) => ({ email: e.userEmail!, name: e.userName, action: e.action, at: e.createdAt, ipAddress: e.ipAddress })),
+  );
+  const contractorEmails = new Set(
+    estimated.length
+      ? (await prisma.contractorLogin.findMany({
+          where: { email: { in: [...new Set(estimated.map((e) => e.email))] } },
+          select: { email: true },
+        })).map((c) => c.email.toLowerCase())
+      : [],
+  );
+  const estimatedRows = estimated
+    .map((e, i) => ({
+      id: `est-${i}`,
+      email: e.email,
+      name: e.name,
+      userType: contractorEmails.has(e.email) ? "contractor" : "staff",
+      method: "estimated",
+      ipAddress: e.ipAddress,
+      userAgent: null as string | null,
+      startedAt: e.startedAt,
+      lastSeenAt: e.lastSeenAt,
+      endedAt: null as Date | null,
+      actions: e.actions,
+    }))
+    .filter((e) => !type || e.userType === type);
+
+  const sessions = [...rows.map((r) => ({ ...r, actions: 0 })), ...estimatedRows]
+    .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
+    .map((r) => ({
+      ...r,
+      status: r.method === "estimated" ? ("ended" as SessionStatus) : sessionStatus(r, now),
+      durationMs: sessionDurationMs(r),
+    }));
 
   const onlineNow = sessions.filter((s) => s.status !== "ended");
 
@@ -124,6 +179,7 @@ export default async function SessionsPage({
   const peopleList = [...people.values()].sort((a, b) => b.lastSeen.getTime() - a.lastSeen.getTime());
   const totalMs = sessions.reduce((sum, s) => sum + s.durationMs, 0);
   const periodLabel = PERIODS.find((p) => p.value === days)!.label.toLowerCase();
+  const periodPhrase = PERIOD_PHRASE[days];
 
   const href = (d: string, t: string) => {
     const sp = new URLSearchParams();
@@ -135,7 +191,7 @@ export default async function SessionsPage({
 
   const tiles = [
     { label: "Online now", value: String(onlineNow.filter((s) => s.status === "online").length) },
-    { label: `People ${periodLabel === "today" ? "today" : `in ${periodLabel}`}`, value: String(peopleList.length) },
+    { label: `People ${periodPhrase}`, value: String(peopleList.length) },
     { label: "Sessions", value: String(sessions.length) },
     { label: "Total time in PRISM", value: formatDuration(totalMs) },
   ];
@@ -219,7 +275,7 @@ export default async function SessionsPage({
         <h2 className="text-sm font-semibold text-gray-900">By person — {periodLabel}</h2>
         {peopleList.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white px-6 py-8 text-center text-sm text-gray-500">
-            No sessions recorded {periodLabel === "today" ? "today" : `in the last ${periodLabel}`}.
+            No sessions recorded {periodPhrase}.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
@@ -279,11 +335,13 @@ export default async function SessionsPage({
                     <td className="px-4 py-2 whitespace-nowrap text-gray-700">{fmt(s.startedAt)}</td>
                     <td className="px-4 py-2 whitespace-nowrap text-gray-700">
                       {s.status === "ended"
-                        ? <>{fmt(s.endedAt ?? s.lastSeenAt, false)}<span className="ml-1 text-[11px] text-gray-400">{s.endedAt ? "signed out" : "closed"}</span></>
+                        ? <>{fmt(s.endedAt ?? s.lastSeenAt, false)}<span className="ml-1 text-[11px] text-gray-400">{s.method === "estimated" ? "last action" : s.endedAt ? "signed out" : "closed"}</span></>
                         : <StatusPill status={s.status} />}
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900 tabular-nums">{formatDuration(s.durationMs)}</td>
-                    <td className="px-4 py-2 whitespace-nowrap text-gray-500">{METHOD_LABEL[s.method] ?? s.method}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-500">{METHOD_LABEL[s.method] ?? s.method}
+                      {s.method === "estimated" && <span className="block text-[11px] text-gray-400">approx. · {s.actions} action{s.actions === 1 ? "" : "s"}</span>}
+                    </td>
                     <td className="px-4 py-2 whitespace-nowrap text-gray-500">{describeDevice(s.userAgent)}</td>
                     <td className="px-4 py-2 font-mono text-[11px] text-gray-500">{s.ipAddress || "—"}</td>
                   </tr>
@@ -299,7 +357,9 @@ export default async function SessionsPage({
 
       <p className="text-xs text-gray-400">
         A session is a continuous stretch with PRISM open. &ldquo;Online&rdquo; means active in the last 2½ minutes;
-        &ldquo;Away&rdquo; means the tab was hidden or closed less than 30 minutes ago. Tracking started 29 Sep 2026.
+        &ldquo;Away&rdquo; means the tab was hidden or closed less than 30 minutes ago. Live tracking started 29 Sep 2026 at 18:47. Before that, sessions marked &ldquo;From Activity Log&rdquo;
+        are rebuilt from logged actions (a gap over 30 minutes starts a new one), so they are approximate and
+        tend to undercount, because time spent reading after someone&rsquo;s last action isn&rsquo;t logged.
       </p>
     </div>
   );

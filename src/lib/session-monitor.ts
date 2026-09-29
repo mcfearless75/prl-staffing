@@ -102,3 +102,55 @@ export function startOfUkDay(now: Date): Date {
   const msIntoDay = ((get("hour") * 60 + get("minute")) * 60 + get("second")) * 1000 + now.getUTCMilliseconds();
   return new Date(now.getTime() - msIntoDay);
 }
+
+/** When the heartbeat went live. Before this, sessions are rebuilt from the Activity Log. */
+export const TRACKING_STARTED_AT = new Date("2026-09-29T17:47:00Z");
+
+export interface ActivityEvent {
+  email: string;
+  name: string | null;
+  action: string;
+  at: Date;
+  ipAddress: string | null;
+}
+
+export interface EstimatedSession {
+  email: string;
+  name: string | null;
+  startedAt: Date;
+  lastSeenAt: Date;
+  actions: number;
+  signedIn: boolean; // the run began with (or contains) a successful login
+  ipAddress: string | null;
+}
+
+/**
+ * Approximate sessions from Activity Log rows: each person's actions, split
+ * wherever they went quiet for longer than the idle gap. A lower bound — it
+ * only sees moments that wrote a log row, so time spent just reading pages
+ * between actions is counted, but reading after the last action is not.
+ * Failed and blocked logins are not use, so they are dropped.
+ */
+export function reconstructSessions(events: ActivityEvent[], gapMs = IDLE_GAP_MS): EstimatedSession[] {
+  const real = events
+    .filter((e) => e.email && !/Failed|Blocked/.test(e.action))
+    .map((e) => ({ ...e, email: e.email.trim().toLowerCase() }))
+    .sort((a, b) => (a.email === b.email ? a.at.getTime() - b.at.getTime() : a.email < b.email ? -1 : 1));
+
+  const out: EstimatedSession[] = [];
+  let cur: EstimatedSession | null = null;
+  for (const e of real) {
+    const isLogin = /Login/.test(e.action);
+    if (cur && cur.email === e.email && e.at.getTime() - cur.lastSeenAt.getTime() <= gapMs) {
+      cur.lastSeenAt = e.at;
+      cur.actions += 1;
+      cur.signedIn ||= isLogin;
+      cur.name ||= e.name;
+      cur.ipAddress ||= e.ipAddress;
+    } else {
+      cur = { email: e.email, name: e.name, startedAt: e.at, lastSeenAt: e.at, actions: 1, signedIn: isLogin, ipAddress: e.ipAddress };
+      out.push(cur);
+    }
+  }
+  return out;
+}
