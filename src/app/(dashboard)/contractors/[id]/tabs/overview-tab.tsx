@@ -2,6 +2,7 @@ import Link from "next/link";
 import { maskNI, maskUTR } from "@/lib/utils";
 import { ContractorPortalStatus } from "@/components/contractor-portal-status";
 import type { ContractorWithRelations } from "./types";
+import { NiReveal } from "../ni-reveal";
 
 export function OverviewTab({ contractor }: { contractor: ContractorWithRelations }) {
   return (
@@ -40,7 +41,7 @@ export function OverviewTab({ contractor }: { contractor: ContractorWithRelation
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">NI Number</p>
-            <p className="text-sm text-gray-900 font-mono">{maskNI(contractor.niNumber)}</p>
+            <NiReveal contractorId={contractor.id} masked={maskNI(contractor.niNumber)} />
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">UTR Number</p>
