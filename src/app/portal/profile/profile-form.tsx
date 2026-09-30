@@ -253,8 +253,10 @@ export function ProfileForm({
 
       {submitted ? (
         hasChanges && (
+          // "submit", not "save": once submitted, an edit must still pass the
+          // required-field check, or a worker could blank a mandatory answer.
           <button
-            onClick={() => send("save")}
+            onClick={() => send("submit")}
             disabled={!!busy}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 active:bg-blue-800 transition-colors"
           >

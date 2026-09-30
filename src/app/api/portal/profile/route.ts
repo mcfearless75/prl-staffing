@@ -121,7 +121,9 @@ export async function PUT(request: Request) {
     // Log the activity
     try {
       const entries: string[] = [
-        submitting ? "Contractor submitted their profile via portal" : "Contractor updated their own profile via portal",
+        submitting && !existing.profileSubmittedAt
+          ? "Contractor submitted their profile via portal"
+          : "Contractor updated their own profile via portal",
       ];
       if (change.changed) entries.push(`Name changed by worker: ${change.from} → ${firstName} ${lastName}`);
       for (const details of entries) {

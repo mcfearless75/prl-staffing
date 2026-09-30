@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { UserPen } from "lucide-react";
 import { DocumentUploader } from "./document-uploader";
 import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
@@ -99,11 +101,20 @@ export default async function PortalDocumentsPage({
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold text-gray-900">My Documents</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold text-gray-900">My Documents</h1>
+        <Link
+          href="/portal/profile"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+        >
+          <UserPen className="h-4 w-4" /> Change my details
+        </Link>
+      </div>
 
       {justSubmitted && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           Thanks — your details are submitted. Now add your Right to Work and your cards below.
+          Spotted a mistake? <Link href="/portal/profile" className="font-medium underline">Go back and change your details</Link>.
         </div>
       )}
 
