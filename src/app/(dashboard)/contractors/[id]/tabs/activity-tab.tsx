@@ -1,4 +1,6 @@
 import type { ActivityLogRow } from "./types";
+import { parseSentEmailRecord } from "@/lib/sent-email-record";
+import { ViewSentEmailButton } from "./view-sent-email-button";
 
 export function ActivityTab({ activityLogs }: { activityLogs: ActivityLogRow[] }) {
   return (
@@ -24,6 +26,10 @@ export function ActivityTab({ activityLogs }: { activityLogs: ActivityLogRow[] }
                         : log.action.includes("Deleted")
                           ? "🗑️"
                           : "📋";
+            // Only reminder emails store a copy of what was sent; anything
+            // else (including older plain-text entries) parses to null.
+            const sentEmail = parseSentEmailRecord(log.details);
+            const when = `${new Date(log.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} ${new Date(log.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
             return (
               <li key={log.id} className="ml-4">
                 <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-gray-300" />
@@ -37,10 +43,14 @@ export function ActivityTab({ activityLogs }: { activityLogs: ActivityLogRow[] }
                         {log.userEmail ? ` (${log.userEmail})` : ""}
                       </p>
                     )}
-                    <time className="text-xs text-gray-400">
-                      {new Date(log.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}{" "}
-                      {new Date(log.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                    </time>
+                    {sentEmail && (
+                      <p className="text-xs text-gray-500 truncate">
+                        To {sentEmail.to}
+                        {sentEmail.note ? ` · ${sentEmail.note}` : ""}
+                      </p>
+                    )}
+                    <time className="text-xs text-gray-400">{when}</time>
+                    {sentEmail && <ViewSentEmailButton title={log.action} record={sentEmail} sentAtLabel={when} />}
                   </div>
                 </div>
               </li>

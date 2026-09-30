@@ -8,6 +8,7 @@ import { sendEmail } from "@/lib/email";
 import { escapeHtml } from "@/lib/utils";
 import { greetingName } from "@/lib/contractor-name";
 import { rtwCoverage, rtwReminderBlockReason } from "@/lib/rtw-flag";
+import type { ComposedEmail } from "@/lib/sent-email-record";
 
 export const RTW_CHASE_KIND = "rtw";
 const DOCS_URL = "https://www.prismworkforce.online/portal/documents";
@@ -68,26 +69,42 @@ export async function loadRtwStatus(contractorId: string) {
   };
 }
 
-export async function sendRtwReminder(
-  contractorId: string,
-  sentBy: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
+/**
+ * The exact email a reminder would send right now, plus why it can't be sent
+ * (if it can't). The preview and the real send both come from here, so what
+ * staff see is what the worker gets.
+ */
+export async function composeRtwReminder(
+  contractorId: string
+): Promise<{ email: ComposedEmail; blockReason: string | null } | null> {
   const status = await loadRtwStatus(contractorId);
-  if (!status) return { ok: false, error: "Contractor not found" };
-  if (status.blockReason) return { ok: false, error: status.blockReason };
-
+  if (!status) return null;
   const c = await prisma.contractor.findUniqueOrThrow({
     where: { id: contractorId },
     select: { email: true, firstName: true, knownAs: true },
   });
-  const result = await sendEmail({
-    to: c.email,
-    subject: "Action needed: your Right to Work — PRL Site Solutions",
-    html: buildRtwReminderEmail(greetingName(c), status.coverage.reason ?? "Right to Work document"),
-    template: "rtw-reminder",
-  });
+  return {
+    blockReason: status.blockReason,
+    email: {
+      to: c.email,
+      subject: "Action needed: your Right to Work — PRL Site Solutions",
+      html: buildRtwReminderEmail(greetingName(c), status.coverage.reason ?? "Right to Work document"),
+    },
+  };
+}
+
+export async function sendRtwReminder(
+  contractorId: string,
+  sentBy: string
+): Promise<{ ok: true; email: ComposedEmail } | { ok: false; error: string }> {
+  const composed = await composeRtwReminder(contractorId);
+  if (!composed) return { ok: false, error: "Contractor not found" };
+  if (composed.blockReason) return { ok: false, error: composed.blockReason };
+
+  const { email } = composed;
+  const result = await sendEmail({ ...email, template: "rtw-reminder" });
   if (!result.success) return { ok: false, error: result.error ?? "Email send failed" };
 
   await prisma.chaseLog.create({ data: { contractorId, kind: RTW_CHASE_KIND, sentBy } });
-  return { ok: true };
+  return { ok: true, email };
 }

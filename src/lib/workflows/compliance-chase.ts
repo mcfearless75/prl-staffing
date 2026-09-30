@@ -12,8 +12,10 @@ import {
   reminderBlockReason,
 } from "@/lib/compliance-reminder";
 import { greetingName } from "@/lib/contractor-name";
+import type { ComposedEmail } from "@/lib/sent-email-record";
 
 const PORTAL_URL = "https://www.prismworkforce.online";
+const CHASE_SUBJECT = "Action Required: Compliance Documents Need Attention — PRL Site Solutions";
 
 function formatDate(date: Date) {
   return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -114,7 +116,7 @@ export const complianceChaseAgent = {
       try {
         const emailResult = await sendEmail({
           to: contractor.email,
-          subject: "Action Required: Compliance Documents Need Attention — PRL Site Solutions",
+          subject: CHASE_SUBJECT,
           html: buildComplianceChaseEmail(greetingName(contractor), docs),
           template: "compliance-chase",
         });
@@ -174,25 +176,39 @@ export async function checkComplianceReminder(contractorId: string): Promise<Rem
  * say-so. Logged under the daily chase's own keys, so the daily run skips this
  * person today and a second click is refused.
  */
-export async function sendComplianceReminder(
-  contractorId: string,
-  sentBy: string
-): Promise<{ ok: true; docCount: number } | { ok: false; error: string }> {
+/**
+ * The exact email a manual reminder would send right now, plus the block
+ * reason (if any). Preview and send both come from here.
+ */
+export async function composeComplianceReminder(
+  contractorId: string
+): Promise<(ReminderCheck & { email: ComposedEmail }) | null> {
   const check = await checkComplianceReminder(contractorId);
-  if (!check) return { ok: false, error: "Contractor not found" };
-  if (check.blockReason) return { ok: false, error: check.blockReason };
-
+  if (!check) return null;
   const contractor = await prisma.contractor.findUniqueOrThrow({
     where: { id: contractorId },
     select: { email: true, firstName: true, knownAs: true },
   });
+  return {
+    ...check,
+    email: {
+      to: contractor.email,
+      subject: CHASE_SUBJECT,
+      html: buildComplianceChaseEmail(greetingName(contractor), check.docs),
+    },
+  };
+}
 
-  const emailResult = await sendEmail({
-    to: contractor.email,
-    subject: "Action Required: Compliance Documents Need Attention — PRL Site Solutions",
-    html: buildComplianceChaseEmail(greetingName(contractor), check.docs),
-    template: "compliance-chase",
-  });
+export async function sendComplianceReminder(
+  contractorId: string,
+  sentBy: string
+): Promise<{ ok: true; docCount: number; email: ComposedEmail } | { ok: false; error: string }> {
+  const check = await composeComplianceReminder(contractorId);
+  if (!check) return { ok: false, error: "Contractor not found" };
+  if (check.blockReason) return { ok: false, error: check.blockReason };
+
+  const { email } = check;
+  const emailResult = await sendEmail({ ...email, template: "compliance-chase" });
   if (!emailResult.success) {
     const error = emailResult.error ?? "Email send failed";
     await logAction(CHASE_WORKFLOW, CHASE_ACTION, "failed", contractorId, `manual by ${sentBy}: ${error}`);
@@ -205,5 +221,5 @@ export async function sendComplianceReminder(
     contractorId,
     `manual by ${sentBy} — ${check.docs.length} doc(s): ${check.docs.map((d) => d.type).join(", ")}`
   );
-  return { ok: true, docCount: check.docs.length };
+  return { ok: true, docCount: check.docs.length, email };
 }
