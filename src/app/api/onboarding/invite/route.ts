@@ -42,8 +42,15 @@ const STANDING_INFO_HTML = `
   </p>
   <p style="${INFO_P}margin-top:8px;">
     You will be paid the following <strong>Friday</strong> of every week worked, by no later than <strong>5pm</strong>.
+    Pay is <strong>one week in hand</strong>.
   </p>
-</div>`;
+</div>
+<!-- Generic sign-off per Jenni: signed by the company, never a named person -->
+<p style="margin:24px 0 0;font-size:14px;color:#333;line-height:1.6;">
+  Kind regards,<br>
+  <strong>PRL Site Solutions</strong><br>
+  <span style="font-size:12px;color:#666;">Signed on behalf of PRL Site Solutions</span>
+</p>`;
 
 function escapeHtml(str: string): string {
   return str
