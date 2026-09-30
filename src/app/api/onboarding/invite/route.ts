@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { sendEmail, ONBOARDING_REPLY_TO } from "@/lib/email";
 import { createSetPasswordUrl, DAY_MS } from "@/lib/set-password-link";
 import { formatGbpRate } from "@/lib/rate-format";
+import { isValidUnpaidBreak, unpaidBreakLabel, unpaidBreakTimesheetNote } from "@/lib/unpaid-break";
 
 // The supplier may not open the email the same day; a staff-sent invite is
 // trusted, so give them a week rather than the 24h of a password reset.
@@ -15,7 +16,8 @@ const SETUP_LINK_TTL_MS = 7 * DAY_MS;
 const PAY_QUERY_URL = "https://www.prismworkforce.online/portal/pay-query";
 const INFO_H3 = "margin:16px 0 6px;font-size:13px;font-weight:700;color:#005f8c;text-transform:uppercase;letter-spacing:0.05em;";
 const INFO_P = "margin:0;font-size:13px;color:#333;line-height:1.6;";
-const STANDING_INFO_HTML = `
+// breakNote: the agreement's unpaid-break sentence, or null when breaks are paid.
+const standingInfoHtml = (breakNote: string | null) => `
 <div style="background:#fff8e6;border:1px solid #f3d98b;border-radius:6px;padding:4px 24px 20px;">
   <h3 style="${INFO_H3}">Any Questions</h3>
   <p style="${INFO_P}">
@@ -38,8 +40,8 @@ const STANDING_INFO_HTML = `
   <h3 style="${INFO_H3}">Timesheets</h3>
   <p style="${INFO_P}">
     Please submit a timesheet each week by no later than <strong>Tuesday 12pm</strong> of the following week
-    to your contact on site. This will then be processed for authorisation.
-    Breaks are <strong>unpaid</strong>, so please don't include them in your hours.
+    to your contact on site. This will then be processed for authorisation.${breakNote ? `
+    ${escapeHtml(breakNote)}` : ""}
   </p>
   <p style="${INFO_P}margin-top:8px;">
     You will be paid the following <strong>Friday</strong> of every week worked, by no later than <strong>5pm</strong>.
@@ -87,6 +89,7 @@ export async function POST(request: Request) {
     rates,
     breakdown,
     additionalInfo,
+    unpaidBreak,
     sendToEmail,
   } = body as {
     personName?: string;
@@ -101,6 +104,7 @@ export async function POST(request: Request) {
     rates?: Array<{ description: string; rate: string; basis: string }>;
     breakdown?: string[];
     additionalInfo?: string;
+    unpaidBreak?: string;
     sendToEmail?: string;
   };
 
@@ -111,6 +115,9 @@ export async function POST(request: Request) {
       { error: "Person name, job role, company name, site contact name, contact phone and the subcontractor's email are required" },
       { status: 400 }
     );
+  }
+  if (!isValidUnpaidBreak(unpaidBreak)) {
+    return NextResponse.json({ error: "Please choose the unpaid break per shift" }, { status: 400 });
   }
   const cleanRates = (rates || []).map((r) => ({ ...r, rate: formatGbpRate(r.rate) }));
 
@@ -170,6 +177,7 @@ export async function POST(request: Request) {
       rates: rates ? JSON.stringify(cleanRates) : null,
       breakdown: breakdown ? JSON.stringify(breakdown) : null,
       additionalInfo: additionalInfo || null,
+      unpaidBreak,
       firstName,
       lastName,
       status: "Approved",
@@ -207,8 +215,7 @@ export async function POST(request: Request) {
              </tr>
            </thead>
            <tbody>${ratesRowsHtml}</tbody>
-         </table>
-         <p style="margin:8px 0 0;font-size:12px;color:#666;">Breaks are unpaid. Rates apply to hours worked only.</p>`
+         </table>`
       : "";
 
     const breakdownHtml = breakdownData.length
@@ -279,6 +286,7 @@ export async function POST(request: Request) {
                   ${supplyOf ? `<tr><td style="padding:4px 0;color:#666;">Job Role</td><td style="padding:4px 0;color:#333;">${escapeHtml(supplyOf)}</td></tr>` : ""}
                   ${siteLocation ? `<tr><td style="padding:4px 0;color:#666;">Site Name</td><td style="padding:4px 0;color:#333;">${escapeHtml(siteLocation)}</td></tr>` : ""}
                   ${startDate ? `<tr><td style="padding:4px 0;color:#666;">Start Date</td><td style="padding:4px 0;color:#333;">${new Date(startDate).toLocaleDateString("en-GB")}</td></tr>` : ""}
+                  <tr><td style="padding:4px 0;color:#666;">Unpaid Break</td><td style="padding:4px 0;color:#333;">${escapeHtml(unpaidBreakLabel(unpaidBreak))}</td></tr>
                 </table>
 
                 ${ratesTableHtml ? `<hr style="border:none;border-top:1px solid #e0e6ed;margin:16px 0;">${ratesTableHtml}` : ""}
@@ -318,7 +326,7 @@ export async function POST(request: Request) {
           <!-- Standing information: same on every agreement, never on the staff form -->
           <tr>
             <td style="padding:0 40px 32px;">
-              ${STANDING_INFO_HTML}
+              ${standingInfoHtml(unpaidBreakTimesheetNote(unpaidBreak))}
             </td>
           </tr>
 

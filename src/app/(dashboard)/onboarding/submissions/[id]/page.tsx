@@ -6,6 +6,7 @@ import { Badge } from "@/components/badge";
 import Link from "next/link";
 import { approveAndCreateContractor, updateSubmissionStatus, sendAppInvite } from "../actions";
 import { emailMatches } from "@/lib/contractor-email";
+import { unpaidBreakLabel } from "@/lib/unpaid-break";
 
 export default async function SubmissionDetailPage({
   params,
@@ -159,6 +160,9 @@ export default async function SubmissionDetailPage({
           <div><p className="text-xs text-gray-500 uppercase">Supply Of</p><p className="mt-1 text-sm font-medium">{submission.supplyOf || "—"}</p></div>
           <div><p className="text-xs text-gray-500 uppercase">Site Location</p><p className="mt-1 text-sm font-medium">{submission.siteLocation || "—"}</p></div>
           <div><p className="text-xs text-gray-500 uppercase">Start Date</p><p className="mt-1 text-sm font-medium">{submission.startDate ? formatDate(submission.startDate) : "—"}</p></div>
+          {submission.unpaidBreak && (
+            <div><p className="text-xs text-gray-500 uppercase">Unpaid Break</p><p className="mt-1 text-sm font-medium">{unpaidBreakLabel(submission.unpaidBreak)}</p></div>
+          )}
         </div>
       </div>
 

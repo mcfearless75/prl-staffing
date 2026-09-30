@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatGbpRate } from "@/lib/rate-format";
+import { UNPAID_BREAK_OPTIONS, unpaidBreakLabel } from "@/lib/unpaid-break";
 
 // Basis options per row. Everything defaults to Per Hour except Lodge, which
 // is only ever charged per night.
@@ -36,6 +37,7 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
   const [supplyOf, setSupplyOf] = useState("");
   const [siteLocation, setSiteLocation] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [unpaidBreak, setUnpaidBreak] = useState("");
   const [rates, setRates] = useState(DEFAULT_RATES.map((r) => ({ ...r })));
   const [breakdown, setBreakdown] = useState("");
   const [additionalInfo, setAdditionalInfo] = useState("");
@@ -61,6 +63,7 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
       setSupplyOf("");
       setSiteLocation("");
       setStartDate("");
+      setUnpaidBreak("");
       setRates(DEFAULT_RATES.map((r) => ({ ...r })));
       setBreakdown("");
       setAdditionalInfo("");
@@ -81,6 +84,7 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
   function problemIn(s: number): string {
     if (s === 1 && !personName.trim()) return "Person Name is required.";
     if (s === 1 && !supplyOf.trim()) return "Job Role is required.";
+    if (s === 1 && !unpaidBreak) return "Unpaid Break is required.";
     if (s === 2) {
       if (!companyName.trim()) return "Company Name is required.";
       if (!contactName.trim()) return "Site Contact Name is required.";
@@ -135,6 +139,7 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
           supplyOf,
           siteLocation,
           startDate,
+          unpaidBreak,
           rates: rates.map(({ description, rate, basis }) => ({ description, rate: formatGbpRate(rate), basis })),
           breakdown: breakdown.split("\n").filter(Boolean),
           additionalInfo,
@@ -247,6 +252,15 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
                   <div>
                     <label className={LABEL}>Start Date</label>
                     <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={INPUT} />
+                  </div>
+                  <div>
+                    <label className={LABEL}>Unpaid Break <span className="text-red-500">*</span></label>
+                    <select value={unpaidBreak} onChange={(e) => setUnpaidBreak(e.target.value)} className={INPUT}>
+                      <option value="">Select per shift</option>
+                      {UNPAID_BREAK_OPTIONS.map((o) => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -377,6 +391,10 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
                     <dd className="text-gray-900">
                       {startDate ? new Date(startDate).toLocaleDateString("en-GB") : notProvided}
                     </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-gray-500">Unpaid Break</dt>
+                    <dd className="text-gray-900">{unpaidBreak ? unpaidBreakLabel(unpaidBreak) : notProvided}</dd>
                   </div>
                   {siteLocation && (
                     <div>

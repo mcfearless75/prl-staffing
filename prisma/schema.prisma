@@ -979,6 +979,7 @@ model SupplyAgreement {
   rates                    String? // JSON array of {description, rate, basis}
   breakdown                String? // JSON array of strings
   additionalInfo           String?
+  unpaidBreak              String? // per shift, from src/lib/unpaid-break.ts
   // Contractor personal details (if individual)
   firstName                String?
   lastName                 String?
