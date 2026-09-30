@@ -45,7 +45,7 @@ export function OverviewTab({ contractor }: { contractor: ContractorWithRelation
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">UTR Number</p>
-            <p className="text-sm text-gray-900 font-mono">{maskUTR(contractor.utrNumber)}</p>
+            <NiReveal contractorId={contractor.id} masked={maskUTR(contractor.utrNumber)} field="utrNumber" />
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">IR35 Status</p>

@@ -1,10 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { revealNiNumberAction } from "./ni-actions";
+import { revealSensitiveAction, type RevealableField } from "./ni-actions";
 
-/** Masked NI number with a Show/Hide toggle — no trip to Edit needed. */
-export function NiReveal({ contractorId, masked }: { contractorId: string; masked: string }) {
+/** Masked NI/UTR number with a Show/Hide toggle — no trip to Edit needed. */
+export function NiReveal({
+  contractorId,
+  masked,
+  field = "niNumber",
+}: {
+  contractorId: string;
+  masked: string;
+  field?: RevealableField;
+}) {
   const [full, setFull] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -17,7 +25,7 @@ export function NiReveal({ contractorId, masked }: { contractorId: string; maske
         type="button"
         disabled={pending}
         onClick={() =>
-          full ? setFull(null) : startTransition(async () => setFull(await revealNiNumberAction(contractorId)))
+          full ? setFull(null) : startTransition(async () => setFull(await revealSensitiveAction(contractorId, field)))
         }
         className="font-sans text-xs font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50"
       >
