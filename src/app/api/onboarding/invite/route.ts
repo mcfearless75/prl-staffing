@@ -39,6 +39,7 @@ const STANDING_INFO_HTML = `
   <p style="${INFO_P}">
     Please submit a timesheet each week by no later than <strong>Tuesday 12pm</strong> of the following week
     to your contact on site. This will then be processed for authorisation.
+    Breaks are <strong>unpaid</strong>, so please don't include them in your hours.
   </p>
   <p style="${INFO_P}margin-top:8px;">
     You will be paid the following <strong>Friday</strong> of every week worked, by no later than <strong>5pm</strong>.
@@ -206,7 +207,8 @@ export async function POST(request: Request) {
              </tr>
            </thead>
            <tbody>${ratesRowsHtml}</tbody>
-         </table>`
+         </table>
+         <p style="margin:8px 0 0;font-size:12px;color:#666;">Breaks are unpaid. Rates apply to hours worked only.</p>`
       : "";
 
     const breakdownHtml = breakdownData.length
