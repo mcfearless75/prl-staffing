@@ -6,8 +6,18 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { requireStaff } from "@/lib/require-staff";
 import { logActivity } from "@/lib/activity-log";
+import { categoryForType } from "@/lib/compliance-types";
 
 export async function createComplianceRecord(formData: FormData) {
+  return createRecord(formData, false);
+}
+
+/** Same, for "+ Add Compliance Record" on a subcontractor profile: saving returns there, not to /compliance. */
+export async function createComplianceRecordFromProfile(formData: FormData) {
+  return createRecord(formData, true);
+}
+
+async function createRecord(formData: FormData, backToProfile: boolean) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
@@ -34,6 +44,11 @@ export async function createComplianceRecord(formData: FormData) {
     });
 
     revalidatePath("/compliance");
+    if (backToProfile && contractorId) {
+      const tab = categoryForType(type) === "Right to Work" ? "Right to Work" : "Comps & Certs";
+      revalidatePath(`/contractors/${contractorId}`);
+      redirect(`/contractors/${contractorId}?tab=${encodeURIComponent(tab)}`);
+    }
     redirect("/compliance");
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") throw error;

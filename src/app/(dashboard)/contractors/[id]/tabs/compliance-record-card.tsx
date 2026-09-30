@@ -63,6 +63,22 @@ export function ComplianceRecordCard({ rec }: { rec: ComplianceRecordRow }) {
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* A record with its own file opens it directly; otherwise the record
+              page, which lists the stored documents with View buttons. */}
+          {rec.filePath?.startsWith("contractors/") ? (
+            <a
+              href={`/api/documents/download?key=${encodeURIComponent(rec.filePath)}&view=true`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-medium text-blue-600 hover:text-blue-800"
+            >
+              View
+            </a>
+          ) : (
+            <Link href={`/compliance/${rec.id}`} className="text-xs font-medium text-blue-600 hover:text-blue-800">
+              View
+            </Link>
+          )}
           <Link
             href={`/compliance/${rec.id}/edit`}
             className="text-xs font-medium text-gray-500 hover:text-gray-800"

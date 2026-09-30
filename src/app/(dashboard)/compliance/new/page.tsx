@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/page-header";
 import { ComplianceForm } from "@/components/compliance-form";
-import { createComplianceRecord } from "../actions";
+import { createComplianceRecord, createComplianceRecordFromProfile } from "../actions";
 
 export default async function NewComplianceRecordPage({
   searchParams,
@@ -22,7 +22,7 @@ export default async function NewComplianceRecordPage({
       <PageHeader title="Add Compliance Record" />
       <ComplianceForm
         contractors={contractors}
-        action={createComplianceRecord}
+        action={defaultContractorId ? createComplianceRecordFromProfile : createComplianceRecord}
         defaultContractorId={defaultContractorId}
         backUrl={defaultContractorId ? `/contractors/${defaultContractorId}` : "/compliance"}
       />
