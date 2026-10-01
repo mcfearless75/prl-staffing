@@ -3,6 +3,7 @@ import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { STILL_WORKING_FILTER } from "@/lib/contractor-statuses";
 import { loadRequirementMatcher, type RequirementMatcher } from "@/lib/compliance-gaps";
 import { resolveRole } from "@/lib/role-normalisation";
+import { requirementStatus } from "@/lib/requirement-match";
 
 // The headline compliance percentage, computed in ONE place.
 //
@@ -169,8 +170,8 @@ export function summariseCompliance(
       continue;
     }
 
-    const statusByType = new Map(row.records.map((r) => [r.type, r.status]));
-    const statuses = row.required.map((t) => statusByType.get(t) ?? "Missing");
+    // Category-aware: a "CSCS" requirement is met by a "CSCS (Blue) — …" card.
+    const statuses = row.required.map((t) => requirementStatus(t, row.records));
     const issues = row.required
       .map((type, i) => ({ type, status: statuses[i] }))
       .filter((x) => x.status !== "Verified");

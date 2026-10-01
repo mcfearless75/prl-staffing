@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { resolveRole, requirementReaches, type ResolvedRole } from "@/lib/role-normalisation";
 import { categoryForType } from "@/lib/compliance-types";
+import { bestRecordFor } from "@/lib/requirement-match";
 
 export type ComplianceGap = {
   contractorId: string;
@@ -90,7 +91,7 @@ export async function getComplianceGapSummary(): Promise<ComplianceGapSummary> {
       const key = `${assignment.contractor.id}::${req.id}`;
       if (seenGapKeys.has(key)) continue;
 
-      const record = assignment.contractor.compliances.find((c) => c.type === req.type);
+      const record = bestRecordFor(req.type, assignment.contractor.compliances);
 
       let status: ComplianceGap["status"] | null = null;
       if (!record) status = "missing";

@@ -310,3 +310,16 @@ describe("people: the names behind each count", () => {
     assert.deepEqual(s.people.map((p) => p.group), ["noRequirements"]);
   });
 });
+
+// Jenni, 2026-10-01: James Nye was on "Action required" with CSCS and Right to
+// Work "missing" — both on file as their specific types.
+describe("category requirements are met by the specific card", () => {
+  test("CSCS + Right to Work required; Blue card + UK passport held → compliant", () => {
+    const score = summariseCompliance(
+      [assignment("james", { records: [verified("CSCS (Blue) — Skilled Worker"), verified("Passport — UK or Ireland")] })],
+      requires(["CSCS", "Right to Work"])
+    );
+    assert.equal(score.fullyCompliant, 1);
+    assert.equal(score.actionRequired, 0);
+  });
+});

@@ -18,6 +18,7 @@ import { resolveRole, requirementReaches } from "@/lib/role-normalisation";
 import { categoryForType } from "@/lib/compliance-types";
 import { doNotEmployBlock } from "@/lib/do-not-employ";
 import { logAssignmentActivity } from "@/lib/assignment-activity";
+import { requirementMetForPlacement } from "@/lib/requirement-match";
 
 export type AssignmentFormState = { error?: string } | null;
 
@@ -83,14 +84,12 @@ export async function checkComplianceForAssignment(params: {
 
   const now = new Date();
 
-  const requirementChecks: ComplianceRequirementCheck[] = applicable.map((req) => {
-    const met = contractor.compliances.some((record) => {
-      if (record.type !== req.type || record.status !== "Verified") return false;
-      if (record.indefiniteExpiry) return true;
-      return record.expiryDate ? new Date(record.expiryDate) > now : false;
-    });
-    return { type: req.type, description: req.description, met };
-  });
+  const requirementChecks: ComplianceRequirementCheck[] = applicable.map((req) => ({
+    type: req.type,
+    description: req.description,
+    // Category-aware and the same expiry rule as RTW coverage — see requirement-match.ts.
+    met: requirementMetForPlacement(req.type, contractor.compliances, now),
+  }));
 
   const missingTypes = [...new Set(requirementChecks.filter((r) => !r.met).map((r) => r.type))];
 

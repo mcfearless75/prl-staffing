@@ -5,6 +5,7 @@ import { ComplianceUploader } from "../compliance/compliance-uploader";
 import { loadRequirementMatcher } from "@/lib/compliance-gaps";
 import { categoryForType } from "@/lib/compliance-types";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
+import { bestRecordFor, recordMatchesRequirement } from "@/lib/requirement-match";
 
 const ACTIVE_ASSIGNMENT_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
@@ -94,12 +95,6 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
     description: c.description ?? `${categoryForType(c.type)} document`,
   }));
 
-  // Map records by type
-  const recordByType: Record<string, typeof records[0]> = {};
-  for (const r of records) {
-    if (!recordByType[r.type]) recordByType[r.type] = r;
-  }
-
   // Map latest document by type
   const docByType: Record<string, typeof documents[0]> = {};
   for (const d of documents) {
@@ -110,12 +105,14 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
   // record the contractor holds meant unrelated extras could push the bar to
   // 100% while a required document was still missing.
   const total = requiredTypes.length;
-  const verified = requiredTypes.filter((t) => recordByType[t.type]?.status === "Verified").length;
+  // Category-aware: a "CSCS" requirement is met by "CSCS (Blue) — …" (requirement-match.ts).
+  const recordFor = (type: string) => bestRecordFor(type, records);
+  const verified = requiredTypes.filter((t) => recordFor(t.type)?.status === "Verified").length;
   const score = total > 0 ? Math.round((verified / total) * 100) : 0;
 
-  const completedCount = requiredTypes.filter((t) => recordByType[t.type]).length;
+  const completedCount = requiredTypes.filter((t) => recordFor(t.type)).length;
   const otherRecords = records.filter(
-    (r) => categoryForType(r.type) !== "Right to Work" && !requiredTypes.find((t) => t.type === r.type)
+    (r) => categoryForType(r.type) !== "Right to Work" && !requiredTypes.some((t) => recordMatchesRequirement(t.type, r.type))
   );
 
   return (
@@ -155,8 +152,8 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
         <h3 className="text-sm font-semibold text-gray-900">Required for your role</h3>
 
         {requiredTypes.map((reqType) => {
-          const record = recordByType[reqType.type];
-          const doc = docByType[reqType.type];
+          const record = recordFor(reqType.type);
+          const doc = record ? docByType[record.type] : undefined;
           const status = record?.status || "Not Submitted";
           const isComplete = record && (record.status === "Verified" || record.status === "Pending");
 

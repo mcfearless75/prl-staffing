@@ -1,0 +1,70 @@
+import { test, describe } from "node:test";
+import assert from "node:assert/strict";
+import {
+  recordMatchesRequirement,
+  requirementStatus,
+  requirementMetForPlacement,
+  bestRecordFor,
+} from "@/lib/requirement-match";
+
+// Jenni, 2026-10-01: James Nye — CSCS and Right to Work on file, shown missing.
+describe("a category requirement is met by any card in that category", () => {
+  test("CSCS is met by a Blue card, Right to Work by a UK passport", () => {
+    assert.ok(recordMatchesRequirement("CSCS", "CSCS (Blue) — Skilled Worker"));
+    assert.ok(recordMatchesRequirement("Right to Work", "Passport — UK or Ireland"));
+    assert.ok(recordMatchesRequirement("CSCS", "CSCS"));
+  });
+
+  test("a specific requirement still needs that exact card", () => {
+    assert.equal(recordMatchesRequirement("CSCS (Gold) — Advanced Craft / Supervisor", "CSCS (Green) — Labourer"), false);
+  });
+
+  test("other categories don't cross over", () => {
+    assert.equal(recordMatchesRequirement("CSCS", "Passport — UK or Ireland"), false);
+    assert.equal(recordMatchesRequirement("Right to Work", "CSCS (Blue) — Skilled Worker"), false);
+  });
+});
+
+describe("requirementStatus — the best document wins", () => {
+  test("James Nye's case: no longer Missing", () => {
+    const held = [
+      { type: "CSCS (Blue) — Skilled Worker", status: "Verified" },
+      { type: "Passport — UK or Ireland", status: "Verified" },
+    ];
+    assert.equal(requirementStatus("CSCS", held), "Verified");
+    assert.equal(requirementStatus("Right to Work", held), "Verified");
+  });
+
+  test("an expired old card doesn't hide a verified new one", () => {
+    const held = [
+      { type: "CSCS (Green) — Labourer", status: "Expired" },
+      { type: "CSCS (Blue) — Skilled Worker", status: "Verified" },
+    ];
+    assert.equal(requirementStatus("CSCS", held), "Verified");
+    assert.equal(bestRecordFor("CSCS", held)?.type, "CSCS (Blue) — Skilled Worker");
+  });
+
+  test("nothing held is Missing", () => {
+    assert.equal(requirementStatus("CSCS", [{ type: "Passport", status: "Verified" }]), "Missing");
+  });
+});
+
+describe("requirementMetForPlacement", () => {
+  const now = new Date("2026-10-01T12:00:00Z");
+  const rec = (over: Partial<{ type: string; status: string; expiryDate: Date | null; indefiniteExpiry: boolean }>) => ({
+    type: "CSCS (Blue) — Skilled Worker", status: "Verified", expiryDate: new Date("2027-01-01"), indefiniteExpiry: false, ...over,
+  });
+
+  test("a verified in-date card meets a category requirement", () => {
+    assert.ok(requirementMetForPlacement("CSCS", [rec({})], now));
+  });
+
+  test("no expiry date entered counts as in date, like Right to Work coverage", () => {
+    assert.ok(requirementMetForPlacement("Right to Work", [rec({ type: "Birth Certificate", expiryDate: null })], now));
+  });
+
+  test("pending or out-of-date doesn't count", () => {
+    assert.equal(requirementMetForPlacement("CSCS", [rec({ status: "Pending" })], now), false);
+    assert.equal(requirementMetForPlacement("CSCS", [rec({ expiryDate: new Date("2026-09-01") })], now), false);
+  });
+});
