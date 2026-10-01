@@ -42,7 +42,6 @@ export async function POST(request: Request) {
     const appUrl = process.env.NEXTAUTH_URL || "https://www.prismworkforce.online";
     const installUrl = `${appUrl}/install`;
     const loginUrl = `${appUrl}/login`;
-    const apkUrl = "https://github.com/mcfearless75/prl-staffing/releases/latest/download/PRISM.apk";
 
     const apiKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
@@ -93,10 +92,12 @@ export async function POST(request: Request) {
           <!-- Android -->
           <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 12px 0;">
             <p style="color: #166534; font-size: 13px; font-weight: 600; margin: 0 0 6px;">📱 Android Phone:</p>
-            <p style="color: #374151; font-size: 13px; margin: 0;">
-              <a href="${apkUrl}" style="color: #005f8c; font-weight: 600;">Download the PRISM app here</a>
-              — then open the file and tap Install. Allow "unknown sources" if prompted.
-            </p>
+            <ol style="color: #374151; font-size: 13px; padding-left: 20px; margin: 0; line-height: 1.8;">
+              <li>Open <strong>Chrome</strong></li>
+              <li>Go to <strong><a href="${loginUrl}" style="color: #005f8c;">www.prismworkforce.online</a></strong></li>
+              <li>Tap the <strong>three dots ⋮</strong> menu (top right)</li>
+              <li>Tap <strong>"Install app"</strong> (on some phones it says <strong>"Add to Home screen"</strong>)</li>
+            </ol>
           </div>
 
           <!-- iPhone -->
