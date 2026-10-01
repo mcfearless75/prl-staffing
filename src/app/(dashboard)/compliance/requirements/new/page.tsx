@@ -147,6 +147,13 @@ export default async function NewRequirementPage({
                 Required documents <span className="text-red-500">*</span>
               </span>
               <TypePicker />
+              <label className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                <input type="checkbox" name="anyOne" className="mt-0.5 h-4 w-4" />
+                <span>
+                  <strong>Any one of these will do</strong> — e.g. tick NPORS and CPCS, then this box, and the
+                  person needs <em>either</em> card. Leave it unticked and <em>every</em> ticked document is required.
+                </span>
+              </label>
             </div>
 
             <div>

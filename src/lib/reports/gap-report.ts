@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { loadRequirementMatcher } from "@/lib/compliance-gaps";
 import { resolveRole } from "@/lib/role-normalisation";
+import { bestRecordFor, recordMeetsSpec, requirementLabel, type RequirementSpec } from "@/lib/requirement-match";
 
 export interface GapReportDoc {
   type: string;
@@ -79,8 +80,6 @@ export async function getGapReport(): Promise<{
   let contractorsWithoutChecklist = 0;
 
   const report: GapReportContractor[] = contractors.map((c) => {
-    const docTypes = new Set(c.documents.map((d) => d.type));
-    const complianceTypes = new Map(c.compliances.map((cr) => [cr.type, cr.status]));
 
     // Use the first active assignment that yields a role; fall back to the
     // contractor's job title when no assignment carries one.
@@ -91,19 +90,21 @@ export async function getGapReport(): Promise<{
     const checklist = matcher.forRole(assignment?.role, c.jobTitle, assignment?.companyId);
     if (checklist.length === 0) contractorsWithoutChecklist++;
 
-    const toDoc = (type: string, missingLabel: string): GapReportDoc => {
-      const status = complianceTypes.get(type) ?? null;
-      const has = docTypes.has(type) || complianceTypes.has(type);
+    // Category- and either/or-aware, like the dashboard (requirement-match.ts):
+    // a "CSCS" requirement is met by a Blue card, "NPORS or CPCS" by either.
+    const toDoc = (spec: RequirementSpec, missingLabel: string): GapReportDoc => {
+      const status = bestRecordFor(spec, c.compliances)?.status ?? null;
+      const has = status !== null || c.documents.some((d) => recordMeetsSpec(spec, d.type));
       return {
-        type,
+        type: requirementLabel(spec),
         hasDocument: has,
         complianceStatus: status,
         status: has ? (status === "Verified" ? "verified" : "pending") : missingLabel,
       };
     };
 
-    const required = checklist.filter((r) => r.isMandatory).map((r) => toDoc(r.type, "missing"));
-    const optional = checklist.filter((r) => !r.isMandatory).map((r) => toDoc(r.type, "not_uploaded"));
+    const required = checklist.filter((r) => r.isMandatory).map((r) => toDoc(r, "missing"));
+    const optional = checklist.filter((r) => !r.isMandatory).map((r) => toDoc(r, "not_uploaded"));
 
     const requiredComplete = required.filter((r) => r.status === "verified").length;
     const requiredTotal = required.length;

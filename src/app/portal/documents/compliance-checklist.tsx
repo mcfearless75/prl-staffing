@@ -5,7 +5,7 @@ import { ComplianceUploader } from "../compliance/compliance-uploader";
 import { loadRequirementMatcher } from "@/lib/compliance-gaps";
 import { categoryForType } from "@/lib/compliance-types";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
-import { bestRecordFor, recordMatchesRequirement } from "@/lib/requirement-match";
+import { bestRecordFor, recordMeetsSpec, requirementLabel, type RequirementSpec } from "@/lib/requirement-match";
 
 const ACTIVE_ASSIGNMENT_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
@@ -41,7 +41,7 @@ const CATEGORY_ICONS: Record<string, string> = {
  */
 export async function loadChecklistTypes(
   contractorId: string
-): Promise<{ type: string; description: string | null; isMandatory: boolean }[]> {
+): Promise<{ type: string; alternatives: string[]; description: string | null; isMandatory: boolean }[]> {
   const [contractor, matcher] = await Promise.all([
     prisma.contractor.findUnique({
       where: { id: contractorId },
@@ -59,8 +59,8 @@ export async function loadChecklistTypes(
     contractor?.assignments.find((a) => a.role?.trim()) ?? contractor?.assignments[0];
   const checklist = matcher.forRole(assignment?.role, contractor?.jobTitle, assignment?.companyId);
   return checklist.length > 0
-    ? checklist.map((c) => ({ type: c.type, description: c.description ?? null, isMandatory: c.isMandatory }))
-    : FALLBACK_TYPES.map((type) => ({ type, description: null, isMandatory: true }));
+    ? checklist.map((c) => ({ type: c.type, alternatives: c.alternatives, description: c.description ?? null, isMandatory: c.isMandatory }))
+    : FALLBACK_TYPES.map((type) => ({ type, alternatives: [] as string[], description: null, isMandatory: true }));
 }
 
 /**
@@ -90,7 +90,7 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
     .filter((c) => categoryForType(c.type) !== "Right to Work")
     .map((c) => ({
     ...c,
-    label: c.type,
+    label: requirementLabel(c),
     icon: CATEGORY_ICONS[categoryForType(c.type)] ?? "📄",
     description: c.description ?? `${categoryForType(c.type)} document`,
   }));
@@ -106,13 +106,13 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
   // 100% while a required document was still missing.
   const total = requiredTypes.length;
   // Category-aware: a "CSCS" requirement is met by "CSCS (Blue) — …" (requirement-match.ts).
-  const recordFor = (type: string) => bestRecordFor(type, records);
-  const verified = requiredTypes.filter((t) => recordFor(t.type)?.status === "Verified").length;
+  const recordFor = (spec: RequirementSpec) => bestRecordFor(spec, records);
+  const verified = requiredTypes.filter((t) => recordFor(t)?.status === "Verified").length;
   const score = total > 0 ? Math.round((verified / total) * 100) : 0;
 
-  const completedCount = requiredTypes.filter((t) => recordFor(t.type)).length;
+  const completedCount = requiredTypes.filter((t) => recordFor(t)).length;
   const otherRecords = records.filter(
-    (r) => categoryForType(r.type) !== "Right to Work" && !requiredTypes.some((t) => recordMatchesRequirement(t.type, r.type))
+    (r) => categoryForType(r.type) !== "Right to Work" && !requiredTypes.some((t) => recordMeetsSpec(t, r.type))
   );
 
   return (
@@ -152,7 +152,7 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
         <h3 className="text-sm font-semibold text-gray-900">Required for your role</h3>
 
         {requiredTypes.map((reqType) => {
-          const record = recordFor(reqType.type);
+          const record = recordFor(reqType);
           const doc = record ? docByType[record.type] : undefined;
           const status = record?.status || "Not Submitted";
           const isComplete = record && (record.status === "Verified" || record.status === "Pending");

@@ -408,6 +408,8 @@ model ComplianceRequirement {
   company     Company? @relation(fields: [companyId], references: [id])
   type        String // CSCS, DBS, Right to Work, Insurance, IR35 Assessment, Qualification
   description String? // extra detail, e.g. "NVQ Level 3"
+  // "Any one of these will do": met by `type` OR any of these (requirement-match.ts)
+  alternatives String[] @default([])
   isMandatory Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

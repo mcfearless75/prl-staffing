@@ -8,6 +8,7 @@ import { Plus, Trash2, Building2, Briefcase, AlertTriangle, Users } from "lucide
 import { deleteRequirement, toggleMandatory } from "./actions";
 import { resolveRole } from "@/lib/role-normalisation";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
+import { requirementLabel } from "@/lib/requirement-match";
 
 const ACTIVE_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
@@ -232,7 +233,10 @@ export default async function RequirementsPage() {
                           </button>
                         </form>
                         <div className="min-w-0">
-                          <span className="text-sm font-medium text-gray-900">{req.type}</span>
+                          <span className="text-sm font-medium text-gray-900">{requirementLabel(req)}</span>
+                          {req.alternatives.length > 0 && (
+                            <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">any one</span>
+                          )}
                           {req.description && (
                             <span className="ml-2 text-sm text-gray-400">— {req.description}</span>
                           )}

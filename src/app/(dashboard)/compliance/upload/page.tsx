@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { loadRequirementMatcher } from "@/lib/compliance-gaps";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
+import { recordMeetsSpec, requirementLabel, type RequirementSpec } from "@/lib/requirement-match";
 
 const ACTIVE_ASSIGNMENT_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
@@ -70,11 +71,14 @@ export default async function ComplianceUploadPage({ searchParams }: PageProps) 
     contractor.assignments.find((a) => a.role?.trim()) ?? contractor.assignments[0];
   const checklist = matcher.forRole(assignment?.role, contractor.jobTitle, assignment?.companyId);
 
-  const requiredTypes =
-    checklist.length > 0 ? checklist.filter((c) => c.isMandatory).map((c) => c.type) : FALLBACK_TYPES;
+  const required: RequirementSpec[] =
+    checklist.length > 0 ? checklist.filter((c) => c.isMandatory) : FALLBACK_TYPES;
 
-  const existingTypes = new Set(existing.map((r) => r.type));
-  const missingTypes = requiredTypes.filter((t) => !existingTypes.has(t));
+  // Category-aware and either/or-aware, like every other check (requirement-match.ts).
+  // Uploads go in under the requirement's main type; the heading shows "A or B".
+  const missing = required.filter((spec) => !existing.some((r) => recordMeetsSpec(spec, r.type)));
+  const missingTypes = missing.map((spec) => (typeof spec === "string" ? spec : spec.type));
+  const missingLabels = new Map(missing.map((spec) => [typeof spec === "string" ? spec : spec.type, requirementLabel(spec)]));
   const allCovered = missingTypes.length === 0;
 
   return (
@@ -115,8 +119,8 @@ export default async function ComplianceUploadPage({ searchParams }: PageProps) 
             <h2 className="text-lg font-semibold text-gray-800">Documents required</h2>
             {missingTypes.map((docType) => (
               <div key={docType} className="bg-white rounded-lg shadow p-6">
-                <h3 className="font-medium text-gray-900 mb-1">{docType}</h3>
-                <p className="text-sm text-gray-500 mb-4">Upload a clear copy of your {docType} document.</p>
+                <h3 className="font-medium text-gray-900 mb-1">{missingLabels.get(docType) ?? docType}</h3>
+                <p className="text-sm text-gray-500 mb-4">Upload a clear copy of your {missingLabels.get(docType) ?? docType} document.</p>
                 <form
                   action="/api/compliance/upload-doc"
                   method="POST"

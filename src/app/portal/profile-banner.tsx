@@ -5,7 +5,7 @@ import { categoryForType } from "@/lib/compliance-types";
 import { RTW_SATISFIED_STATUSES, normaliseShareCode, parseRtwRoute, rtwProgress } from "@/lib/rtw-route";
 import { loadChecklistTypes } from "./documents/compliance-checklist";
 import { sensitiveStorageAvailable } from "@/lib/sensitive-crypto";
-import { recordMatchesRequirement } from "@/lib/requirement-match";
+import { recordMeetsSpec } from "@/lib/requirement-match";
 
 /**
  * "Please complete your profile" on the portal home (Paul, 2026-09-26: everyone,
@@ -44,7 +44,7 @@ export async function ProfileBanner({ contractorId }: { contractorId: string }) 
   // Right to Work has its own step above, so the cards step skips that category.
   const cardsDone = checklist
     .filter((t) => t.isMandatory && categoryForType(t.type) !== "Right to Work")
-    .every((t) => records.some((r) => recordMatchesRequirement(t.type, r.type)));
+    .every((t) => records.some((r) => recordMeetsSpec(t, r.type)));
 
   const steps = [
     { label: "Your details", done: detailsDone, href: "/portal/profile" },

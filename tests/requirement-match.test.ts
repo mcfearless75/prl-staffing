@@ -119,3 +119,23 @@ test("NPORS cards meet a plain CSCS requirement", () => {
   assert.ok(recordMatchesRequirement("CSCS", "NPORS"));
   assert.equal(recordMatchesRequirement("CSCS (Blue) — Skilled Worker", "NPORS Excavator (360)"), false);
 });
+
+// Jenni, 2026-10-01: "we will tick what's required but it could be either NPORS or CSCS".
+describe("either/or requirements (alternatives)", () => {
+  const spec = { type: "NPORS", alternatives: ["CPCS"] };
+  test("met by any listed family, labelled 'A or B'", async () => {
+    const { recordMeetsSpec, requirementLabel } = await import("@/lib/requirement-match");
+    assert.ok(recordMeetsSpec(spec, "NPORS Excavator (360)"));
+    assert.ok(recordMeetsSpec(spec, "CPCS Telehandler"));
+    assert.equal(recordMeetsSpec(spec, "CSCS (Blue) — Skilled Worker"), false);
+    assert.equal(requirementLabel(spec), "NPORS or CPCS");
+    assert.equal(requirementLabel("CSCS"), "CSCS");
+  });
+
+  test("status and placement honour the alternatives", () => {
+    assert.equal(requirementStatus(spec, [{ type: "CPCS Telehandler", status: "Verified" }]), "Verified");
+    assert.ok(
+      requirementMetForPlacement(spec, [{ type: "CPCS Telehandler", status: "Verified", expiryDate: null }], new Date("2026-10-01"))
+    );
+  });
+});

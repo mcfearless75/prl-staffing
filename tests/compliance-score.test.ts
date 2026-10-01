@@ -14,14 +14,17 @@ import type { RequirementMatcher, RequiredType } from "@/lib/compliance-gaps";
  */
 
 /** A matcher that requires the same mandatory documents of everyone. */
-function requires(mandatory: string[], optional: string[] = []): RequirementMatcher {
+/** A string is one document; an array is "any one of these will do". */
+function requires(mandatory: (string | string[])[], optional: string[] = []): RequirementMatcher {
+  const spec = (m: string | string[]) =>
+    Array.isArray(m) ? { type: m[0], alternatives: m.slice(1) } : { type: m, alternatives: [] as string[] };
   const checklist: RequiredType[] = [
-    ...mandatory.map((type) => ({ type, isMandatory: true, description: null })),
-    ...optional.map((type) => ({ type, isMandatory: false, description: null })),
+    ...mandatory.map((m) => ({ ...spec(m), isMandatory: true, description: null })),
+    ...optional.map((type) => ({ type, alternatives: [], isMandatory: false, description: null })),
   ];
   return {
     configured: true,
-    allTypes: [...mandatory, ...optional],
+    allTypes: [...mandatory.flat(), ...optional],
     forRole: () => checklist,
   };
 }
@@ -321,5 +324,17 @@ describe("category requirements are met by the specific card", () => {
     );
     assert.equal(score.fullyCompliant, 1);
     assert.equal(score.actionRequired, 0);
+  });
+});
+
+// Jenni, 2026-10-01: "it could be either NPORS or CSCS" — an either/or requirement.
+describe("either/or requirements", () => {
+  test("NPORS-or-CPCS is met by either card, and reported by its full label when missing", () => {
+    const req = requires([["NPORS", "CPCS"]]);
+    const cpcs = summariseCompliance([assignment("a", { records: [verified("CPCS Excavator (360)")] })], req);
+    assert.equal(cpcs.fullyCompliant, 1);
+    const none = summariseCompliance([assignment("b", { records: [verified("Passport")] })], req);
+    assert.equal(none.actionRequired, 1);
+    assert.deepEqual(none.people[0].issues.map((i) => i.type), ["NPORS or CPCS"]);
   });
 });

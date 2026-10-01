@@ -57,6 +57,27 @@ export function recordMatchesRequirement(requirementType: string, recordType: st
   return !!alt && (alt.types.includes(recordType) || alt.categories.includes(category));
 }
 
+/**
+ * A requirement as stored: its type plus any "any one of these will do"
+ * alternatives (Jenni, 2026-10-01: "it could be either NPORS or CSCS"). A bare
+ * string is a requirement with no alternatives.
+ */
+export type RequirementSpec = string | { type: string; alternatives?: readonly string[] | null };
+
+function specTypes(spec: RequirementSpec): string[] {
+  return typeof spec === "string" ? [spec] : [spec.type, ...(spec.alternatives ?? [])];
+}
+
+/** "NPORS or CPCS" — how an either/or requirement is shown everywhere. */
+export function requirementLabel(spec: RequirementSpec): string {
+  return specTypes(spec).join(" or ");
+}
+
+/** Does this held document meet the requirement (its type or any alternative)? */
+export function recordMeetsSpec(spec: RequirementSpec, recordType: string): boolean {
+  return specTypes(spec).some((t) => recordMatchesRequirement(t, recordType));
+}
+
 /** Best first: one good passport is enough even if an old one has expired. */
 const STATUS_RANK: Record<string, number> = {
   Verified: 0,
@@ -70,18 +91,18 @@ const rank = (s: string) => STATUS_RANK[s] ?? 5;
 export type HeldRecord = { type: string; status: string };
 
 /** The best-status record meeting the requirement, or undefined if none does. */
-export function bestRecordFor<R extends HeldRecord>(requirementType: string, records: readonly R[]): R | undefined {
+export function bestRecordFor<R extends HeldRecord>(requirement: RequirementSpec, records: readonly R[]): R | undefined {
   let best: R | undefined;
   for (const r of records) {
-    if (!recordMatchesRequirement(requirementType, r.type)) continue;
+    if (!recordMeetsSpec(requirement, r.type)) continue;
     if (!best || rank(r.status) < rank(best.status)) best = r;
   }
   return best;
 }
 
 /** Status for the requirement, or "Missing" when nothing held meets it. */
-export function requirementStatus(requirementType: string, records: readonly HeldRecord[]): string {
-  return bestRecordFor(requirementType, records)?.status ?? "Missing";
+export function requirementStatus(requirement: RequirementSpec, records: readonly HeldRecord[]): string {
+  return bestRecordFor(requirement, records)?.status ?? "Missing";
 }
 
 /**
@@ -91,13 +112,13 @@ export function requirementStatus(requirementType: string, records: readonly Hel
  * a card whose date wasn't typed in shouldn't block a placement on its own.
  */
 export function requirementMetForPlacement(
-  requirementType: string,
+  requirement: RequirementSpec,
   records: readonly { type: string; status: string; expiryDate: Date | null; indefiniteExpiry?: boolean | null }[],
   now: Date = new Date()
 ): boolean {
   return records.some(
     (r) =>
-      recordMatchesRequirement(requirementType, r.type) &&
+      recordMeetsSpec(requirement, r.type) &&
       r.status === "Verified" &&
       (r.indefiniteExpiry || r.expiryDate === null || r.expiryDate.getTime() > now.getTime())
   );

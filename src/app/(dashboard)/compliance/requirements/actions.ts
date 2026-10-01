@@ -39,10 +39,17 @@ export async function createRequirement(formData: FormData) {
     redirect("/compliance/requirements/new?error=missing");
   }
 
+  // "Any one of these will do" (Jenni, 2026-10-01: "it could be either NPORS
+  // or CSCS"): ONE requirement met by any of the ticked types, stored as the
+  // first type plus alternatives. Otherwise one requirement per type, all needed.
+  const anyOne = formData.get("anyOne") === "on" && types.length > 1;
+
   // createMany + skipDuplicates so re-adding an existing type is a no-op rather
   // than a unique-constraint 500 on [role, companyId, type].
   await prisma.complianceRequirement.createMany({
-    data: types.map((type) => ({ role, companyId, type, description, isMandatory })),
+    data: anyOne
+      ? [{ role, companyId, type: types[0], alternatives: types.slice(1), description, isMandatory }]
+      : types.map((type) => ({ role, companyId, type, description, isMandatory })),
     skipDuplicates: true,
   });
 

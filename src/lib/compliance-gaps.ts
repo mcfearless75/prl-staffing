@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { resolveRole, requirementReaches, type ResolvedRole } from "@/lib/role-normalisation";
 import { categoryForType } from "@/lib/compliance-types";
-import { bestRecordFor } from "@/lib/requirement-match";
+import { bestRecordFor, requirementLabel } from "@/lib/requirement-match";
 
 export type ComplianceGap = {
   contractorId: string;
@@ -91,7 +91,7 @@ export async function getComplianceGapSummary(): Promise<ComplianceGapSummary> {
       const key = `${assignment.contractor.id}::${req.id}`;
       if (seenGapKeys.has(key)) continue;
 
-      const record = bestRecordFor(req.type, assignment.contractor.compliances);
+      const record = bestRecordFor(req, assignment.contractor.compliances);
 
       let status: ComplianceGap["status"] | null = null;
       if (!record) status = "missing";
@@ -110,7 +110,7 @@ export async function getComplianceGapSummary(): Promise<ComplianceGapSummary> {
         rawRole: resolved.raw || assignment.role || "",
         roleSource: resolved.source,
         companyName: assignment.company.name,
-        requiredType: req.type,
+        requiredType: requirementLabel(req),
         requirementDescription: req.description,
         isMandatory: req.isMandatory,
         status,
@@ -153,6 +153,8 @@ export async function getComplianceGapSummary(): Promise<ComplianceGapSummary> {
 
 export type RequiredType = {
   type: string;
+  /** "Any one of these will do" — met by type OR any of these. */
+  alternatives: string[];
   isMandatory: boolean;
   description: string | null;
 };
@@ -189,7 +191,7 @@ export async function loadRequirementMatcher(): Promise<RequirementMatcher> {
 
   return {
     configured: requirements.length > 0,
-    allTypes: [...new Set(requirements.map((r) => r.type))].sort((a, b) => a.localeCompare(b)),
+    allTypes: [...new Set(requirements.map((r) => requirementLabel(r)))].sort((a, b) => a.localeCompare(b)),
     forRole(role, jobTitle, companyId) {
       const resolved = resolveRole(role, jobTitle);
       const seen = new Set<string>();
@@ -202,7 +204,7 @@ export async function loadRequirementMatcher(): Promise<RequirementMatcher> {
         if (req.companyId && req.companyId !== companyId) continue;
         if (seen.has(req.type)) continue;
         seen.add(req.type);
-        out.push({ type: req.type, isMandatory: req.isMandatory, description: req.description });
+        out.push({ type: req.type, alternatives: req.alternatives ?? [], isMandatory: req.isMandatory, description: req.description });
       }
 
       out.sort((a, b) => {

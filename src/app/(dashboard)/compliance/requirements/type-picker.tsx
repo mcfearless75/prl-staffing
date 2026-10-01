@@ -98,7 +98,8 @@ export function TypePicker({
 
       <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
         Every box you tick is needed. To accept <strong>any one</strong> of a family — e.g. any passport or share
-        code — tick the family&apos;s top entry marked <em>any …</em> instead of each type.
+        code — tick the family&apos;s top entry marked <em>any …</em>. For a choice across families (NPORS{" "}
+        <em>or</em> CPCS), tick them and then <strong>Any one of these will do</strong> below.
       </p>
 
       <div className="max-h-96 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">

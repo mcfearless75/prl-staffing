@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/db";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { STILL_WORKING_FILTER } from "@/lib/contractor-statuses";
-import { loadRequirementMatcher, type RequirementMatcher } from "@/lib/compliance-gaps";
+import { loadRequirementMatcher, type RequirementMatcher, type RequiredType } from "@/lib/compliance-gaps";
 import { resolveRole } from "@/lib/role-normalisation";
-import { requirementStatus } from "@/lib/requirement-match";
+import { requirementStatus, requirementLabel } from "@/lib/requirement-match";
 
 // The headline compliance percentage, computed in ONE place.
 //
@@ -126,7 +126,7 @@ export function summariseCompliance(
   type Row = {
     records: { type: string; status: string }[];
     hasRole: boolean;
-    required: string[];
+    required: RequiredType[];
     optionalCount: number;
     role: string | null;
   };
@@ -142,7 +142,7 @@ export function summariseCompliance(
     byContractor.set(a.contractorId, {
       records: a.contractor.compliances,
       hasRole: Boolean(resolved.canonical),
-      required: checklist.filter((c) => c.isMandatory).map((c) => c.type),
+      required: checklist.filter((c) => c.isMandatory),
       optionalCount: checklist.filter((c) => !c.isMandatory).length,
       role: a.role?.trim() || a.contractor.jobTitle?.trim() || null,
     });
@@ -171,9 +171,9 @@ export function summariseCompliance(
     }
 
     // Category-aware: a "CSCS" requirement is met by a "CSCS (Blue) — …" card.
-    const statuses = row.required.map((t) => requirementStatus(t, row.records));
+    const statuses = row.required.map((r) => requirementStatus(r, row.records));
     const issues = row.required
-      .map((type, i) => ({ type, status: statuses[i] }))
+      .map((r, i) => ({ type: requirementLabel(r), status: statuses[i] }))
       .filter((x) => x.status !== "Verified");
 
     let group: ComplianceGroup;
