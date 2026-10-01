@@ -11,7 +11,6 @@ import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { WorkBoard } from "./work-board";
 import type { ContractorSort } from "@/lib/contractor-list";
 import {
-  AVAILABLE_FILTER,
   COMPLIANCE_OPTIONS,
   NAME_CHECK_FILTER,
   NONE,
@@ -26,7 +25,6 @@ const STATUS_TAB_COLORS: Record<string, string> = {
   "":          "bg-gray-100 text-gray-700 hover:bg-gray-200",
   Active:      "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
   Inactive:    "bg-gray-100 text-gray-600 hover:bg-gray-200",
-  Available:   "bg-slate-200 text-slate-800 hover:bg-slate-300",
 };
 
 function ViewToggle({ view }: { view: "list" | "board" }) {
@@ -156,7 +154,8 @@ export default async function ContractorsPage({
 
       {/* Quick-filter tabs */}
       <div className="flex flex-wrap gap-2">
-        {["", ...SETTABLE_CONTRACTOR_STATUSES, AVAILABLE_FILTER].map((value) => (
+        {/* Active / Inactive only — the Available tab was dropped at PRL's request (2026-10-01). */}
+        {["", ...SETTABLE_CONTRACTOR_STATUSES].map((value) => (
           <Link
             key={value}
             href={hrefWith({ status: value })}
@@ -189,7 +188,6 @@ export default async function ContractorsPage({
               {s}
             </option>
           ))}
-          <option value={AVAILABLE_FILTER}>Available (no live work)</option>
           <option value={NAME_CHECK_FILTER}>Name changes to check</option>
         </select>
         <select name="title" defaultValue={titleFilter} className={`${selectCls} max-w-[220px]`} aria-label="Job title">
