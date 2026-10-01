@@ -3,13 +3,28 @@
 import { useMemo, useState } from "react";
 import { Search, Check } from "lucide-react";
 import { COMPLIANCE_TYPE_GROUPS } from "@/lib/compliance-types";
+import { ACCEPTED_INSTEAD } from "@/lib/requirement-match";
+
+/**
+ * The family-level entry ("CSCS", "Right to Work") is met by ANY document in
+ * that family (lib/requirement-match.ts). Say so on screen: ticking several
+ * boxes means all of them are needed, so "passport OR share code" is done by
+ * ticking the one family entry, not each passport.
+ */
+function anyLabel(type: string, category: string): string | null {
+  if (type !== category) return null;
+  const alt = ACCEPTED_INSTEAD[category];
+  const extra = alt ? `, or ${[...alt.types.map((t) => t.replace(/ Card$/, "")), ...alt.categories].join(" / ")}` : "";
+  return `any ${category} document${extra}`;
+}
 
 /**
  * Document-type selector for a role's compliance checklist.
  *
  * The taxonomy has ~130 specific types across 16 categories, so a plain <select>
- * is unusable — and picking the wrong string matters, because requirements match
- * ComplianceRecord.type exactly. Search + category grouping keeps the real type
+ * is unusable. A specific type must match the held document exactly; a family
+ * entry ("CSCS", "Right to Work") accepts any document in that family — see
+ * lib/requirement-match.ts. Search + category grouping keeps the real type
  * names visible rather than making staff guess at abbreviations.
  */
 export function TypePicker({
@@ -79,6 +94,11 @@ export function TypePicker({
         </div>
       )}
 
+      <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        Every box you tick is needed. To accept <strong>any one</strong> of a family — e.g. any passport or share
+        code — tick the family&apos;s top entry marked <em>any …</em> instead of each type.
+      </p>
+
       <div className="max-h-96 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
         {groups.length === 0 && (
           <p className="px-4 py-6 text-center text-sm text-gray-500">
@@ -108,7 +128,12 @@ export function TypePicker({
                   >
                     {isOn && <Check className="h-3 w-3 text-white" />}
                   </span>
-                  {t}
+                  <span>
+                    {t}
+                    {anyLabel(t, g.category) && (
+                      <span className="ml-2 text-xs font-medium text-emerald-700">({anyLabel(t, g.category)})</span>
+                    )}
+                  </span>
                 </button>
               );
             })}

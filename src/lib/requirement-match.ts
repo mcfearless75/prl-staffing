@@ -16,9 +16,24 @@ import { COMPLIANCE_CATEGORIES, categoryForType } from "@/lib/compliance-types";
 
 const CATEGORY_NAMES = new Set<string>(COMPLIANCE_CATEGORIES.filter((c) => c !== "General"));
 
+/**
+ * Cards accepted IN PLACE OF a family. Jenni, 2026-10-01: Andrew Carroll holds
+ * an ECS card "which is the same level, so he'll never have a CSCS". ECS (JIB
+ * electrical), JIB and CPCS are CSCS partner schemes — they carry the CSCS logo
+ * and sites accept them where CSCS is asked for. Only the family-level "CSCS"
+ * requirement takes them; a specific colour requirement still needs that card.
+ */
+export const ACCEPTED_INSTEAD: Record<string, { categories: string[]; types: string[] }> = {
+  CSCS: { categories: ["CPCS"], types: ["ECS Card", "JIB Card"] },
+};
+
 export function recordMatchesRequirement(requirementType: string, recordType: string): boolean {
   if (recordType === requirementType) return true;
-  return CATEGORY_NAMES.has(requirementType) && categoryForType(recordType) === requirementType;
+  if (!CATEGORY_NAMES.has(requirementType)) return false;
+  const category = categoryForType(recordType);
+  if (category === requirementType) return true;
+  const alt = ACCEPTED_INSTEAD[requirementType];
+  return !!alt && (alt.types.includes(recordType) || alt.categories.includes(category));
 }
 
 /** Best first: one good passport is enough even if an old one has expired. */

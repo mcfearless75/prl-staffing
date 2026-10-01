@@ -68,3 +68,19 @@ describe("requirementMetForPlacement", () => {
     assert.equal(requirementMetForPlacement("CSCS", [rec({ expiryDate: new Date("2026-09-01") })], now), false);
   });
 });
+
+// Jenni, 2026-10-01: Andrew Carroll has an ECS card, never a CSCS.
+describe("CSCS partner schemes are accepted for a CSCS requirement", () => {
+  test("ECS, JIB and CPCS cards meet 'CSCS'", () => {
+    assert.ok(recordMatchesRequirement("CSCS", "ECS Card"));
+    assert.ok(recordMatchesRequirement("CSCS", "JIB Card"));
+    assert.ok(recordMatchesRequirement("CSCS", "CPCS Excavator (360)"));
+    assert.equal(requirementStatus("CSCS", [{ type: "ECS Card", status: "Verified" }]), "Verified");
+  });
+
+  test("but not a specific CSCS colour, and not the other way round", () => {
+    assert.equal(recordMatchesRequirement("CSCS (Blue) — Skilled Worker", "ECS Card"), false);
+    assert.equal(recordMatchesRequirement("CPCS", "CSCS (Blue) — Skilled Worker"), false);
+    assert.equal(recordMatchesRequirement("ECS Card", "CSCS (Blue) — Skilled Worker"), false);
+  });
+});
