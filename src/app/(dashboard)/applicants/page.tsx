@@ -6,6 +6,7 @@ import { formatDate, getInitials } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { logActivity } from "@/lib/activity-log";
 
 async function approveApplicant(id: string) {
   "use server";
@@ -15,10 +16,16 @@ async function approveApplicant(id: string) {
   // a deliberate, individual staff decision — so it is one of the only two
   // places that stamps it. Bulk imports and onboarding creates deliberately do
   // not, or an import would welcome everyone in the file at once.
+  //
+  // Approved means "accepted onto PRL's books", NOT "working": Active is kept
+  // for people actually on a job (Erica, 2026-10-01 — approved website
+  // applicants were showing as Active with no work). They are switched to
+  // Active automatically when first placed (contractor-status.ts).
   await prisma.contractor.update({
     where: { id },
-    data: { status: "Active", approvedAt: new Date() },
+    data: { status: "Inactive", approvedAt: new Date() },
   });
+  await logActivity("Applicant approved", "Contractor", id, "Status Inactive until placed on a job");
   revalidatePath("/applicants");
   revalidatePath("/contractors");
   revalidatePath("/");
@@ -29,6 +36,7 @@ async function rejectApplicant(id: string) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   await prisma.contractor.update({ where: { id }, data: { status: "Inactive" } });
+  await logActivity("Applicant rejected", "Contractor", id);
   revalidatePath("/applicants");
   revalidatePath("/");
 }
@@ -70,7 +78,7 @@ export default async function ApplicantsPage({
         description={
           view === "looking"
             ? `${looking.length} contractors actively looking`
-            : `${applied.length} pending applications`
+            : `${applied.length} pending applications — approving keeps them Inactive until they're placed on a job`
         }
       />
 

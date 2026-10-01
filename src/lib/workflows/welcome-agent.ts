@@ -71,8 +71,12 @@ export const welcomeAgent = {
     // null approvedAt (everyone predating the column, plus every bulk import)
     // are correctly never welcomed.
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    //
+    // Approval now leaves people Inactive until they're placed (applicants
+    // page, 2026-10-01), so this no longer requires Active — approvedAt alone
+    // is the deliberate signal. Never a "Do not employ" person.
     const candidates = await prisma.contractor.findMany({
-      where: { status: "Active", approvedAt: { gte: since } },
+      where: { status: { in: ["Active", "Inactive"] }, approvedAt: { gte: since }, doNotEmploy: false },
     });
 
     // Anyone already welcomed is not a new send, so they don't count towards
