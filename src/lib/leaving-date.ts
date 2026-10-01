@@ -10,9 +10,10 @@ import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 export type LeavingDateDecision = "none" | "deactivate" | "blocked-live-work";
 
 /**
- * Date-only values are stored as UTC midnight (see parseLeavingDate), so
- * "today or earlier" is anything before the start of tomorrow in UTC — the
- * same convention as the Placed -> Active agent.
+ * The leaving date is their LAST WORKING DAY, so they go Inactive the day
+ * after it, never on it (PRL, 2026-10-01). Date-only values are stored as UTC
+ * midnight (see parseLeavingDate), so "passed" means before the start of
+ * today in UTC.
  *
  * Only ever moves Active, the one status automation may demote from. Someone
  * with live work is held back rather than deactivated: the assignment rules
@@ -24,10 +25,9 @@ export function leavingDateDecision(
   now: Date = new Date()
 ): LeavingDateDecision {
   if (!c.leavingDate || c.status !== AUTO_DEACTIVATE_FROM) return "none";
-  const startOfTomorrow = new Date(now);
-  startOfTomorrow.setUTCHours(0, 0, 0, 0);
-  startOfTomorrow.setUTCDate(startOfTomorrow.getUTCDate() + 1);
-  if (c.leavingDate >= startOfTomorrow) return "none";
+  const startOfToday = new Date(now);
+  startOfToday.setUTCHours(0, 0, 0, 0);
+  if (c.leavingDate >= startOfToday) return "none";
   return c.hasLiveWork ? "blocked-live-work" : "deactivate";
 }
 

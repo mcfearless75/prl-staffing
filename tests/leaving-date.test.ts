@@ -21,8 +21,12 @@ describe("leavingDateDecision", () => {
     assert.equal(leavingDateDecision({ ...base, leavingDate: new Date("2026-09-28") }, NOW), "none");
   });
 
-  test("today or earlier: deactivate", () => {
-    assert.equal(leavingDateDecision({ ...base, leavingDate: new Date("2026-09-27") }, NOW), "deactivate");
+  test("their last day is today: still Active — they're working it", () => {
+    assert.equal(leavingDateDecision({ ...base, leavingDate: new Date("2026-09-27") }, NOW), "none");
+  });
+
+  test("the day after or later: deactivate", () => {
+    assert.equal(leavingDateDecision({ ...base, leavingDate: new Date("2026-09-26") }, NOW), "deactivate");
     assert.equal(leavingDateDecision({ ...base, leavingDate: new Date("2026-01-01") }, NOW), "deactivate");
   });
 

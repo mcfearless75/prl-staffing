@@ -390,7 +390,7 @@ export function ContractorForm({
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Once this date passes they become Inactive, unless they are still on a live job.
+              Their last working day. They become Inactive the day after, unless they are still on a live job.
             </p>
           </div>
 
