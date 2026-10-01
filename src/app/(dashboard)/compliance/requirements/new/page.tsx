@@ -63,6 +63,12 @@ export default async function NewRequirementPage({
       />
 
       <div className="mx-auto max-w-3xl space-y-4">
+        {params.error === "rtw-any" && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            Right to Work can&apos;t be part of an &ldquo;any one of these&rdquo; group — it&apos;s required by law for
+            everyone. Add it as its own requirement, and use &ldquo;any one&rdquo; only for the cards (e.g. CSCS or NPORS).
+          </div>
+        )}
         {params.error === "missing" && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             Pick a role and at least one document type.
@@ -152,6 +158,7 @@ export default async function NewRequirementPage({
                 <span>
                   <strong>Any one of these will do</strong> — e.g. tick NPORS and CPCS, then this box, and the
                   person needs <em>either</em> card. Leave it unticked and <em>every</em> ticked document is required.
+                  Don&apos;t include Right to Work here — it must always be its own requirement.
                 </span>
               </label>
             </div>

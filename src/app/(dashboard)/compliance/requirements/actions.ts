@@ -4,7 +4,23 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { isValidComplianceType } from "@/lib/compliance-types";
+import { categoryForType, isValidComplianceType } from "@/lib/compliance-types";
+import { logActivity } from "@/lib/activity-log";
+import { requirementLabel } from "@/lib/requirement-match";
+
+/**
+ * Requirement changes are written to the activity log (entity
+ * "ComplianceRequirement"): on 2026-10-01 Right to Work was put into an
+ * "any one" group with CSCS, quietly making it optional for most roles, and
+ * there was no record of who had changed it.
+ */
+async function logRequirement(action: string, details: string, id?: string) {
+  await logActivity(action, "ComplianceRequirement", id, details);
+}
+
+function describe(r: { role: string; type: string; alternatives?: string[] | null; isMandatory: boolean; companyId?: string | null }) {
+  return `${r.role === "All" ? "All roles" : r.role}: ${requirementLabel(r)}${r.isMandatory ? "" : " (optional)"}${r.companyId ? " [one client]" : ""}`;
+}
 import { normaliseRole } from "@/lib/role-normalisation";
 
 /**
@@ -44,6 +60,12 @@ export async function createRequirement(formData: FormData) {
   // first type plus alternatives. Otherwise one requirement per type, all needed.
   const anyOne = formData.get("anyOne") === "on" && types.length > 1;
 
+  // Right to Work is a legal requirement for everyone — never one of several
+  // alternatives. "Right to Work OR CSCS" let a CSCS card stand in for it.
+  if (anyOne && types.some((t) => categoryForType(t) === "Right to Work")) {
+    redirect(`/compliance/requirements/new?error=rtw-any&role=${encodeURIComponent(role)}`);
+  }
+
   // createMany + skipDuplicates so re-adding an existing type is a no-op rather
   // than a unique-constraint 500 on [role, companyId, type].
   await prisma.complianceRequirement.createMany({
@@ -52,6 +74,12 @@ export async function createRequirement(formData: FormData) {
       : types.map((type) => ({ role, companyId, type, description, isMandatory })),
     skipDuplicates: true,
   });
+  await logRequirement(
+    "Compliance requirement added",
+    anyOne
+      ? describe({ role, companyId, type: types[0], alternatives: types.slice(1), isMandatory })
+      : types.map((type) => describe({ role, companyId, type, isMandatory })).join("; ")
+  );
 
   revalidatePath("/compliance/requirements");
   revalidatePath("/compliance/gap-report");
@@ -65,10 +93,11 @@ export async function updateRequirement(id: string, formData: FormData) {
   const description = ((formData.get("description") as string) || "").trim() || null;
   const isMandatory = formData.get("isMandatory") !== "false";
 
-  await prisma.complianceRequirement.update({
+  const updated = await prisma.complianceRequirement.update({
     where: { id },
     data: { description, isMandatory },
   });
+  await logRequirement("Compliance requirement edited", describe(updated), id);
 
   revalidatePath("/compliance/requirements");
   revalidatePath("/compliance/gap-report");
@@ -81,10 +110,15 @@ export async function toggleMandatory(id: string) {
   const existing = await prisma.complianceRequirement.findUnique({ where: { id } });
   if (!existing) return;
 
-  await prisma.complianceRequirement.update({
+  const toggled = await prisma.complianceRequirement.update({
     where: { id },
     data: { isMandatory: !existing.isMandatory },
   });
+  await logRequirement(
+    "Compliance requirement edited",
+    `${describe(toggled)} — now ${toggled.isMandatory ? "mandatory" : "optional"}`,
+    id
+  );
 
   revalidatePath("/compliance/requirements");
   revalidatePath("/compliance/gap-report");
@@ -94,7 +128,8 @@ export async function deleteRequirement(id: string) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  await prisma.complianceRequirement.delete({ where: { id } });
+  const removed = await prisma.complianceRequirement.delete({ where: { id } });
+  await logRequirement("Compliance requirement removed", describe(removed), id);
 
   revalidatePath("/compliance/requirements");
   revalidatePath("/compliance/gap-report");
@@ -105,7 +140,11 @@ export async function deleteRoleRequirements(role: string) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
+  const removed = await prisma.complianceRequirement.findMany({ where: { role } });
   await prisma.complianceRequirement.deleteMany({ where: { role } });
+  if (removed.length) {
+    await logRequirement("Compliance requirements removed (whole role)", removed.map(describe).join("; "));
+  }
 
   revalidatePath("/compliance/requirements");
   revalidatePath("/compliance/gap-report");
