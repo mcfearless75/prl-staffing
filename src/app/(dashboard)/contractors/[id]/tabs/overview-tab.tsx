@@ -4,13 +4,43 @@ import { ContractorPortalStatus } from "@/components/contractor-portal-status";
 import type { ContractorWithRelations } from "./types";
 import { NiReveal } from "../ni-reveal";
 
-export function OverviewTab({ contractor }: { contractor: ContractorWithRelations }) {
+export function OverviewTab({
+  contractor,
+  trade,
+  tradeSource,
+  jobRoles,
+}: {
+  contractor: ContractorWithRelations;
+  /** Best-known trade — see effectiveJobTitle; "" when nothing is recorded. */
+  trade: string;
+  tradeSource: string | null;
+  jobRoles: string[];
+}) {
   return (
     <div className="space-y-6">
       {/* Details Grid */}
       <div className="rounded-xl border bg-white p-6">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">Details</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Trade / job title</p>
+            <p className="text-sm text-gray-900">
+              {trade || "-"}
+              {trade && tradeSource && <span className="ml-1 text-xs text-gray-400">({tradeSource})</span>}
+            </p>
+          </div>
+          <div className="md:col-span-2">
+            <p className="text-sm font-medium text-gray-500">Job roles</p>
+            {jobRoles.length ? (
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {jobRoles.map((r) => (
+                  <span key={r} className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">{r}</span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-900">-</p>
+            )}
+          </div>
           <div>
             <p className="text-sm font-medium text-gray-500">Email</p>
             <p className="text-sm text-gray-900">{contractor.email || "-"}</p>

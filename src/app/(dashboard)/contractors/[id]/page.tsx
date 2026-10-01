@@ -16,6 +16,8 @@ import { canViewSensitive } from "@/lib/sensitive-crypto";
 import { DeclarationsPanel } from "./declarations-panel";
 import { DoNotEmploy } from "./do-not-employ";
 import { mergeFeed } from "@/lib/activity-feed";
+import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
+import { effectiveJobTitle } from "@/lib/contractor-list";
 
 const ACTIVITY_LIMIT = 200;
 import { AgreementPrompt } from "./agreement-prompt";
@@ -51,6 +53,7 @@ export default async function ContractorDetailPage({
         compliances: true,
         contractorLogin: true,
         noteEntries: { orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }] },
+        jobRoles: { select: { jobRole: { select: { name: true } } } },
       },
     }),
     prisma.activityLog.findMany({
@@ -95,6 +98,34 @@ export default async function ContractorDetailPage({
     notFound();
   }
   const activityLogs = mergeFeed(activityRows, workflowRows, ACTIVITY_LIMIT);
+
+  // Their trade, even when the Job Title field is blank (Jenni, 2026-10-01:
+  // "only if they are assigned to a job can you see what they do"). Same
+  // fallback order as the Subcontractors list: Job Title, profile Job Roles,
+  // current job's role, last job's role.
+  const isLive = (s: string) => (LIVE_ASSIGNMENT_STATUSES as readonly string[]).includes(s);
+  const liveJob = contractor.assignments
+    .filter((a) => isLive(a.status) && a.role?.trim())
+    .sort((a, b) => b.startDate.getTime() - a.startDate.getTime())[0];
+  const lastJob = contractor.assignments
+    .filter((a) => !isLive(a.status) && a.role?.trim())
+    .sort((a, b) => (b.endDate ?? b.startDate).getTime() - (a.endDate ?? a.startDate).getTime())[0];
+  const profileJobRoles = contractor.jobRoles.map((j) => j.jobRole.name);
+  const trade = effectiveJobTitle({
+    jobTitle: contractor.jobTitle,
+    profileJobRoles,
+    liveAssignmentRole: liveJob?.role ?? null,
+    lastAssignmentRole: lastJob?.role ?? null,
+  });
+  const tradeSource = contractor.jobTitle?.trim()
+    ? null
+    : profileJobRoles.length
+      ? "from their job roles"
+      : liveJob
+        ? "from their current job"
+        : lastJob
+          ? "from their last job"
+          : null;
 
   const offerAgreement = tabParams.agreementPrompt === "1" && (await shouldPromptAgreement(id));
 
@@ -188,8 +219,16 @@ export default async function ContractorDetailPage({
                   </span>
                 )}
               </h1>
-              {contractor.jobTitle && (
-                <p className="text-sm text-gray-500">{contractor.jobTitle}</p>
+              {trade ? (
+                <p className="text-sm font-medium text-gray-700">
+                  {trade}
+                  {tradeSource && <span className="ml-1 text-xs font-normal text-gray-400">({tradeSource})</span>}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-400">
+                  No trade recorded —{" "}
+                  <Link href={`/contractors/${contractor.id}/edit`} className="text-blue-600 hover:underline">add a job title</Link>
+                </p>
               )}
               <span
                 className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor}`}
@@ -317,7 +356,9 @@ export default async function ContractorDetailPage({
         notesCount={contractor.noteEntries.length > 0 ? contractor.noteEntries.length : undefined}
       />
 
-      {activeTab === "Overview" && <OverviewTab contractor={contractor} />}
+      {activeTab === "Overview" && (
+        <OverviewTab contractor={contractor} trade={trade} tradeSource={tradeSource} jobRoles={profileJobRoles} />
+      )}
       {activeTab === "Right to Work" && (
         <RightToWorkTab
           contractorId={contractor.id}
