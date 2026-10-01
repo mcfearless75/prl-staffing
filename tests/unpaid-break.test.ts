@@ -21,7 +21,7 @@ describe("isValidUnpaidBreak", () => {
   });
   test("anything else is rejected", () => {
     assert.equal(isValidUnpaidBreak(""), false);
-    assert.equal(isValidUnpaidBreak("20 minutes"), false);
+    assert.equal(isValidUnpaidBreak("25 minutes"), false);
     assert.equal(isValidUnpaidBreak(undefined), false);
     assert.equal(isValidUnpaidBreak(30), false);
   });

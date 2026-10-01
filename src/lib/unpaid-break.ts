@@ -9,6 +9,7 @@ export const NO_UNPAID_BREAK = "None (breaks are paid)";
 export const UNPAID_BREAK_OPTIONS = [
   NO_UNPAID_BREAK,
   "15 minutes",
+  "20 minutes",
   "30 minutes",
   "45 minutes",
   "1 hour",
