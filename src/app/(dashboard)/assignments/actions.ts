@@ -14,7 +14,8 @@ import {
   activateContractorForAssignment as activateContractorIfInactive,
   deactivateContractorIfNoLiveWork,
 } from "@/lib/contractor-status";
-import { resolveRole, requirementAppliesToRole } from "@/lib/role-normalisation";
+import { resolveRole, requirementReaches } from "@/lib/role-normalisation";
+import { categoryForType } from "@/lib/compliance-types";
 
 export type AssignmentFormState = { error?: string } | null;
 
@@ -73,7 +74,7 @@ export async function checkComplianceForAssignment(params: {
   const resolved = resolveRole(role, null);
 
   const applicable = requirements.filter((req) => {
-    const roleMatch = requirementAppliesToRole(req.role, resolved);
+    const roleMatch = requirementReaches({ role: req.role, isRightToWork: categoryForType(req.type) === "Right to Work" }, resolved);
     const companyMatch = !req.companyId || req.companyId === companyId;
     return roleMatch && companyMatch;
   });

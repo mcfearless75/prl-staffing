@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { NON_SITE_ROLES } from "@/lib/role-normalisation";
 import { Badge } from "@/components/badge";
 import { Plus, Trash2, Building2, Briefcase, AlertTriangle, Users } from "lucide-react";
 import { deleteRequirement, toggleMandatory } from "./actions";
@@ -95,6 +96,11 @@ export default async function RequirementsPage() {
           </div>
         }
       />
+
+      <p className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-900">
+        Off-site roles — {NON_SITE_ROLES.join(" and ")} — skip the &ldquo;All roles&rdquo; rules except Right to Work,
+        so they aren&apos;t asked for CSCS. Rules added for those roles themselves still apply.
+      </p>
 
       {/* Coverage — the number that says whether any of this is actually working. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

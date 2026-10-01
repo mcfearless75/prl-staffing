@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
-import { resolveRole, requirementAppliesToRole, type ResolvedRole } from "@/lib/role-normalisation";
+import { resolveRole, requirementReaches, type ResolvedRole } from "@/lib/role-normalisation";
+import { categoryForType } from "@/lib/compliance-types";
 
 export type ComplianceGap = {
   contractorId: string;
@@ -80,7 +81,7 @@ export async function getComplianceGapSummary(): Promise<ComplianceGapSummary> {
     if (!previous?.canonical) roleByContractor.set(assignment.contractor.id, resolved);
 
     const applicableReqs = requirements.filter((req) => {
-      const roleMatch = requirementAppliesToRole(req.role, resolved);
+      const roleMatch = requirementReaches({ role: req.role, isRightToWork: categoryForType(req.type) === "Right to Work" }, resolved);
       const siteMatch = !req.companyId || req.companyId === assignment.companyId;
       return roleMatch && siteMatch;
     });
@@ -194,7 +195,7 @@ export async function loadRequirementMatcher(): Promise<RequirementMatcher> {
       const out: RequiredType[] = [];
 
       for (const req of requirements) {
-        if (!requirementAppliesToRole(req.role, resolved)) continue;
+        if (!requirementReaches({ role: req.role, isRightToWork: categoryForType(req.type) === "Right to Work" }, resolved)) continue;
         // A client-specific rule only applies when we know which client, and it
         // is that client. Global rules (companyId null) always apply.
         if (req.companyId && req.companyId !== companyId) continue;

@@ -2,6 +2,9 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  requirementReaches,
+  isNonSiteRole,
+  NON_SITE_ROLES,
   CANONICAL_ROLES,
   normaliseRole,
   requirementAppliesToRole,
@@ -316,5 +319,37 @@ describe("requirementAppliesToRole", () => {
   test("an unrecognised rule role still matches the same unrecognised text", () => {
     const odd = resolveRole("Bouncy Castle Inspector");
     assert.equal(requirementAppliesToRole("bouncy  castle  inspector", odd), true);
+  });
+});
+
+// PRL, 2026-10-01: cleaners and bookkeepers don't need site cards.
+describe("requirementReaches — non-site roles skip the all-roles site cards", () => {
+  const cleaner = resolveRole("Cleaner", null);
+  const bookkeeper = resolveRole(null, "Book-keeper");
+  const labourer = resolveRole("Labourer", null);
+  const cscsForAll = { role: "All", isRightToWork: false };
+  const rtwForAll = { role: "All", isRightToWork: true };
+
+  test("an all-roles CSCS rule does not reach a cleaner or bookkeeper", () => {
+    assert.equal(requirementReaches(cscsForAll, cleaner), false);
+    assert.equal(requirementReaches(cscsForAll, bookkeeper), false);
+  });
+
+  test("but it still reaches everyone else, including people with no role", () => {
+    assert.equal(requirementReaches(cscsForAll, labourer), true);
+    assert.equal(requirementReaches(cscsForAll, resolveRole(null, null)), true);
+  });
+
+  test("Right to Work reaches everyone — it is the law, not a site rule", () => {
+    assert.equal(requirementReaches(rtwForAll, cleaner), true);
+    assert.equal(requirementReaches(rtwForAll, bookkeeper), true);
+  });
+
+  test("a rule set up for the role itself still applies", () => {
+    assert.equal(requirementReaches({ role: "Cleaner", isRightToWork: false }, cleaner), true);
+  });
+
+  test("every non-site role resolves to itself, so the list can't silently miss", () => {
+    for (const r of NON_SITE_ROLES) assert.ok(isNonSiteRole(resolveRole(r, null)), r);
   });
 });

@@ -134,6 +134,8 @@ const MECHANICAL_ALIASES: Record<string, string> = {
   "tele handler": "Telehandler Driver",
   telehandler: "Telehandler Driver",
   "telehandler operator": "Telehandler Driver",
+  "book keeper": "Bookkeeper",
+  "book-keeper": "Bookkeeper",
 
   // Typos seen in live data
   platter: "Plater Fabricator",
@@ -287,6 +289,33 @@ export function resolveRole(
  * unknown — which is what makes a baseline rule like "everyone needs Right to
  * Work" still meaningful for the un-roled part of the workforce.
  */
+/**
+ * Roles that never go on a construction site, so the "All roles" site-card
+ * rules (CSCS and friends) must not reach them. PRL, 2026-10-01: "Cleaner and
+ * Bookkeeper do not need a CSCS card etc to work". Right to Work still applies
+ * to everyone - that is the law, not a site rule - and anything configured
+ * for the role itself on Manage requirements still applies too.
+ */
+export const NON_SITE_ROLES = ["Cleaner", "Bookkeeper"] as const;
+
+export function isNonSiteRole(resolved: ResolvedRole): boolean {
+  const c = resolved.canonical?.toLowerCase();
+  return !!c && NON_SITE_ROLES.some((r) => r.toLowerCase() === c);
+}
+
+/**
+ * Whether a requirement reaches this person. Like requirementAppliesToRole,
+ * plus the non-site exemption from "All roles" rules other than Right to Work.
+ */
+export function requirementReaches(
+  req: { role: string; isRightToWork: boolean },
+  resolved: ResolvedRole
+): boolean {
+  if (!requirementAppliesToRole(req.role, resolved)) return false;
+  if (req.role === "All" && !req.isRightToWork && isNonSiteRole(resolved)) return false;
+  return true;
+}
+
 export function requirementAppliesToRole(
   requirementRole: string,
   resolved: ResolvedRole
