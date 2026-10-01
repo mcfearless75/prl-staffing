@@ -272,6 +272,14 @@ export default async function ContractorsPage({
                       >
                         {contractor.firstName} {contractor.lastName}
                       </Link>
+                      {contractor.doNotEmploy && (
+                        <span
+                          title={contractor.doNotEmployReason ?? "Do not employ"}
+                          className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white"
+                        >
+                          Do not employ
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">

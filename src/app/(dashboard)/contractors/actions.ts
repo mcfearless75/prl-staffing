@@ -14,6 +14,7 @@ import { postcodeGeoReset, refreshGeocode } from "@/lib/geo-refresh";
 import { isValidContractorStatus } from "@/lib/contractor-statuses";
 import { parseLeavingDate, applyLeavingDate } from "@/lib/leaving-date";
 import { NATIONALITY_OPTIONS, PRONOUN_OPTIONS, TITLE_OPTIONS, pickOption } from "@/lib/profile-options";
+import { doNotEmployBlock } from "@/lib/do-not-employ";
 
 type AssignResult = { type: "ok" | "moved" | "duplicate" | "error"; message: string } | null;
 
@@ -30,6 +31,8 @@ export async function quickAssignContractorFromProfile(
   const { chargeRate, payRate, rateBasis } = parseAssignmentRateFields(formData);
 
   if (!companyId || !contractorId) return null;
+  const dne = await doNotEmployBlock(contractorId);
+  if (dne) return { type: "error", message: dne };
 
   const company = await prisma.company.findUnique({
     where: { id: companyId },

@@ -9,6 +9,7 @@ import { postcodeGeoReset, refreshGeocode } from "@/lib/geo-refresh";
 // contractor working-status rule. It previously did neither: assigning someone
 // here left an Inactive contractor Inactive while they were on site, and ending
 // their last assignment left them Active with nothing to do.
+import { doNotEmployBlock } from "@/lib/do-not-employ";
 import {
   activateContractorForAssignment,
   deactivateContractorIfNoLiveWork,
@@ -237,6 +238,8 @@ export async function quickAssignContractor(
   if (!contractorId || !role?.trim() || !startDateRaw) {
     return { type: "error", message: "Contractor, role and start date are required." };
   }
+  const dne = await doNotEmployBlock(contractorId);
+  if (dne) return { type: "error", message: dne };
 
   const company = await prisma.company.findUnique({
     where: { id: companyId },

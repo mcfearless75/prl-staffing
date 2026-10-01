@@ -14,6 +14,7 @@ import { RtwFlag } from "./rtw-flag";
 import { auth } from "@/lib/auth";
 import { canViewSensitive } from "@/lib/sensitive-crypto";
 import { DeclarationsPanel } from "./declarations-panel";
+import { DoNotEmploy } from "./do-not-employ";
 import { TabNav } from "./tabs/tab-nav";
 import { OverviewTab } from "./tabs/overview-tab";
 import { RightToWorkTab } from "./tabs/right-to-work-tab";
@@ -181,6 +182,11 @@ export default async function ContractorDetailPage({
               >
                 {contractor.status}
               </span>
+              {contractor.doNotEmploy && (
+                <span className="mt-1 ml-1 inline-block rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
+                  DO NOT EMPLOY
+                </span>
+              )}
               <span
                 className={`mt-1 ml-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${overallStatusColor}`}
               >
@@ -255,6 +261,17 @@ export default async function ContractorDetailPage({
           </div>
         </div>
       </div>
+
+      <DoNotEmploy
+        contractorId={contractor.id}
+        flagged={contractor.doNotEmploy}
+        reason={contractor.doNotEmployReason}
+        byLine={
+          contractor.doNotEmployAt
+            ? `${contractor.doNotEmployBy ? `by ${contractor.doNotEmployBy} ` : ""}on ${formatDate(contractor.doNotEmployAt)}`
+            : null
+        }
+      />
 
       {showDeclarations && (
         <DeclarationsPanel

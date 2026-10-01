@@ -16,6 +16,7 @@ import {
 } from "@/lib/contractor-status";
 import { resolveRole, requirementReaches } from "@/lib/role-normalisation";
 import { categoryForType } from "@/lib/compliance-types";
+import { doNotEmployBlock } from "@/lib/do-not-employ";
 
 export type AssignmentFormState = { error?: string } | null;
 
@@ -188,6 +189,9 @@ export async function createAssignment(
   const awrExempt = formData.get("awrExempt") === "on";
   const awrStartDateRaw = formData.get("awrStartDate") as string;
   const awrStartDate = awrStartDateRaw ? new Date(awrStartDateRaw) : null;
+
+  const dne = await doNotEmployBlock(contractorId);
+  if (dne) return { error: dne };
 
   const gateResult = await applyComplianceGate({
     status,

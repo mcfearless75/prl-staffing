@@ -36,7 +36,7 @@ type Awaitable<T> = T | PromiseLike<T>;
 export type ContractorStatusDb = {
   contractor: {
     updateMany(args: {
-      where: { id: string; status: string };
+      where: { id: string; status: string; doNotEmploy?: boolean };
       data: { status: string };
     }): Awaitable<{ count: number }>;
     findUnique(args: {
@@ -74,7 +74,8 @@ export async function activateContractorIfInactive(
   db: ContractorStatusDb = prisma
 ): Promise<void> {
   await db.contractor.updateMany({
-    where: { id: contractorId, status: AUTO_ACTIVATE_FROM },
+    // A "Do not employ" person is never switched back on by automation.
+    where: { id: contractorId, status: AUTO_ACTIVATE_FROM, doNotEmploy: false },
     data: { status: "Active" },
   });
 }

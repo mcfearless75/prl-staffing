@@ -20,7 +20,7 @@ import { ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
  * by re-stating the where clause.
  */
 
-type ContractorRow = { id: string; status: string };
+type ContractorRow = { id: string; status: string; doNotEmploy?: boolean };
 type AssignmentRow = { contractorId: string; status: string };
 
 function fakeDb(contractors: ContractorRow[], assignments: AssignmentRow[] = []) {
@@ -33,7 +33,8 @@ function fakeDb(contractors: ContractorRow[], assignments: AssignmentRow[] = [])
         updateManyCalls++;
         let count = 0;
         for (const row of rows) {
-          if (row.id === where.id && row.status === where.status) {
+          const dneMatches = where.doNotEmploy === undefined || (row.doNotEmploy ?? false) === where.doNotEmploy;
+          if (row.id === where.id && row.status === where.status && dneMatches) {
             row.status = data.status;
             count++;
           }
@@ -169,6 +170,13 @@ describe("activateContractorIfInactive", () => {
     const { db, statusOf } = fakeDb([{ id: "a", status: "Inactive" }]);
     await activateContractorIfInactive("a", db);
     assert.equal(statusOf("a"), "Active");
+  });
+
+  // PRL 2026-10-01: a "Do not employ" person must stay off, whatever is saved.
+  test('never switches on someone marked "Do not employ"', async () => {
+    const { db, statusOf } = fakeDb([{ id: "a", status: "Inactive", doNotEmploy: true }]);
+    await activateContractorIfInactive("a", db);
+    assert.equal(statusOf("a"), "Inactive");
   });
 
   test('does not rescue "Left" — that contradiction is for staff to resolve', async () => {
