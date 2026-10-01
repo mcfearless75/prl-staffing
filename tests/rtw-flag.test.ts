@@ -66,10 +66,15 @@ describe("rtwCoverage", () => {
 });
 
 describe("rtwReminderBlockReason", () => {
-  const ok = { covered: false, email: "worker@example.com", emailBounced: false, lastSentAt: null };
+  const ok = { status: "Active", covered: false, email: "worker@example.com", emailBounced: false, lastSentAt: null };
 
   test("allowed when not covered and not recently chased", () => {
     assert.equal(rtwReminderBlockReason(ok, NOW), null);
+  });
+
+  test("blocked for leavers", () => {
+    assert.match(rtwReminderBlockReason({ ...ok, status: "Inactive" }, NOW)!, /Inactive/);
+    assert.match(rtwReminderBlockReason({ ...ok, status: "Left" }, NOW)!, /Left/);
   });
 
   test("blocked when already covered", () => {

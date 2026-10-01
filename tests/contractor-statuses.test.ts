@@ -2,6 +2,8 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  NO_LONGER_WORKING_STATUSES,
+  isNoLongerWorking,
   PIPELINE_CONTRACTOR_STATUSES,
   RETIRED_CONTRACTOR_STATUSES,
   SETTABLE_CONTRACTOR_STATUSES,
@@ -112,5 +114,25 @@ describe("isValidContractorStatus", () => {
         `"${status}" is an assignment status and must not be a valid contractor status`
       );
     }
+  });
+});
+
+describe("NO_LONGER_WORKING_STATUSES", () => {
+  test("covers the settable leaver status and the retired one old rows may hold", () => {
+    assert.ok(isNoLongerWorking("Inactive"));
+    assert.ok(isNoLongerWorking("Left"));
+  });
+
+  // Getting this wrong stops PRL chasing people who ARE working.
+  test("never includes a working or pipeline status", () => {
+    for (const s of ["Active", ...PIPELINE_CONTRACTOR_STATUSES]) {
+      assert.equal(isNoLongerWorking(s), false, s);
+    }
+    assert.equal(isNoLongerWorking(null), false);
+  });
+
+  test("every member is the leaver status or a retired one", () => {
+    const known: readonly string[] = ["Inactive", ...RETIRED_CONTRACTOR_STATUSES];
+    for (const s of NO_LONGER_WORKING_STATUSES) assert.ok(known.includes(s), s);
   });
 });

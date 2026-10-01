@@ -25,6 +25,7 @@ import { ChaseEmailButton } from "./chase-email-button";
 import { ExpiryAlertButton } from "./expiry-alert-button";
 import { ComplianceTypeRows } from "./compliance-type-rows";
 import { COMPLIANCE_CATEGORIES, categoryForType } from "@/lib/compliance-types";
+import { STILL_WORKING_FILTER } from "@/lib/contractor-statuses";
 import { CompliancePeopleList, inTileGroup, type PeopleGroupKey } from "./compliance-people-list";
 
 export default async function CompliancePage({
@@ -43,9 +44,11 @@ export default async function CompliancePage({
 
   const where: Record<string, unknown> = {};
 
-  if (search) {
-    where.contractor = { AND: nameSearchClauses(search, ["firstName", "lastName", "knownAs"]) };
-  }
+  // The records table is a work list too — leavers' old records are not work.
+  where.contractor = {
+    ...STILL_WORKING_FILTER,
+    ...(search ? { AND: nameSearchClauses(search, ["firstName", "lastName", "knownAs"]) } : {}),
+  };
 
   // The table is a work list: by default show only records that need an action
   // (Verified ones are done and just add noise). "all" reveals everything; a
@@ -83,7 +86,8 @@ export default async function CompliancePage({
     // Score is scoped to subcontractors actively assigned to a client — we
     // can't sensibly chase certs for people not currently working for us.
     prisma.assignment.findMany({
-      where: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } },
+      // Same rule as the score: leavers drop out even if an assignment was never closed.
+      where: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] }, contractor: STILL_WORKING_FILTER },
       select: { contractorId: true },
       distinct: ["contractorId"],
     }),

@@ -60,6 +60,25 @@ export const VALID_CONTRACTOR_STATUSES = [
 
 export type ContractorStatus = (typeof VALID_CONTRACTOR_STATUSES)[number];
 
+/**
+ * People who no longer work for PRL. They must never be chased for documents
+ * or counted in compliance (Erica, 2026-10-01: a leaver was still being
+ * emailed to upload in-date documents). "Left" is retired but kept because old
+ * rows may still hold it.
+ *
+ * Deliberately based on the contractor's status, NOT on whether they have a
+ * live assignment: an assignment nobody closed must not keep a leaver on the
+ * chase list. Marking someone Inactive is the office saying they've gone.
+ */
+export const NO_LONGER_WORKING_STATUSES = ["Inactive", "Left"] as const;
+
+export function isNoLongerWorking(status: string | null | undefined): boolean {
+  return (NO_LONGER_WORKING_STATUSES as readonly string[]).includes(status ?? "");
+}
+
+/** Prisma filter: contractors who still work for PRL. */
+export const STILL_WORKING_FILTER = { status: { notIn: [...NO_LONGER_WORKING_STATUSES] } };
+
 export function isValidContractorStatus(status: string): boolean {
   return (VALID_CONTRACTOR_STATUSES as readonly string[]).includes(status);
 }

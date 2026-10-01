@@ -7,6 +7,7 @@
 
 import { COMPLIANCE_TYPE_GROUPS } from "@/lib/compliance-types";
 import { isPlaceholderEmail } from "@/lib/placeholder-email";
+import { isNoLongerWorking } from "@/lib/contractor-statuses";
 
 const RTW_TYPES = new Set(COMPLIANCE_TYPE_GROUPS.find((g) => g.category === "Right to Work")?.types ?? []);
 
@@ -51,9 +52,10 @@ export function rtwCoverage(records: Rec[], now: Date = new Date()): RtwCoverage
 export const RTW_REMINDER_GAP_HOURS = 24;
 
 export function rtwReminderBlockReason(
-  input: { covered: boolean; email: string | null; emailBounced: boolean; lastSentAt: Date | null },
+  input: { status: string | null; covered: boolean; email: string | null; emailBounced: boolean; lastSentAt: Date | null },
   now: Date = new Date()
 ): string | null {
+  if (isNoLongerWorking(input.status)) return `They're marked ${input.status} — leavers aren't chased for documents`;
   if (input.covered) return "Right to Work is already covered";
   if (!input.email || isPlaceholderEmail(input.email)) return "No real email address on file";
   if (input.emailBounced) return "Their email address bounced — fix it first";

@@ -55,6 +55,7 @@ export async function loadRtwStatus(contractorId: string) {
     select: {
       email: true,
       emailBounced: true,
+      status: true,
       compliances: { select: { type: true, status: true, expiryDate: true } },
       chaseLogs: { where: { kind: RTW_CHASE_KIND }, orderBy: { sentAt: "desc" }, take: 1, select: { sentAt: true } },
     },
@@ -65,7 +66,7 @@ export async function loadRtwStatus(contractorId: string) {
   return {
     coverage,
     lastSentAt,
-    blockReason: rtwReminderBlockReason({ covered: coverage.covered, email: c.email, emailBounced: c.emailBounced, lastSentAt }),
+    blockReason: rtwReminderBlockReason({ status: c.status, covered: coverage.covered, email: c.email, emailBounced: c.emailBounced, lastSentAt }),
   };
 }
 

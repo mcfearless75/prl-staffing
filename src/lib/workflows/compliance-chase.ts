@@ -12,6 +12,7 @@ import {
   reminderBlockReason,
 } from "@/lib/compliance-reminder";
 import { greetingName } from "@/lib/contractor-name";
+import { STILL_WORKING_FILTER } from "@/lib/contractor-statuses";
 import type { ComposedEmail } from "@/lib/sent-email-record";
 
 const PORTAL_URL = "https://www.prismworkforce.online";
@@ -87,6 +88,8 @@ export const complianceChaseAgent = {
       where: {
         status: { in: [...CHASE_STATUSES] },
         expiryDate: { lte: chaseCutoff() },
+        // Leavers keep their old records; never chase them about them.
+        contractor: STILL_WORKING_FILTER,
       },
       include: { contractor: true },
       orderBy: { expiryDate: "asc" },
@@ -154,6 +157,7 @@ export async function checkComplianceReminder(contractorId: string): Promise<Rem
     select: {
       email: true,
       emailBounced: true,
+      status: true,
       compliances: { select: { type: true, status: true, expiryDate: true } },
     },
   });
@@ -163,6 +167,7 @@ export async function checkComplianceReminder(contractorId: string): Promise<Rem
   return {
     docs,
     blockReason: reminderBlockReason({
+      status: contractor.status,
       email: contractor.email,
       emailBounced: contractor.emailBounced,
       docCount: docs.length,

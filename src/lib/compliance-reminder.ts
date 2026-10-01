@@ -3,6 +3,7 @@
 // gets chased and when a send counts as "already done today".
 
 import { isPlaceholderEmail } from "@/lib/placeholder-email";
+import { isNoLongerWorking } from "@/lib/contractor-statuses";
 
 /** WorkflowLog keys. Every sender logs under these so none double-sends. */
 export const CHASE_WORKFLOW = "compliance-chase";
@@ -41,11 +42,13 @@ export function docsToChase(records: ChaseRecord[], now: Date = new Date()): Arr
  * Shown on the profile button, so the wording is for office staff.
  */
 export function reminderBlockReason(input: {
+  status: string | null;
   email: string | null | undefined;
   emailBounced: boolean;
   docCount: number;
   alreadyChasedToday: boolean;
 }): string | null {
+  if (isNoLongerWorking(input.status)) return `They're marked ${input.status} — leavers aren't chased for documents`;
   if (!input.email || isPlaceholderEmail(input.email)) return "No real email address on file";
   if (input.emailBounced) return "Their email address bounced — fix it first";
   if (input.docCount === 0) return `Nothing expired or expiring in the next ${CHASE_WINDOW_DAYS} days`;

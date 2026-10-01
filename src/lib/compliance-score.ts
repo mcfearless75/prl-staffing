@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
+import { STILL_WORKING_FILTER } from "@/lib/contractor-statuses";
 import { loadRequirementMatcher, type RequirementMatcher } from "@/lib/compliance-gaps";
 import { resolveRole } from "@/lib/role-normalisation";
 
@@ -86,7 +87,8 @@ export type ScoredAssignment = {
 export async function getComplianceScore(): Promise<ComplianceScore> {
   const [assignments, matcher] = await Promise.all([
     prisma.assignment.findMany({
-      where: { status: { in: ACTIVE_STATUSES } },
+      // Leavers drop out even if an assignment was never closed.
+      where: { status: { in: ACTIVE_STATUSES }, contractor: STILL_WORKING_FILTER },
       select: {
         role: true,
         companyId: true,

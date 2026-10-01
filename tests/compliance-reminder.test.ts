@@ -54,10 +54,17 @@ describe("docsToChase", () => {
 });
 
 describe("reminderBlockReason", () => {
-  const ok = { email: "bob@example.com", emailBounced: false, docCount: 2, alreadyChasedToday: false };
+  const ok = { status: "Active", email: "bob@example.com", emailBounced: false, docCount: 2, alreadyChasedToday: false };
 
   test("a normal case can send", () => {
     assert.equal(reminderBlockReason(ok), null);
+  });
+
+  // Erica, 2026-10-01: leavers were still being emailed to upload documents.
+  test("blocks anyone who no longer works for PRL", () => {
+    assert.match(reminderBlockReason({ ...ok, status: "Inactive" })!, /Inactive/);
+    assert.match(reminderBlockReason({ ...ok, status: "Left" })!, /Left/);
+    assert.equal(reminderBlockReason({ ...ok, status: "Applied" }), null);
   });
 
   test("blocks placeholder or missing email", () => {
