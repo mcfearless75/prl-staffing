@@ -78,10 +78,10 @@ export default async function PortalDashboard() {
 
           {/* iPhone */}
           <div className="rounded-lg bg-white border border-blue-200 p-3">
-            <p className="text-xs font-semibold text-gray-800 mb-2">🍎 iPhone / iPad (Safari)</p>
+            <p className="text-xs font-semibold text-gray-800 mb-2">🍎 iPhone / iPad (Safari or Chrome)</p>
             <ol className="text-xs text-gray-600 space-y-1 list-none">
-              <li><span className="font-semibold text-gray-700">1.</span> Open <strong>Safari</strong> and go to <strong>www.prismworkforce.online/install</strong></li>
-              <li><span className="font-semibold text-gray-700">2.</span> Tap the <strong>Share</strong> button at the bottom of the screen (the box with an arrow pointing up)</li>
+              <li><span className="font-semibold text-gray-700">1.</span> Open <strong>Safari</strong> or <strong>Chrome</strong> and go to <strong>www.prismworkforce.online/install</strong></li>
+              <li><span className="font-semibold text-gray-700">2.</span> Tap the <strong>Share</strong> button (the box with an arrow pointing up) — in Safari it&apos;s at the bottom (or tap <strong>•••</strong> first); in Chrome it&apos;s at the top, next to the web address</li>
               <li><span className="font-semibold text-gray-700">3.</span> Scroll down and tap <strong>&quot;Add to Home Screen&quot;</strong></li>
               <li><span className="font-semibold text-gray-700">4.</span> Tap <strong>Add</strong> — PRISM will appear on your home screen</li>
             </ol>

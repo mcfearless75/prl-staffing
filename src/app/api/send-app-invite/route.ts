@@ -103,9 +103,9 @@ export async function POST(request: Request) {
           <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 12px 0;">
             <p style="color: #1f2937; font-size: 13px; font-weight: 600; margin: 0 0 6px;">🍎 iPhone:</p>
             <ol style="color: #374151; font-size: 13px; padding-left: 20px; margin: 0; line-height: 1.8;">
-              <li>Open <strong>Safari</strong> (must be Safari!)</li>
+              <li>Open <strong>Safari</strong> or <strong>Chrome</strong></li>
               <li>Go to <strong><a href="${loginUrl}" style="color: #005f8c;">www.prismworkforce.online</a></strong></li>
-              <li>Tap the <strong>Share button ↑</strong> at the bottom</li>
+              <li>Tap the <strong>Share button ↑</strong> — in Safari it's at the bottom (or tap <strong>•••</strong> first); in Chrome it's at the top, next to the web address</li>
               <li>Tap <strong>"Add to Home Screen"</strong></li>
             </ol>
           </div>

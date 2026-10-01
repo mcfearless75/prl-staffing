@@ -26,17 +26,17 @@ export default function InstallPage() {
             </div>
             <div>
               <p className="font-semibold text-gray-900 text-sm">iPhone &amp; iPad</p>
-              <p className="text-xs text-gray-500">Use Safari browser</p>
+              <p className="text-xs text-gray-500">Use Safari or Chrome</p>
             </div>
           </div>
           <ol className="space-y-3 list-none">
             <li className="flex items-start gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1F4E79] text-white text-xs font-bold mt-0.5">1</span>
-              <p className="text-sm text-gray-700 leading-relaxed">Open <strong>Safari</strong> and go to <strong>www.prismworkforce.online/install</strong></p>
+              <p className="text-sm text-gray-700 leading-relaxed">Open <strong>Safari</strong> or <strong>Chrome</strong> and go to <strong>www.prismworkforce.online/install</strong></p>
             </li>
             <li className="flex items-start gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1F4E79] text-white text-xs font-bold mt-0.5">2</span>
-              <p className="text-sm text-gray-700 leading-relaxed">Tap the <strong>Share</strong> button at the bottom — the box with an arrow pointing up ⬆</p>
+              <p className="text-sm text-gray-700 leading-relaxed">Tap the <strong>Share</strong> button — the box with an arrow pointing up ⬆. In Safari it&apos;s at the bottom (or tap <strong>•••</strong> first); in Chrome it&apos;s at the top, next to the web address</p>
             </li>
             <li className="flex items-start gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1F4E79] text-white text-xs font-bold mt-0.5">3</span>
