@@ -1,16 +1,24 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
-import { nameSearchClauses } from "@/lib/contractor-name";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/badge";
-import { formatDate, getInitials } from "@/lib/utils";
-import { Plus, Search, Upload, ArrowUpDown, ArrowUp, ArrowDown, MailWarning } from "lucide-react";
+import { getInitials } from "@/lib/utils";
+import { Plus, Search, Upload, Download, ArrowUpDown, ArrowUp, ArrowDown, MailWarning } from "lucide-react";
 import { ContractorStatusSelect } from "@/components/contractor-status-select";
 import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { WorkBoard } from "./work-board";
-import { appliedForFromNotes, effectiveJobTitle, parseContractorSort, sortContractorRows, type ContractorSort } from "@/lib/contractor-list";
+import type { ContractorSort } from "@/lib/contractor-list";
+import {
+  AVAILABLE_FILTER,
+  COMPLIANCE_OPTIONS,
+  NAME_CHECK_FILTER,
+  NONE,
+  loadContractorList,
+  parseContractorListParams,
+  type ComplianceStatus,
+} from "@/lib/contractor-list-query";
 
 // Presentation only — the vocabulary itself lives in contractor-statuses.ts.
 // A status with no entry here still gets a working tab, just a neutral one.
@@ -20,18 +28,6 @@ const STATUS_TAB_COLORS: Record<string, string> = {
   Inactive:    "bg-gray-100 text-gray-600 hover:bg-gray-200",
   Available:   "bg-slate-200 text-slate-800 hover:bg-slate-300",
 };
-
-// "Available" isn't a real status — it's Active or Inactive with no live
-// assignment (called "Bench" until 2026-09-27; old ?status=Bench links still
-// work). Not a plain status filter, so it's special-cased wherever the
-// `status` query param is read/written rather than added to
-// SETTABLE_CONTRACTOR_STATUSES (which drives the actual status dropdown).
-const AVAILABLE_FILTER = "Available";
-// Workers who edited their own name on the portal; staff check it against ID.
-const NAME_CHECK_FILTER = "NameCheck";
-
-// Filter value meaning "blank" for the Job Title and Working At dropdowns.
-const NONE = "__none";
 
 function ViewToggle({ view }: { view: "list" | "board" }) {
   const base = "px-3 py-1.5 text-sm font-medium transition-colors";
@@ -43,19 +39,6 @@ function ViewToggle({ view }: { view: "list" | "board" }) {
       <Link href="/contractors?view=board" className={`${base} border-l border-gray-200 ${view === "board" ? on : off}`}>Board</Link>
     </div>
   );
-}
-
-type ComplianceStatus = "Verified" | "Expiring" | "Pending" | "Non-Compliant" | "No Records";
-const COMPLIANCE_OPTIONS: ComplianceStatus[] = ["Non-Compliant", "Expiring", "Pending", "No Records", "Verified"];
-
-function deriveComplianceStatus(records: { status: string }[]): ComplianceStatus {
-  if (records.length === 0) return "No Records";
-  const statuses = records.map((r) => r.status);
-  if (statuses.some((s) => s === "Expired" || s === "Non-Compliant")) return "Non-Compliant";
-  if (statuses.some((s) => s === "Expiring")) return "Expiring";
-  if (statuses.some((s) => s === "Pending")) return "Pending";
-  if (statuses.every((s) => s === "Verified")) return "Verified";
-  return "Pending";
 }
 
 function ComplianceBadge({ status }: { status: ComplianceStatus }) {
@@ -98,103 +81,9 @@ export default async function ContractorsPage({
       </div>
     );
   }
-  const search = params?.search || "";
-  const status = params?.status === "Bench" ? AVAILABLE_FILTER : params?.status || "";
-  const titleFilter = params?.title || "";
-  const workingFilter = params?.working || "";
-  const complianceFilter = params?.compliance || "";
-  const sort = parseContractorSort(params?.sort, params?.sortBy);
-  const dir: "asc" | "desc" = params?.dir === "desc" ? "desc" : "asc";
-
-  const where: Record<string, unknown> = {};
-
-  if (search) {
-    where.AND = nameSearchClauses(search);
-  }
-
-  if (status === AVAILABLE_FILTER) {
-    where.status = { in: ["Active", "Inactive"] };
-    where.assignments = { none: { status: { in: [...LIVE_ASSIGNMENT_STATUSES] } } };
-  } else if (status === NAME_CHECK_FILTER) {
-    where.nameChangedAt = { not: null };
-  } else if (status) {
-    where.status = status;
-  }
-
-  const found = await prisma.contractor.findMany({
-    where,
-    include: {
-      compliances: { select: { status: true } },
-      jobRoles: { select: { jobRole: { select: { name: true } } } },
-    },
-  });
-
-  // Where each contractor is currently working — their most recent live assignment, if any.
-  const liveAssignments = await prisma.assignment.findMany({
-    where: {
-      contractorId: { in: found.map((c) => c.id) },
-      status: { in: [...LIVE_ASSIGNMENT_STATUSES] },
-    },
-    select: { contractorId: true, role: true, company: { select: { name: true } }, site: { select: { name: true } } },
-    orderBy: { startDate: "desc" },
-  });
-  const liveByContractor = new Map<string, (typeof liveAssignments)[number]>();
-  for (const a of liveAssignments) {
-    if (!liveByContractor.has(a.contractorId)) liveByContractor.set(a.contractorId, a);
-  }
-
-  // Their most recent ENDED job, for people not currently working (mostly
-  // Inactive), so the list can say what they last did and where.
-  const notWorkingIds = found.map((c) => c.id).filter((id) => !liveByContractor.has(id));
-  const pastAssignments = notWorkingIds.length
-    ? await prisma.assignment.findMany({
-        where: { contractorId: { in: notWorkingIds }, status: { notIn: [...LIVE_ASSIGNMENT_STATUSES] } },
-        select: { contractorId: true, role: true, endDate: true, startDate: true, company: { select: { name: true } } },
-        orderBy: [{ endDate: { sort: "desc", nulls: "last" } }, { startDate: "desc" }],
-      })
-    : [];
-  const lastByContractor = new Map<string, (typeof pastAssignments)[number]>();
-  for (const a of pastAssignments) {
-    if (!lastByContractor.has(a.contractorId)) lastByContractor.set(a.contractorId, a);
-  }
-
-  // Job title, workplace and compliance are derived per row, so they are
-  // filtered and sorted here rather than in the query.
-  const allRows = found.map((c) => {
-    const live = liveByContractor.get(c.id);
-    const last = live ? undefined : lastByContractor.get(c.id);
-    return {
-      ...c,
-      title: effectiveJobTitle({
-        jobTitle: c.jobTitle,
-        profileJobRoles: c.jobRoles.map((j) => j.jobRole.name),
-        liveAssignmentRole: live?.role ?? null,
-        lastAssignmentRole: last?.role ?? null,
-      }),
-      client: live?.company.name ?? "",
-      workingAt: live ? (live.site?.name ? `${live.company.name} — ${live.site.name}` : live.company.name) : "",
-      lastJob: last ? `${last.company.name}${last.endDate ? ` (ended ${formatDate(last.endDate)})` : ""}` : "",
-      compliance: deriveComplianceStatus(c.compliances),
-      // Shown in grey when there is no title; never filtered or sorted on.
-      appliedFor: appliedForFromNotes(c.notes),
-    };
-  });
-
-  // Dropdown options come from the unfiltered rows so choosing one never
-  // empties the other lists.
-  const titleOptions = [...new Set(allRows.map((r) => r.title).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  const clientOptions = [...new Set(allRows.map((r) => r.client).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-
-  const contractors = sortContractorRows(
-    allRows.filter(
-      (r) =>
-        (!titleFilter || (titleFilter === NONE ? !r.title : r.title === titleFilter)) &&
-        (!workingFilter || (workingFilter === NONE ? !r.client : r.client === workingFilter)) &&
-        (!complianceFilter || r.compliance === complianceFilter)
-    ),
-    sort,
-    dir
-  );
+  const filters = parseContractorListParams(params);
+  const { search, status, title: titleFilter, working: workingFilter, compliance: complianceFilter, sort, dir } = filters;
+  const { contractors, titleOptions, clientOptions } = await loadContractorList(filters);
 
   const current = { search, status, title: titleFilter, working: workingFilter, compliance: complianceFilter, sort, dir };
   const hasFilters = Boolean(search || status || titleFilter || workingFilter || complianceFilter);
@@ -238,6 +127,15 @@ export default async function ContractorsPage({
         action={
           <div className="flex items-center gap-2">
             <ViewToggle view="list" />
+            {/* Same filters as the list, so it downloads exactly what is shown. */}
+            <a
+              href={hrefWith({}).replace(/^\/contractors/, "/api/contractors/export")}
+              download
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </a>
             <Link
               href="/contractors/import"
               className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
