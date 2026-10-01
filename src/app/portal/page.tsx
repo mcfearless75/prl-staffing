@@ -10,7 +10,6 @@ import { ShieldCheck, FileUp, User, Plus, ChevronRight, Smartphone, MessageSquar
 import { portalFeatureEnabled } from "@/lib/portal-features";
 import { greetingName } from "@/lib/contractor-name";
 import { ProfileBanner } from "./profile-banner";
-import { FINISH_SOON_DAYS, daysUntil, formatFinishDate } from "@/lib/finish-notice";
 
 export default async function PortalDashboard() {
   const session = await auth();
@@ -47,16 +46,6 @@ export default async function PortalDashboard() {
   const totalCompliance = contractor.compliances.length;
   const verifiedCompliance = contractor.compliances.filter((c) => c.status === "Verified").length;
   const complianceScore = totalCompliance > 0 ? Math.round((verifiedCompliance / totalCompliance) * 100) : 0;
-
-  // Upcoming end dates are shown so nobody learns on the day that they're finishing.
-  const finishLabel = (date: Date | null) => {
-    if (!date) return null;
-    const days = daysUntil(date);
-    if (days < 0) return null;
-    const when = days === 0 ? "today" : days === 1 ? "tomorrow" : formatFinishDate(date);
-    return { text: `Finishes ${when}`, soon: days <= FINISH_SOON_DAYS };
-  };
-  const leaving = contractor.leavingDate && daysUntil(contractor.leavingDate) >= 0 ? contractor.leavingDate : null;
 
   return (
     <div className="space-y-5">
@@ -203,13 +192,6 @@ export default async function PortalDashboard() {
         </div>
       </div>
 
-      {leaving && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p className="font-medium">Your last day with PRL Site Solutions: {formatFinishDate(leaving)}</p>
-          <p className="mt-0.5 text-xs">If you weren&apos;t expecting this, please contact the office.</p>
-        </div>
-      )}
-
       {/* Active Assignments */}
       <div className="rounded-xl border border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-4 py-3">
@@ -227,14 +209,6 @@ export default async function PortalDashboard() {
                   <StatusBadge value={a.status} />
                   <span className="text-xs text-gray-400">Since {formatDate(a.startDate)}</span>
                 </div>
-                {(() => {
-                  const end = finishLabel(a.endDate);
-                  return end ? (
-                    <p className={`mt-1 text-xs font-medium ${end.soon ? "text-amber-700" : "text-gray-500"}`}>
-                      {end.text}
-                    </p>
-                  ) : null;
-                })()}
               </div>
             ))
           )}

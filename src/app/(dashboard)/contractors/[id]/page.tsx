@@ -8,14 +8,6 @@ import { SendAppInviteButton } from "./send-app-invite-button";
 import { PortalLinkButton } from "./portal-link-button";
 import { ComplianceReminderButton } from "./compliance-reminder-button";
 import { NameCheckButton } from "./name-check-button";
-import { FinishNoticeButton } from "./finish-notice-button";
-import {
-  FINISH_NOTICE_ACTION,
-  finishItems,
-  finishNoticeBlockReason,
-  formatFinishDate,
-} from "@/lib/finish-notice";
-import { parseSentEmailRecord } from "@/lib/sent-email-record";
 import { checkComplianceReminder } from "@/lib/workflows/compliance-chase";
 import { loadRtwStatus } from "@/lib/rtw-reminder";
 import { RtwFlag } from "./rtw-flag";
@@ -104,16 +96,6 @@ export default async function ContractorDetailPage({
         }),
       ])
     : [null, null];
-
-  // Upcoming job end / leaving dates, and whether they've been emailed already.
-  const finishes = finishItems(contractor);
-  const lastFinishNotice = activityLogs.find((l) => l.action === FINISH_NOTICE_ACTION);
-  const finishBlockReason = finishNoticeBlockReason({
-    email: contractor.email,
-    emailBounced: contractor.emailBounced,
-    items: finishes,
-    lastSentKey: parseSentEmailRecord(lastFinishNotice?.details)?.note ?? null,
-  });
 
   const initials =
     (contractor.firstName?.[0] ?? "") + (contractor.lastName?.[0] ?? "");
@@ -267,13 +249,6 @@ export default async function ContractorDetailPage({
                 contractorId={contractor.id}
                 blockReason={reminder.blockReason}
                 docTypes={reminder.docs.map((d) => d.type)}
-              />
-            )}
-            {finishes.length > 0 && (
-              <FinishNoticeButton
-                contractorId={contractor.id}
-                blockReason={finishBlockReason}
-                summary={finishes.map((f) => `${f.label} — ${formatFinishDate(f.date)}`).join("; ")}
               />
             )}
             <DeleteContractorButton contractorId={contractor.id} />
