@@ -84,6 +84,18 @@ describe("normaliseDeclarations", () => {
     assert.equal(normaliseDeclarations({ hasMedicalCondition: "Yes", medicalConditions: " Asthma " }).medicalConditions, "Asthma");
   });
 
+  test("drops the conviction details unless the answer is Yes", () => {
+    assert.equal(normaliseDeclarations({ hasUnspentConviction: "No", convictionDetails: "Theft 2019" }).convictionDetails, undefined);
+    assert.equal(normaliseDeclarations({ hasUnspentConviction: "Yes", convictionDetails: " Theft 2019 " }).convictionDetails, "Theft 2019");
+  });
+
+  test("a Yes to convictions needs the details before it counts as answered", () => {
+    const d = normaliseDeclarations({ hasMedicalCondition: "No", canTakeDaTest: "Yes", hasUnspentConviction: "Yes", declarationTrue: true });
+    assert.deepEqual(missingDeclarations(d), ["Details of the conviction(s)"]);
+    const filled = normaliseDeclarations({ hasMedicalCondition: "No", canTakeDaTest: "Yes", hasUnspentConviction: "Yes", convictionDetails: "x", declarationTrue: true });
+    assert.deepEqual(missingDeclarations(filled), []);
+  });
+
   test("ignores unknown fields and junk answers", () => {
     const d = normaliseDeclarations({ hasUnspentConviction: "maybe", extra: "x", declarationTrue: "true" });
     assert.equal(d.hasUnspentConviction, undefined);

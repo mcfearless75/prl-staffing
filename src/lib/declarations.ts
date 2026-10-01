@@ -11,6 +11,7 @@ export interface Declarations {
   medicalConditions?: string; // only kept when hasMedicalCondition is "Yes"
   canTakeDaTest?: YesNo;
   hasUnspentConviction?: YesNo;
+  convictionDetails?: string; // only kept when hasUnspentConviction is "Yes"
   declarationTrue?: boolean;
   /**
    * The two criminal-record questions on the public /apply form, which used to
@@ -21,6 +22,7 @@ export interface Declarations {
 }
 
 export const MAX_MEDICAL_TEXT = 1000;
+export const MAX_CONVICTION_TEXT = 1000;
 
 function yesNo(v: unknown): YesNo | undefined {
   return v === "Yes" || v === "No" ? v : undefined;
@@ -30,11 +32,16 @@ function yesNo(v: unknown): YesNo | undefined {
 export function normaliseDeclarations(raw: Record<string, unknown>): Declarations {
   const hasMedicalCondition = yesNo(raw.hasMedicalCondition);
   const text = typeof raw.medicalConditions === "string" ? raw.medicalConditions.trim().slice(0, MAX_MEDICAL_TEXT) : "";
+  const hasUnspentConviction = yesNo(raw.hasUnspentConviction);
+  const convictions =
+    typeof raw.convictionDetails === "string" ? raw.convictionDetails.trim().slice(0, MAX_CONVICTION_TEXT) : "";
   return {
     hasMedicalCondition,
     medicalConditions: hasMedicalCondition === "Yes" && text ? text : undefined,
     canTakeDaTest: yesNo(raw.canTakeDaTest),
-    hasUnspentConviction: yesNo(raw.hasUnspentConviction),
+    hasUnspentConviction,
+    // Erica, 2026-10-01: a notes box when they answer Yes. Same rule as medical.
+    convictionDetails: hasUnspentConviction === "Yes" && convictions ? convictions : undefined,
     declarationTrue: raw.declarationTrue === true,
   };
 }
@@ -46,6 +53,7 @@ export function missingDeclarations(d: Declarations): string[] {
   if (d.hasMedicalCondition === "Yes" && !d.medicalConditions) missing.push("List of medical conditions");
   if (!d.canTakeDaTest) missing.push("Drugs and alcohol test");
   if (!d.hasUnspentConviction) missing.push("Criminal convictions");
+  if (d.hasUnspentConviction === "Yes" && !d.convictionDetails) missing.push("Details of the conviction(s)");
   if (!d.declarationTrue) missing.push("Declaration");
   return missing;
 }

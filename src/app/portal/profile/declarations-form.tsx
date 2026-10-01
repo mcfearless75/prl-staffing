@@ -8,6 +8,7 @@ type Answers = {
   medicalConditions: string;
   canTakeDaTest: string;
   hasUnspentConviction: string;
+  convictionDetails: string;
   declarationTrue: boolean;
 };
 
@@ -16,6 +17,7 @@ const EMPTY: Answers = {
   medicalConditions: "",
   canTakeDaTest: "",
   hasUnspentConviction: "",
+  convictionDetails: "",
   declarationTrue: false,
 };
 
@@ -149,6 +151,18 @@ export function DeclarationsForm() {
               You don&apos;t need to tell us about convictions that are spent under the Rehabilitation of Offenders Act 1974.
             </p>
             <YesNo name="Unspent convictions" value={a.hasUnspentConviction} onChange={set("hasUnspentConviction")} />
+            {a.hasUnspentConviction === "Yes" && (
+              <label className="mt-3 block text-sm text-gray-700">
+                Please give brief details (offence and date) <span className="text-red-500">*</span>
+                <textarea
+                  value={a.convictionDetails}
+                  onChange={(e) => set("convictionDetails")(e.target.value)}
+                  maxLength={1000}
+                  rows={3}
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </label>
+            )}
           </div>
 
           <label className="flex items-start gap-2 text-sm text-gray-700">

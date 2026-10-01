@@ -27,6 +27,7 @@ export async function GET() {
     medicalConditions: d?.medicalConditions ?? "",
     canTakeDaTest: d?.canTakeDaTest ?? "",
     hasUnspentConviction: d?.hasUnspentConviction ?? "",
+    convictionDetails: d?.convictionDetails ?? "",
     declarationTrue: d?.declarationTrue ?? false,
   });
 }

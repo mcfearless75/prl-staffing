@@ -63,6 +63,12 @@ export function DeclarationsPanel({
           )}
           {row("Can take a drugs & alcohol test", result.answers?.canTakeDaTest)}
           {row("Unspent criminal convictions", result.answers?.hasUnspentConviction)}
+          {result.answers?.convictionDetails && (
+            <div className="py-1">
+              <dt className="text-gray-600">Conviction details</dt>
+              <dd className="whitespace-pre-wrap text-gray-900">{result.answers.convictionDetails}</dd>
+            </div>
+          )}
           {row("Declaration ticked", result.answers?.declarationTrue ? "Yes" : "No")}
           {result.answers?.applyAnswers && (
             <>

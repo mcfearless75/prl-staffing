@@ -223,6 +223,12 @@ export async function GET(request: NextRequest) {
       }
       drawField("Can take a drugs & alcohol test", d?.canTakeDaTest ?? "—");
       drawField("Unspent criminal convictions", d?.hasUnspentConviction ?? "—");
+      if (d?.convictionDetails) {
+        const text = d.convictionDetails.replace(/\s+/g, " ").replace(/[^\x20-\x7E -ÿ]/g, "?");
+        for (let i = 0; i < text.length; i += 80) {
+          drawField(i === 0 ? "Conviction details" : "", text.slice(i, i + 80));
+        }
+      }
       drawField("Declaration ticked", d?.declarationTrue ? "Yes" : "No");
       if (d?.applyAnswers) {
         drawField("Application: convicted of an offence", d.applyAnswers.hasCriminalConviction ?? "—");
