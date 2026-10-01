@@ -42,7 +42,9 @@ export default async function JobRolesPage({
   const [jobRoles, requirements] = await Promise.all([
     prisma.jobRole.findMany({
       where,
-      orderBy: nameSort ? [{ name: nameSort }] : [{ sortOrder: "asc" }, { name: "asc" }],
+      // A–Z by default, matching every role picker (src/lib/job-roles.ts). Nothing
+      // sets sortOrder from the UI, so ordering by it only scattered the list.
+      orderBy: [{ name: nameSort || "asc" }],
     }),
     // Which documents each role requires is configured on /compliance/requirements.
     // Surfaced here rather than duplicated: one screen stays the source of truth,
