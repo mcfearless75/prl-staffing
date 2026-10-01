@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
+import { nameSearchClauses } from "@/lib/contractor-name";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/badge";
@@ -43,12 +44,7 @@ export default async function CompliancePage({
   const where: Record<string, unknown> = {};
 
   if (search) {
-    where.contractor = {
-      OR: [
-        { firstName: { contains: search, mode: "insensitive" } },
-        { lastName: { contains: search, mode: "insensitive" } },
-      ],
-    };
+    where.contractor = { AND: nameSearchClauses(search, ["firstName", "lastName", "knownAs"]) };
   }
 
   // The table is a work list: by default show only records that need an action

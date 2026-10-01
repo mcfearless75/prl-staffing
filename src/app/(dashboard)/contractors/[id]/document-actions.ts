@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { nameSearchClauses } from "@/lib/contractor-name";
 import { requireStaff } from "@/lib/require-staff";
 import { parseRemovalReason, type ItemTarget } from "@/lib/document-removal";
 import { moveComplianceItem, removeComplianceItem } from "@/lib/document-ops";
@@ -79,19 +80,10 @@ export async function searchMoveCandidates(query: string, excludeId: string): Pr
   const q = typeof query === "string" ? query.trim().slice(0, 60) : "";
   if (q.length < 2) return [];
 
-  const words = q.split(/\s+/).filter(Boolean).slice(0, 3);
   const rows = await prisma.contractor.findMany({
     where: {
       id: { not: excludeId },
-      AND: words.map((w) => ({
-        OR: [
-          { firstName: { contains: w, mode: "insensitive" as const } },
-          { lastName: { contains: w, mode: "insensitive" as const } },
-          { knownAs: { contains: w, mode: "insensitive" as const } },
-          { ref: { contains: w, mode: "insensitive" as const } },
-          { email: { contains: w, mode: "insensitive" as const } },
-        ],
-      })),
+      AND: nameSearchClauses(q, ["firstName", "lastName", "knownAs", "ref", "email"]),
     },
     select: { id: true, firstName: true, lastName: true, ref: true, jobTitle: true },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],

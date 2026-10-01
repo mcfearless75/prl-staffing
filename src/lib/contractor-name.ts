@@ -38,3 +38,22 @@ export function normaliseKnownAs(raw: unknown, firstName: string): string | null
   const known = raw.trim().slice(0, 60);
   return effectiveKnownAs({ firstName, knownAs: known });
 }
+
+type SearchField = "firstName" | "lastName" | "knownAs" | "email" | "ref";
+type Contains = { contains: string; mode: "insensitive" };
+
+/**
+ * Name search that understands "first surname". Every word must match at
+ * least one field, so "paul m" finds Paul McFearless; matching the whole
+ * phrase against each field separately (the old way) never could.
+ * Returns the clauses to AND together; empty for a blank query.
+ */
+export function nameSearchClauses(
+  query: string,
+  fields: readonly SearchField[] = ["firstName", "lastName", "knownAs", "email"],
+): { OR: Partial<Record<SearchField, Contains>>[] }[] {
+  const words = query.trim().slice(0, 100).split(/\s+/).filter(Boolean).slice(0, 5);
+  return words.map((w) => ({
+    OR: fields.map((f) => ({ [f]: { contains: w, mode: "insensitive" as const } })),
+  }));
+}

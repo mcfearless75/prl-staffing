@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
+import { nameSearchClauses } from "@/lib/contractor-name";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/badge";
@@ -108,12 +109,7 @@ export default async function ContractorsPage({
   const where: Record<string, unknown> = {};
 
   if (search) {
-    where.OR = [
-      { firstName: { contains: search, mode: "insensitive" } },
-      { lastName: { contains: search, mode: "insensitive" } },
-      { knownAs: { contains: search, mode: "insensitive" } },
-      { email: { contains: search, mode: "insensitive" } },
-    ];
+    where.AND = nameSearchClauses(search);
   }
 
   if (status === AVAILABLE_FILTER) {
