@@ -6,6 +6,7 @@ import { normaliseKnownAs } from "@/lib/contractor-name";
 import { missingProfileFields, nameChange } from "@/lib/profile-completion";
 import { NATIONALITY_OPTIONS, PRONOUN_OPTIONS, TITLE_OPTIONS, pickOption } from "@/lib/profile-options";
 import { postcodeGeoReset, refreshGeocode } from "@/lib/geo-refresh";
+import { logActivity } from "@/lib/activity-log";
 
 function text(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
@@ -127,16 +128,9 @@ export async function PUT(request: Request) {
       ];
       if (change.changed) entries.push(`Name changed by worker: ${change.from} → ${firstName} ${lastName}`);
       for (const details of entries) {
-        await prisma.activityLog.create({
-          data: {
-            action: "UPDATE",
-            entityType: "Contractor",
-            entityId: contractorId,
-            details,
-            userId: sessionContractorId,
-            userEmail: normalizedEmail,
-          },
-        });
+        // logActivity takes the worker's name and login email from the session;
+        // the direct create it replaced left the name blank on the Activity tab.
+        await logActivity("Profile updated by worker", "Contractor", contractorId, details);
       }
     } catch {
       // Don't fail the update if logging fails

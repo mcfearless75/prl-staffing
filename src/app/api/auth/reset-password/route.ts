@@ -50,6 +50,7 @@ export async function POST(request: Request) {
       where: { email: resetToken.email },
     });
 
+    let setFor: { contractorId: string; first: boolean } | null = null;
     if (contractorLogin) {
       // Existing contractor login — update password
       await prisma.contractorLogin.update({
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
           lockedUntil: null,
         },
       });
+      setFor = { contractorId: contractorLogin.contractorId, first: false };
     } else {
       const user = await prisma.user.findUnique({
         where: { email: resetToken.email },
@@ -92,6 +94,7 @@ export async function POST(request: Request) {
               failedAttempts: 0,
             },
           });
+          setFor = { contractorId: contractor.id, first: true };
         } else {
           return NextResponse.json({ error: "Account not found. Please contact PRL Site Solutions." }, { status: 400 });
         }
@@ -103,6 +106,22 @@ export async function POST(request: Request) {
       where: { id: resetToken.id },
       data: { used: true },
     });
+
+    // No session here (the emailed link IS the authentication), so name the
+    // actor from the token's address rather than via logActivity.
+    if (setFor) {
+      await prisma.activityLog
+        .create({
+          data: {
+            userName: "Worker (emailed link)",
+            userEmail: resetToken.email,
+            action: setFor.first ? "Portal login set up by worker" : "Password reset by worker",
+            entityType: "Contractor",
+            entityId: setFor.contractorId,
+          },
+        })
+        .catch(() => {});
+    }
 
     return NextResponse.json({ message: "Password set successfully" });
   } catch (error) {

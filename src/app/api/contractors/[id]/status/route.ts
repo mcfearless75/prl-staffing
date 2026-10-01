@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { NextRequest, NextResponse } from "next/server";
 import { isValidContractorStatus } from "@/lib/contractor-statuses";
+import { logActivity } from "@/lib/activity-log";
 
 export async function PATCH(
   request: NextRequest,
@@ -33,6 +34,9 @@ export async function PATCH(
     data: { status, ...(isNewApproval ? { approvedAt: new Date() } : {}) },
     select: { id: true, firstName: true, lastName: true, status: true },
   });
+  if (existing && existing.status !== status) {
+    await logActivity("Status changed", "Contractor", id, `${existing.status} → ${status}`);
+  }
 
   return NextResponse.json(contractor);
 }

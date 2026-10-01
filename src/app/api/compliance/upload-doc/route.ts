@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { uploadToR2 } from "@/lib/r2";
 import { auth } from "@/lib/auth";
+import { logActivity } from "@/lib/activity-log";
+import { notifyStaffOfUpload } from "@/lib/upload-notification";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME_TYPES = [
@@ -125,6 +127,15 @@ export async function POST(request: NextRequest) {
         },
       });
     }
+
+    const byWorker = sessionUser.userType === "contractor";
+    await logActivity(
+      byWorker ? "Document uploaded by worker" : "Document uploaded by staff",
+      "Contractor",
+      contractorId,
+      `${type} — ${file.name}`
+    );
+    if (byWorker) await notifyStaffOfUpload(contractorId, type);
 
     // Redirect back to upload page with success indicator
     const redirectUrl = new URL(

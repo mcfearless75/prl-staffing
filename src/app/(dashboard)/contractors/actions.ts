@@ -15,6 +15,9 @@ import { isValidContractorStatus } from "@/lib/contractor-statuses";
 import { parseLeavingDate, applyLeavingDate } from "@/lib/leaving-date";
 import { NATIONALITY_OPTIONS, PRONOUN_OPTIONS, TITLE_OPTIONS, pickOption } from "@/lib/profile-options";
 import { doNotEmployBlock } from "@/lib/do-not-employ";
+import { logActivity } from "@/lib/activity-log";
+import { describeProfileChanges } from "@/lib/profile-changes";
+import { logAssignmentActivity } from "@/lib/assignment-activity";
 
 type AssignResult = { type: "ok" | "moved" | "duplicate" | "error"; message: string } | null;
 
@@ -61,6 +64,7 @@ export async function quickAssignContractorFromProfile(
         },
       });
       await activateContractorForAssignment(contractorId, status);
+      await logAssignmentActivity("Assignment moved", contractorId, companyId, status);
       revalidatePath(`/contractors/${contractorId}`);
       return { type: "moved", message: "Assignment updated with new site/department." };
     }
@@ -87,6 +91,7 @@ export async function quickAssignContractorFromProfile(
   });
 
   await activateContractorForAssignment(contractorId, status);
+  await logAssignmentActivity("Assigned to a client", contractorId, companyId, status);
   revalidatePath(`/contractors/${contractorId}`);
   return { type: "ok", message: "Assigned successfully." };
 }
@@ -233,6 +238,7 @@ export async function createContractor(
     });
     await refreshGeocode("contractor", contractor.id);
     await applyLeavingDate(contractor.id);
+    await logActivity("Contractor created", "Contractor", contractor.id, `Added by staff (status ${contractor.status})`);
 
     // Auto-create contractor portal login (password set via forgot-password flow)
     let loginCreateFailed = false;
@@ -287,7 +293,7 @@ export async function updateContractor(
 ): Promise<ContractorFormState> {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  const existing = await prisma.contractor.findUnique({ where: { id }, select: { email: true, postcode: true } });
+  const existing = await prisma.contractor.findUnique({ where: { id } });
   if (!existing) return { error: "Contractor not found." };
   const confirmError = validateEmailConfirmation(formData, existing.email);
   if (confirmError) return { error: confirmError };
@@ -314,6 +320,8 @@ export async function updateContractor(
     });
     await refreshGeocode("contractor", id);
     await applyLeavingDate(id);
+    const changed = describeProfileChanges(existing, data);
+    if (changed) await logActivity("Profile edited by staff", "Contractor", id, changed);
 
     revalidatePath(`/contractors/${id}`);
     redirect(`/contractors/${id}`);

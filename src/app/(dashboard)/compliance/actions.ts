@@ -42,6 +42,7 @@ async function createRecord(formData: FormData, backToProfile: boolean) {
         notes,
       },
     });
+    await logActivity("Document record added", "Contractor", contractorId, `${type} (${status})`);
 
     revalidatePath("/compliance");
     if (backToProfile && contractorId) {
@@ -71,6 +72,7 @@ export async function updateComplianceRecord(id: string, formData: FormData) {
     const status = formData.get("status") as string;
     const notes = formData.get("notes") as string;
 
+    const before = await prisma.complianceRecord.findUnique({ where: { id }, select: { status: true } });
     await prisma.complianceRecord.update({
       where: { id },
       data: {
@@ -84,6 +86,13 @@ export async function updateComplianceRecord(id: string, formData: FormData) {
         notes,
       },
     });
+
+    await logActivity(
+      "Document record edited",
+      "Contractor",
+      contractorId,
+      `${type}${before && before.status !== status ? ` (${before.status} → ${status})` : ""}`
+    );
 
     revalidatePath(`/compliance/${id}`);
     redirect(`/compliance/${id}`);

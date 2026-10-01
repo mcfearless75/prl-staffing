@@ -4,6 +4,8 @@ import { uploadToR2 } from "@/lib/r2";
 import { validateWorkerExpiry } from "@/lib/doc-expiry";
 import { auth } from "@/lib/auth";
 import { isValidComplianceType } from "@/lib/compliance-types";
+import { logActivity } from "@/lib/activity-log";
+import { notifyStaffOfUpload } from "@/lib/upload-notification";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -183,6 +185,17 @@ export async function POST(request: NextRequest) {
         });
       }
     }
+
+    // Activity tab: who uploaded what (Erica, 2026-10-01). The session is the
+    // worker on the portal, or the staff member uploading for them.
+    const byWorker = !!(session.user as { contractorId?: string }).contractorId;
+    await logActivity(
+      byWorker ? "Document uploaded by worker" : "Document uploaded by staff",
+      "Contractor",
+      contractorId,
+      `${type} — ${file.name}${version > 1 ? ` (version ${version})` : ""}`
+    );
+    if (byWorker) await notifyStaffOfUpload(contractorId, type);
 
     return NextResponse.json({
       message: "Document uploaded successfully",

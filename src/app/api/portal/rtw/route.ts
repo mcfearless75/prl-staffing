@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireContractor } from "@/lib/require-staff";
 import { RTW_ROUTES, normaliseShareCode, parseRtwRoute } from "@/lib/rtw-route";
+import { logActivity } from "@/lib/activity-log";
 
 /**
  * The worker's Right to Work route and share code (App Invite Form, part B).
@@ -39,16 +40,13 @@ export async function PUT(request: Request) {
   await prisma.contractor.update({ where: { id: contractorId }, data: { rtwRoute: route, shareCode } });
 
   try {
-    await prisma.activityLog.create({
-      data: {
-        action: "UPDATE",
-        entityType: "Contractor",
-        entityId: contractorId,
-        // Never the code itself: it unlocks the worker's Home Office record.
-        details: `Right to Work route set: ${RTW_ROUTES[route].label}${shareCode ? " (share code provided)" : ""}`,
-        userId: contractorId,
-      },
-    });
+    await logActivity(
+      "Right to Work answered by worker",
+      "Contractor",
+      contractorId,
+      // Never the code itself: it unlocks the worker's Home Office record.
+      `${RTW_ROUTES[route].label}${shareCode ? " (share code provided)" : ""}`
+    );
   } catch {
     // Don't fail the update if logging fails
   }

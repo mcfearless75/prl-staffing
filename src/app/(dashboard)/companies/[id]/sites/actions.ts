@@ -14,6 +14,7 @@ import {
   activateContractorForAssignment,
   deactivateContractorIfNoLiveWork,
 } from "@/lib/contractor-status";
+import { logAssignmentActivity } from "@/lib/assignment-activity";
 
 // ── Sites ─────────────────────────────────────────────────────────────────────
 
@@ -130,6 +131,7 @@ export async function endAssignment(
     data: { status: "Completed", endDate: new Date() },
     select: { contractorId: true },
   });
+  await logAssignmentActivity("Assignment ended", ended.contractorId, companyId, "Completed");
   await deactivateContractorIfNoLiveWork(ended.contractorId);
   revalidatePath(`/companies/${companyId}/sites/${siteId}`);
 }
@@ -142,6 +144,7 @@ export async function endAssignmentById(assignmentId: string, companyId: string)
     data: { status: "Completed", endDate: new Date() },
     select: { contractorId: true },
   });
+  await logAssignmentActivity("Assignment ended", ended.contractorId, companyId, "Completed");
   await deactivateContractorIfNoLiveWork(ended.contractorId);
   revalidatePath(`/companies/${companyId}`);
 }
@@ -265,6 +268,7 @@ export async function quickAssignContractor(
       },
     });
     await activateContractorForAssignment(contractorId, status);
+    await logAssignmentActivity("Assignment moved", contractorId, companyId, status);
     revalidatePath(`/companies/${companyId}/sites/${siteId ?? ""}`);
     revalidatePath(`/companies/${companyId}`);
     return { type: "moved", message: "Existing assignment updated to this site and department." };
@@ -283,6 +287,7 @@ export async function quickAssignContractor(
   });
 
   await activateContractorForAssignment(contractorId, status);
+  await logAssignmentActivity("Assigned to a client", contractorId, companyId, status, role.trim() ? `— ${role.trim()}` : undefined);
   revalidatePath(`/companies/${companyId}/sites/${siteId ?? ""}`);
   revalidatePath(`/companies/${companyId}`);
   return { type: "ok", message: "Assigned successfully." };

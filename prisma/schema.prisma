@@ -553,6 +553,8 @@ model ActivityLog {
   details    String? // JSON or text with additional context
   ipAddress  String?
   createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
 }
 
 // ─── Login sessions (session monitor at /sessions, infotech@ only) ───

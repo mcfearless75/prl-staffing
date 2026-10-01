@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { sendEmail, ONBOARDING_REPLY_TO } from "@/lib/email";
 import { formatGbpRate } from "@/lib/rate-format";
 import { isValidUnpaidBreak, unpaidBreakLabel, unpaidBreakTimesheetNote } from "@/lib/unpaid-break";
+import { logActivity } from "@/lib/activity-log";
 
 
 // Fixed wording from Jenni (25/09/2026), added to every subcontractor
@@ -337,6 +338,8 @@ export async function POST(request: Request) {
         { status: 502 }
       );
     }
+
+    await logActivity("Subcontractor agreement sent", "Contractor", contractor.id, `${companyName} — to ${loginEmail}`);
 
     // Records copy for the team.
     const staffCopyTo = ["helen@prlsitesolutions.co.uk"];

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireStaff } from "@/lib/require-staff";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/activity-log";
 
 const VALID_STATUSES = [
   "Verified",
@@ -43,10 +44,17 @@ export async function PATCH(
   }
 
   try {
-    await prisma.complianceRecord.update({
+    const before = await prisma.complianceRecord.update({
       where: { id },
       data: { status: status as ValidStatus },
+      select: { contractorId: true, type: true },
     });
+    await logActivity(
+      status === "Verified" ? "Document verified" : status === "Non-Compliant" ? "Document rejected" : "Document status changed",
+      "Contractor",
+      before.contractorId,
+      `${before.type} → ${status}`
+    );
 
     return NextResponse.json({ success: true });
   } catch {

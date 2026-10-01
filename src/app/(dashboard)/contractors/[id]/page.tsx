@@ -15,6 +15,9 @@ import { auth } from "@/lib/auth";
 import { canViewSensitive } from "@/lib/sensitive-crypto";
 import { DeclarationsPanel } from "./declarations-panel";
 import { DoNotEmploy } from "./do-not-employ";
+import { mergeFeed } from "@/lib/activity-feed";
+
+const ACTIVITY_LIMIT = 200;
 import { AgreementPrompt } from "./agreement-prompt";
 import { shouldPromptAgreement } from "@/lib/agreement-readiness";
 import { TabNav } from "./tabs/tab-nav";
@@ -39,7 +42,7 @@ export default async function ContractorDetailPage({
   const tabParams = searchParams ? await searchParams : {};
   const activeTab: TabLabel = isTabLabel(tabParams.tab) ? tabParams.tab : "Overview";
 
-  const [contractor, activityLogs, documents, complianceRecords, companies, projects, reminder, rtw] = await Promise.all([
+  const [contractor, activityRows, workflowRows, documents, complianceRecords, companies, projects, reminder, rtw] = await Promise.all([
     prisma.contractor.findUnique({
       where: { id },
       include: {
@@ -53,7 +56,13 @@ export default async function ContractorDetailPage({
     prisma.activityLog.findMany({
       where: { entityType: "Contractor", entityId: id },
       orderBy: { createdAt: "desc" },
-      take: 50,
+      take: ACTIVITY_LIMIT,
+    }),
+    // What automation did to them (reminders, welcome email, auto-Inactive).
+    prisma.workflowLog.findMany({
+      where: { target: id },
+      orderBy: { createdAt: "desc" },
+      take: ACTIVITY_LIMIT,
     }),
     prisma.document.findMany({
       where: { contractorId: id },
@@ -85,6 +94,7 @@ export default async function ContractorDetailPage({
   if (!contractor) {
     notFound();
   }
+  const activityLogs = mergeFeed(activityRows, workflowRows, ACTIVITY_LIMIT);
 
   const offerAgreement = tabParams.agreementPrompt === "1" && (await shouldPromptAgreement(id));
 

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/require-staff";
+import { logActivity } from "@/lib/activity-log";
 
 export type NoteActionResult = { type: "ok" | "error"; message: string } | null;
 
@@ -44,6 +45,7 @@ export async function addContractorNote(
       },
     });
 
+    await logActivity("Note added", "Contractor", contractorId, `${body.length > 140 ? body.slice(0, 140) + "…" : body}`);
     revalidatePath(`/contractors/${contractorId}`);
     return { type: "ok", message: "Note added." };
   } catch (error) {
@@ -63,6 +65,8 @@ export async function deleteContractorNote(noteId: string): Promise<NoteActionRe
     }
 
     await prisma.contractorNote.delete({ where: { id: noteId } });
+    // The deleted text goes in the log, so removing a note doesn't erase the history.
+    await logActivity("Note deleted", "Contractor", note.contractorId, `${note.body.length > 140 ? note.body.slice(0, 140) + "…" : note.body}`);
 
     revalidatePath(`/contractors/${note.contractorId}`);
     return { type: "ok", message: "Note deleted." };

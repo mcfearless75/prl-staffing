@@ -17,6 +17,7 @@ import {
 import { resolveRole, requirementReaches } from "@/lib/role-normalisation";
 import { categoryForType } from "@/lib/compliance-types";
 import { doNotEmployBlock } from "@/lib/do-not-employ";
+import { logAssignmentActivity } from "@/lib/assignment-activity";
 
 export type AssignmentFormState = { error?: string } | null;
 
@@ -235,6 +236,7 @@ export async function createAssignment(
     return { error: "Failed to create assignment. Please try again." };
   }
 
+  await logAssignmentActivity("Assignment created", contractorId, companyId, status, role ? `— ${role}` : undefined);
   await activateContractorIfInactive(contractorId, status);
 
   revalidatePath("/assignments");
@@ -317,6 +319,7 @@ export async function updateAssignment(
     return { error: "Failed to update assignment. Please try again." };
   }
 
+  await logAssignmentActivity("Assignment edited", contractorId, companyId, status, role ? `— ${role}` : undefined);
   await activateContractorIfInactive(contractorId, status);
   if (!GATED_STATUSES.has(status)) {
     await deactivateContractorIfNoActiveAssignments(contractorId);
@@ -364,6 +367,7 @@ export async function updateAssignmentStatus(id: string, status: string) {
       data: { status },
     });
 
+    await logAssignmentActivity("Assignment status changed", updated.contractorId, updated.companyId, status);
     await activateContractorIfInactive(updated.contractorId, status);
     if (!GATED_STATUSES.has(status)) {
       await deactivateContractorIfNoActiveAssignments(updated.contractorId);
@@ -394,6 +398,7 @@ export async function deleteAssignment(id: string) {
       where: { id },
     });
 
+    await logAssignmentActivity("Assignment deleted", deleted.contractorId, deleted.companyId, deleted.status);
     await deactivateContractorIfNoActiveAssignments(deleted.contractorId);
 
     revalidatePath("/assignments");
