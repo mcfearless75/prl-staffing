@@ -61,8 +61,10 @@ export default async function PortalDashboard() {
 
       <ProfileBanner contractorId={contractorId} />
 
-      {/* Install banner */}
-      <details className="rounded-xl border border-blue-200 bg-blue-50">
+      {/* Install banner — hidden once they are IN the installed app (opened
+          from the home-screen icon), where it only tells them to do what they
+          already did. Pure CSS, so there's no flash before hydration. */}
+      <details className="rounded-xl border border-blue-200 bg-blue-50 [@media(display-mode:standalone)]:hidden">
         <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium text-blue-800 list-none">
           <Smartphone className="h-4 w-4 shrink-0" />
           📲 Install the PRISM app on your phone

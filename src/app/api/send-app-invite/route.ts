@@ -123,9 +123,9 @@ export async function POST(request: Request) {
           <h3 style="color: #1f2937; font-size: 15px; margin: 24px 0 12px;">Getting Started:</h3>
           <ol style="color: #374151; font-size: 13px; line-height: 1.8; padding-left: 20px;">
             <li>Go to the login page</li>
-            <li>Click <strong>"Forgot your password?"</strong></li>
+            <li>Tap <strong>"First time here? Set your password"</strong></li>
             <li>Enter your email: <strong>${email}</strong></li>
-            <li>Check your inbox for the password reset link</li>
+            <li>Check your inbox for the link (and your junk folder)</li>
             <li>Set your password — you're in!</li>
           </ol>
 

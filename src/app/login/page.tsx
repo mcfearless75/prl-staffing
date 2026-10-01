@@ -66,14 +66,107 @@ function LoginForm() {
     }
   }
 
+  async function sendLink(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email) return;
+    setForgotLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        setForgotSent(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Something went wrong. Please try again.");
+      }
+    } catch {
+      setError("Network error — please try again");
+    }
+    setForgotLoading(false);
+  }
+
+  const errorBox = error && (
+    <div className="rounded-lg bg-prism-bad/10 p-3 text-sm text-prism-bad border border-prism-bad/20">
+      {error}
+    </div>
+  );
+
+  // First password and forgotten password are the same flow: an emailed link
+  // to /set-password. It gets the whole card to itself — showing it under the
+  // sign-in form put two email boxes and two buttons on screen, and new
+  // starters following the invite email could not tell which one to use.
+  if (forgotMode) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold tracking-tight text-prism-ink">Set your password</h2>
+          <p className="mt-1 text-sm text-prism-ink-muted">
+            First time using PRISM, or forgotten your password? We&apos;ll email you a link to set a new one.
+          </p>
+        </div>
+        {forgotSent ? (
+          <div className="rounded-lg bg-prism-ok/10 p-3 text-sm text-prism-ok">
+            If that email is registered with PRL, a link is on its way. Check your inbox (and your junk folder) — the link works for 1 hour.
+          </div>
+        ) : (
+          <form onSubmit={sendLink} className="space-y-4">
+            {errorBox}
+            <div>
+              <label htmlFor="reset-email" className="block text-sm font-medium text-prism-ink">
+                Your email address
+              </label>
+              <input
+                id="reset-email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-prism-line bg-prism-paper px-3 py-2.5 text-base sm:text-sm focus:border-prism-ink focus:outline-none focus:ring-2 focus:ring-prism-ink/20"
+                placeholder="your@email.com"
+                autoComplete="email"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={forgotLoading || !email}
+              className="w-full min-h-[44px] rounded-md bg-prism-ink px-4 py-3 sm:py-2.5 text-sm font-medium text-prism-paper hover:bg-prism-ink/90 disabled:opacity-50 transition-colors"
+            >
+              {forgotLoading ? "Sending..." : "Email me a link"}
+            </button>
+          </form>
+        )}
+        <button
+          onClick={() => { setForgotMode(false); setForgotSent(false); setError(""); }}
+          className="block w-full text-center text-sm text-prism-ink-muted hover:text-prism-ink"
+        >
+          ← Back to sign in
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
+      <div className="mb-6 text-center">
+        <h2 className="text-xl font-semibold tracking-tight text-prism-ink">Sign in</h2>
+      </div>
+
+      {/* First-timers are told to come here by the invite email — make the way
+          in the first thing they see rather than a link under the SSO button. */}
+      <button
+        onClick={() => { setForgotMode(true); setError(""); }}
+        className="mb-5 w-full rounded-lg border border-prism-info/30 bg-prism-info/5 p-3 text-left text-sm text-prism-ink hover:bg-prism-info/10 transition-colors"
+      >
+        <span className="font-semibold">First time here?</span>{" "}
+        <span className="text-prism-info underline">Set your password</span>
+      </button>
+
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="rounded-lg bg-prism-bad/10 p-3 text-sm text-prism-bad border border-prism-bad/20">
-            {error}
-          </div>
-        )}
+        {errorBox}
 
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-prism-ink">
@@ -156,75 +249,19 @@ function LoginForm() {
         Sign in with Microsoft 365
       </button>
 
-      {/* Forgot Password / New contractor */}
       <div className="mt-4 space-y-2 text-center">
-        {!forgotMode ? (
-          <>
-            <button
-              onClick={() => setForgotMode(true)}
-              className="block w-full text-sm text-prism-info hover:underline"
-            >
-              Forgot your password?
-            </button>
-            <a
-              href="/setup-account"
-              className="block text-sm text-prism-ink-muted hover:text-prism-ink"
-            >
-              New contractor? Set up your account →
-            </a>
-            <a
-              href="/help/prism-login"
-              className="block text-sm text-prism-ink-muted hover:text-prism-ink"
-            >
-              Trouble signing in?
-            </a>
-          </>
-        ) : forgotSent ? (
-          <div className="rounded-lg bg-prism-ok/10 p-3 text-sm text-prism-ok">
-            If that email is registered, a reset link has been sent. Check your inbox.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-xs text-prism-ink-muted">Enter your email to receive a password reset link</p>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                className="flex-1 rounded-md border border-prism-line bg-prism-paper px-3 py-2 text-sm focus:border-prism-ink focus:outline-none focus:ring-2 focus:ring-prism-ink/20"
-              />
-              <button
-                onClick={async () => {
-                  if (!email) return;
-                  setForgotLoading(true);
-                  setError("");
-                  try {
-                    await fetch("/api/auth/forgot-password", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ email }),
-                    });
-                    setForgotSent(true);
-                  } catch {
-                    setError("Network error — please try again");
-                  }
-                  setForgotLoading(false);
-                }}
-                disabled={forgotLoading || !email}
-                className="rounded-md bg-prism-ink px-4 py-2 text-sm font-medium text-prism-paper hover:bg-prism-ink/90 disabled:opacity-50 transition-colors"
-              >
-                {forgotLoading ? "..." : "Send"}
-              </button>
-            </div>
-            <button
-              onClick={() => setForgotMode(false)}
-              className="text-xs text-prism-ink-muted hover:text-prism-ink"
-            >
-              Back to login
-            </button>
-          </div>
-        )}
+        <button
+          onClick={() => { setForgotMode(true); setError(""); }}
+          className="block w-full text-sm text-prism-info hover:underline"
+        >
+          Forgot your password?
+        </button>
+        <a
+          href="/help/prism-login"
+          className="block text-sm text-prism-ink-muted hover:text-prism-ink"
+        >
+          Trouble signing in?
+        </a>
       </div>
     </>
   );
@@ -260,12 +297,6 @@ export default function LoginPage() {
       <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
         <div className="w-full max-w-md">
           <div className="rounded-lg border border-prism-line bg-prism-paper p-6 sm:p-8 shadow-[0_1px_2px_rgb(27_36_48_/_6%)]">
-            <div className="mb-6 text-center md:hidden">
-              <h2 className="text-xl font-semibold tracking-tight text-prism-ink">Sign in</h2>
-            </div>
-            <div className="mb-6 hidden text-center md:block">
-              <h2 className="text-xl font-semibold tracking-tight text-prism-ink">Sign in to your account</h2>
-            </div>
             <Suspense fallback={<div className="text-center py-4 text-prism-ink-muted text-sm">Loading...</div>}>
               <LoginForm />
             </Suspense>

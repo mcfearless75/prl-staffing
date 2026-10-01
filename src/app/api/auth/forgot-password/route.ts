@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { greetingName } from "@/lib/contractor-name";
+import { emailMatches } from "@/lib/contractor-email";
 
 export async function POST(request: Request) {
   try {
@@ -17,31 +18,57 @@ export async function POST(request: Request) {
       );
     }
 
-    const { email } = await request.json();
+    const { email: typed } = await request.json();
 
-    if (!email) {
+    if (!typed || typeof typed !== "string") {
       return NextResponse.json({ error: "Email required" }, { status: 400 });
     }
 
-    // Check if this email exists as a contractor login OR staff user
-    const contractorLogin = await prisma.contractorLogin.findUnique({
-      where: { email },
+    // Who is this? A contractor login, a staff user, or — the case the app
+    // invite depends on — a contractor with NO login yet (imported from the
+    // spreadsheet). The invite email tells those people to use "Forgot your
+    // password?" to set their first password; this used to skip them, reply
+    // "a link has been sent", and send nothing. /api/auth/reset-password
+    // already creates the missing login when the link is used.
+    //
+    // `email` is the address the token is issued against, so it must be the
+    // STORED form: reset-password looks the login up by exact match.
+    let email: string | null = null;
+    let name = "";
+
+    const contractorLogin = await prisma.contractorLogin.findFirst({
+      where: { email: emailMatches(typed) },
       include: { contractor: true },
     });
+    if (contractorLogin) {
+      email = contractorLogin.email;
+      name = greetingName(contractorLogin.contractor);
+    } else {
+      const staffUser = await prisma.user.findFirst({
+        where: { email: emailMatches(typed) },
+      });
+      if (staffUser) {
+        email = staffUser.email;
+        name = staffUser.name;
+      } else {
+        const contractor = await prisma.contractor.findFirst({
+          where: { email: emailMatches(typed) },
+          include: { contractorLogin: true },
+        });
+        if (contractor?.email) {
+          // A login stored under another spelling of the address would make
+          // reset-password try to create a second one — issue against it.
+          email = contractor.contractorLogin?.email ?? contractor.email;
+          name = greetingName(contractor);
+        }
+      }
+    }
 
-    const staffUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!contractorLogin && !staffUser) {
+    if (!email) {
       return NextResponse.json({
         message: "If that email exists, a reset link has been sent.",
       });
     }
-
-    const name = contractorLogin
-      ? greetingName(contractorLogin.contractor)
-      : staffUser!.name;
 
     // Generate token
     const token = crypto.randomBytes(32).toString("hex");
