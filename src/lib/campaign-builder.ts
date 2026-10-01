@@ -104,7 +104,7 @@ export function buildCampaignEmail(messageHtml: string, withAppButton: boolean):
         <tr><td style="padding:32px;">
           ${messageHtml}
           ${button}
-          <p style="margin:0;font-size:14px;color:#374151;">Questions? Contact <a href="mailto:prism@prlsitesolutions.co.uk" style="color:#1F4E79;">prism@prlsitesolutions.co.uk</a></p>
+          <p style="margin:0;font-size:14px;color:#374151;">Questions? Contact <a href="mailto:admin@prlsitesolutions.co.uk" style="color:#1F4E79;">admin@prlsitesolutions.co.uk</a></p>
         </td></tr>
         <tr><td style="background:#F9FAFB;padding:20px 32px;border-top:1px solid #E5E7EB;">
           <p style="margin:0;font-size:12px;color:#9CA3AF;">&copy; ${new Date().getFullYear()} PRL Site Solutions.</p>

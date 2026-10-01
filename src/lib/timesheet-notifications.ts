@@ -68,7 +68,7 @@ function buildEmail(opts: {
               <a href="${PORTAL_URL}/portal/timesheets/${encodeURIComponent(opts.timesheetId)}" style="display:inline-block;padding:13px 28px;color:#fff;text-decoration:none;font-size:15px;font-weight:600;">${opts.ctaLabel}</a>
             </td></tr>
           </table>
-          <p style="margin:0;font-size:14px;color:#374151;">If you think this is wrong, reply to this email or contact <a href="mailto:prism@prlsitesolutions.co.uk" style="color:#1F4E79;">prism@prlsitesolutions.co.uk</a>.</p>
+          <p style="margin:0;font-size:14px;color:#374151;">If you think this is wrong, reply to this email or contact <a href="mailto:admin@prlsitesolutions.co.uk" style="color:#1F4E79;">admin@prlsitesolutions.co.uk</a>.</p>
         </td></tr>
         <tr><td style="background:#F9FAFB;padding:20px 32px;border-top:1px solid #E5E7EB;">
           <p style="margin:0;font-size:12px;color:#9CA3AF;">&copy; ${new Date().getFullYear()} PRL Site Solutions. This is an automated message from PRISM.</p>

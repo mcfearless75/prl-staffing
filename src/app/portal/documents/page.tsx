@@ -11,7 +11,7 @@ import { DownloadButton } from "./download-button";
 import { COMPLIANCE_TYPES } from "@/lib/compliance-types";
 import { RtwSection } from "./rtw-section";
 import { ComplianceChecklist } from "./compliance-checklist";
-import { RTW_SATISFIED_STATUSES, maskShareCode, parseRtwRoute } from "@/lib/rtw-route";
+import { RTW_SATISFIED_STATUSES, maskShareCode, normaliseShareCode, parseRtwRoute, rtwProgress } from "@/lib/rtw-route";
 
 // Prompted vault rows. Keys must be canonical compliance types — anything not in
 // COMPLIANCE_TYPES is filtered out below rather than sitting here as a row that
@@ -98,6 +98,13 @@ export default async function PortalDocumentsPage({
 
   const uploadedCount = Object.keys(latestByType).length;
   const totalSize = documents.reduce((sum, d) => sum + d.fileSize, 0);
+  // Same test as the RTW section's "Done" badge and the home-page banner, so
+  // the message never asks for a Right to Work the section says is finished.
+  const rtwDone = rtwProgress(
+    parseRtwRoute(rtw?.rtwRoute),
+    new Set(satisfiedRecords.map((r) => r.type)),
+    !!normaliseShareCode(rtw?.shareCode)
+  ).complete;
 
   return (
     <div className="space-y-5">
@@ -113,7 +120,8 @@ export default async function PortalDocumentsPage({
 
       {justSubmitted && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Thanks — your details are submitted. Now add your Right to Work and your cards below.
+          Thanks — your details are submitted.{" "}
+          {rtwDone ? "Now add your cards and certificates below." : "Now add your Right to Work and your cards below."}
           Spotted a mistake? <Link href="/portal/profile" className="font-medium underline">Go back and change your details</Link>.
         </div>
       )}

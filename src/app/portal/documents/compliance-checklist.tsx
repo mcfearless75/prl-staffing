@@ -80,7 +80,14 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
     loadChecklistTypes(contractorId),
   ]);
 
-  const requiredTypes = checklistTypes.map((c) => ({
+  // Right to Work has its own section above (passport / share code / birth
+  // certificate), which saves the SPECIFIC type, e.g. "Passport — UK or
+  // Ireland". A generic "Right to Work" row here never matched it, so a worker
+  // who had just finished that section was told RTW was still "Required".
+  // Same rule as the home-page banner's cards step.
+  const requiredTypes = checklistTypes
+    .filter((c) => categoryForType(c.type) !== "Right to Work")
+    .map((c) => ({
     ...c,
     label: c.type,
     icon: CATEGORY_ICONS[categoryForType(c.type)] ?? "📄",
@@ -107,6 +114,9 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
   const score = total > 0 ? Math.round((verified / total) * 100) : 0;
 
   const completedCount = requiredTypes.filter((t) => recordByType[t.type]).length;
+  const otherRecords = records.filter(
+    (r) => categoryForType(r.type) !== "Right to Work" && !requiredTypes.find((t) => t.type === r.type)
+  );
 
   return (
     <div className="space-y-4">
@@ -237,13 +247,11 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
         })}
       </div>
 
-      {/* Additional records not in required list */}
-      {records.filter((r) => !requiredTypes.find((t) => t.type === r.type)).length > 0 && (
+      {/* Additional records not in required list (RTW ones show in their own section) */}
+      {otherRecords.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-gray-900">Other records</h3>
-          {records
-            .filter((r) => !requiredTypes.find((t) => t.type === r.type))
-            .map((record) => (
+          {otherRecords.map((record) => (
               <div key={record.id} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-gray-900">{record.type}</p>

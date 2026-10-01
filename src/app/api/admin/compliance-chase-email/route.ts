@@ -6,7 +6,7 @@ import { greetingName } from "@/lib/contractor-name";
 
 const APP_URL = "https://www.prismworkforce.online";
 const FROM = "PRL Site Solutions <prism@prlsitesolutions.co.uk>";
-const HELP_EMAIL = "prism@prlsitesolutions.co.uk";
+const HELP_EMAIL = "admin@prlsitesolutions.co.uk";
 const ONBOARDING_URL = `${APP_URL}/onboarding`;
 
 function sleep(ms: number) {

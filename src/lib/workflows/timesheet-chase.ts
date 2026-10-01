@@ -152,7 +152,7 @@ function buildChaseEmail(firstName: string, missingWeeks: Date[]): string {
               <a href="${PORTAL_URL}/portal/timesheets" style="display:inline-block;padding:13px 28px;color:#fff;text-decoration:none;font-size:15px;font-weight:600;">Submit Timesheets</a>
             </td></tr>
           </table>
-          <p style="margin:0;font-size:14px;color:#374151;">Questions? Contact <a href="mailto:prism@prlsitesolutions.co.uk" style="color:#1F4E79;">prism@prlsitesolutions.co.uk</a></p>
+          <p style="margin:0;font-size:14px;color:#374151;">Questions? Contact <a href="mailto:admin@prlsitesolutions.co.uk" style="color:#1F4E79;">admin@prlsitesolutions.co.uk</a></p>
         </td></tr>
         <tr><td style="background:#F9FAFB;padding:20px 32px;border-top:1px solid #E5E7EB;">
           <p style="margin:0;font-size:12px;color:#9CA3AF;">&copy; ${new Date().getFullYear()} PRL Site Solutions. This is an automated message from PRISM.</p>

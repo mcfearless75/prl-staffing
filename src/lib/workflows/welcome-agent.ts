@@ -33,7 +33,7 @@ function buildWelcomeEmail(firstName: string): string {
             </ul>
           </div>
           <p style="margin:0;font-size:14px;color:#374151;">
-            Questions? Contact us at <a href="mailto:prism@prlsitesolutions.co.uk" style="color:#1F4E79;">prism@prlsitesolutions.co.uk</a>
+            Questions? Contact us at <a href="mailto:admin@prlsitesolutions.co.uk" style="color:#1F4E79;">admin@prlsitesolutions.co.uk</a>
           </p>
         </td></tr>
         <tr><td style="background:#F9FAFB;padding:20px 32px;border-top:1px solid #E5E7EB;">
