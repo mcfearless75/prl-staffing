@@ -1,9 +1,11 @@
 export const dynamic = "force-dynamic";
 
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { categoryLabel, type CallEnquiryCategory } from "@/lib/calls/constants";
+import { buildCallerIndex, matchCaller } from "@/lib/calls/caller-match";
 import { markActioned } from "../actions";
 
 export default async function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -13,6 +15,11 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const enquiry = await prisma.callEnquiry.findUnique({ where: { id } });
   if (!enquiry) notFound();
+
+  const contractors = await prisma.contractor.findMany({
+    select: { id: true, firstName: true, lastName: true, phone: true, status: true },
+  });
+  const match = matchCaller(buildCallerIndex(contractors), enquiry.callerPhone, enquiry.callerName);
 
   const boundMarkActioned = markActioned.bind(null, enquiry.id);
 
@@ -31,6 +38,27 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
         <dd>{enquiry.callerName || "Not given"}</dd>
         <dt className="text-gray-500">Phone</dt>
         <dd>{enquiry.callerPhone || "Not given"}</dd>
+        <dt className="text-gray-500">In PRISM</dt>
+        <dd>
+          {match ? (
+            <>
+              {match.contractors.map((c, i) => (
+                <span key={c.id}>
+                  {i > 0 ? ", " : ""}
+                  <Link href={`/contractors/${c.id}`} className="font-medium text-blue-700 hover:underline">
+                    {c.firstName} {c.lastName}
+                  </Link>{" "}
+                  <span className="text-gray-500">({c.status})</span>
+                </span>
+              ))}
+              <span className="ml-2 text-xs text-gray-500">
+                {match.basis === "phone" ? "matched on phone number" : "name only — no number match, please check"}
+              </span>
+            </>
+          ) : (
+            <span className="text-gray-400">No contractor with this number or name</span>
+          )}
+        </dd>
         <dt className="text-gray-500">Contractor hint</dt>
         <dd>{enquiry.contractorIdHint || "—"}</dd>
         <dt className="text-gray-500">Reason</dt>

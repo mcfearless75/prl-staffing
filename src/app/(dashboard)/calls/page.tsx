@@ -11,6 +11,7 @@ import {
   categoryLabel,
   type CallEnquiryCategory,
 } from "@/lib/calls/constants";
+import { buildCallerIndex, matchCaller, type CallerMatch } from "@/lib/calls/caller-match";
 
 function buildHref(status: string, category: string): string {
   const params = new URLSearchParams();
@@ -36,7 +37,8 @@ export default async function CallsPage({
   if (statusFilter && statusFilter !== "All") where.status = statusFilter;
   if (categoryFilter && categoryFilter !== "All") where.category = categoryFilter;
 
-  const enquiries = await prisma.callEnquiry.findMany({
+  const [enquiries, contractors] = await Promise.all([
+    prisma.callEnquiry.findMany({
     where,
     orderBy: { receivedAt: "desc" },
     select: {
@@ -49,7 +51,14 @@ export default async function CallsPage({
       reason: true,
       status: true,
     },
-  });
+    }),
+    // Whole book, a few hundred rows of five columns: phones are free text, so
+    // they have to be normalised in code — the database cannot compare them.
+    prisma.contractor.findMany({
+      select: { id: true, firstName: true, lastName: true, phone: true, status: true },
+    }),
+  ]);
+  const callerIndex = buildCallerIndex(contractors);
 
   const statuses = ["All", ...CALL_ENQUIRY_STATUSES];
   const categories = ["All", ...CALL_ENQUIRY_CATEGORIES];
@@ -113,6 +122,7 @@ export default async function CallsPage({
               </td>
               <td>
                 {e.callerName || "—"} {e.callerPhone ? `(${e.callerPhone})` : ""}
+                <CallerMatchLine match={matchCaller(callerIndex, e.callerPhone, e.callerName)} />
               </td>
               <td className="max-w-xs truncate">{e.reason}</td>
               <td>
@@ -135,6 +145,30 @@ export default async function CallsPage({
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function CallerMatchLine({ match }: { match: CallerMatch | null }) {
+  if (!match) return null;
+  return (
+    <div className="mt-0.5 text-xs">
+      {match.contractors.map((c, i) => (
+        <span key={c.id}>
+          {i > 0 ? ", " : ""}
+          <Link href={`/contractors/${c.id}`} className="font-medium text-blue-700 hover:underline">
+            {c.firstName} {c.lastName}
+          </Link>
+          <span className="text-gray-500"> ({c.status})</span>
+        </span>
+      ))}
+      <span
+        className={`ml-2 inline-flex rounded-full px-2 py-0.5 font-medium ${
+          match.basis === "phone" ? "bg-prism-ok/10 text-prism-ok" : "bg-prism-warn/10 text-prism-warn"
+        }`}
+      >
+        {match.basis === "phone" ? "Number on file" : "Name only — check"}
+      </span>
     </div>
   );
 }
