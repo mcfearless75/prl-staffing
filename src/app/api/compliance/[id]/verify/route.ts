@@ -2,6 +2,9 @@ import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 import { redirect } from "next/navigation";
+import { logActivity } from "@/lib/activity-log";
+import { safeRedirectPath } from "@/lib/safe-redirect";
+
 
 // GET handler: Quick verify from contractor detail page (redirects back)
 export async function GET(
@@ -15,7 +18,7 @@ export async function GET(
 
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    const redirectTo = searchParams.get("redirect") || "/compliance";
+    let redirectTo = safeRedirectPath(searchParams.get("redirect"), "/compliance");
 
     const record = await prisma.complianceRecord.findUnique({ where: { id } });
     if (!record) {
@@ -31,6 +34,13 @@ export async function GET(
           : `Verified by ${session.user.email} on ${new Date().toISOString().split("T")[0]}`,
       },
     });
+    await logActivity("Document verified", "Contractor", record.contractorId, record.type);
+
+    // Back on the profile, it may offer to send the Subcontractor Agreement
+    // (contractors/[id]/agreement-prompt.tsx decides whether it's due).
+    if (redirectTo.startsWith("/contractors/")) {
+      redirectTo += `${redirectTo.includes("?") ? "&" : "?"}agreementPrompt=1`;
+    }
 
     // Use NextResponse.redirect with the public URL to avoid 0.0.0.0 on Railway
     const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || "";
@@ -75,6 +85,7 @@ export async function POST(
           : `Verified by ${session.user.email} on ${new Date().toISOString().split("T")[0]}`,
       },
     });
+    await logActivity("Document verified", "Contractor", record.contractorId, record.type);
 
     return NextResponse.json({ success: true });
   } catch (error) {

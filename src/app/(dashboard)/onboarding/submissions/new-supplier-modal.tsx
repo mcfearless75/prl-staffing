@@ -20,13 +20,21 @@ const INPUT = "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focu
 const LABEL = "block text-sm font-medium text-gray-700 mb-1";
 const CARD = "rounded-xl border border-gray-200 bg-white p-6";
 
+/** Fields known already when the agreement is started from a person (profile / Onboarding). */
+export interface AgreementPrefill {
+  personName: string;
+  supplyOf?: string | null;
+  sendToEmail: string;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  prefill?: AgreementPrefill;
 }
 
-export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
+export default function NewSupplierModal({ open, onClose, onSuccess, prefill }: Props) {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -59,8 +67,8 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
       setSubmitting(false);
       setError("");
       setStepError("");
-      setPersonName("");
-      setSupplyOf("");
+      setPersonName(prefill?.personName ?? "");
+      setSupplyOf(prefill?.supplyOf ?? "");
       setSiteLocation("");
       setStartDate("");
       setUnpaidBreak("");
@@ -72,8 +80,10 @@ export default function NewSupplierModal({ open, onClose, onSuccess }: Props) {
       setContactName("");
       setContactEmail("");
       setContactPhone("");
-      setSendToEmail("");
+      setSendToEmail(prefill?.sendToEmail ?? "");
     }
+    // Only on open: re-running on a new prefill object would wipe what staff typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   function updateRate(idx: number, field: "rate" | "basis", value: string) {

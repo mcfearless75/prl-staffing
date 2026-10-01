@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/page-header";
 import { ExternalLink } from "lucide-react";
 import { MetlenInductionButton } from "./metlen-induction-button";
 import { NewSupplierButton } from "./new-supplier-button";
+import { SendAgreementButton } from "./send-agreement-button";
+import { readyForAgreement, READY_WINDOW_DAYS } from "@/lib/agreement-readiness";
 
 const OPEN_STATUSES = ["Pending", "Reviewed"];
 
@@ -37,6 +39,7 @@ export default async function OnboardingSubmissionsPage({
       prisma.supplyAgreement.count({ where: { status } })
     )
   );
+  const ready = await readyForAgreement();
   const counts = { pending, reviewed, approved, rejected, open: pending + reviewed, all: pending + reviewed + approved + rejected };
 
   // Approval creates a subcontractor, matched on email (see actions.ts). Link
@@ -72,6 +75,35 @@ export default async function OnboardingSubmissionsPage({
           </div>
         }
       />
+
+      {/* Ready for an agreement (Erica, 2026-10-01): documents verified, no agreement yet. */}
+      {ready.length > 0 && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50">
+          <div className="border-b border-emerald-200 px-5 py-3">
+            <p className="text-sm font-semibold text-emerald-900">Ready for an agreement ({ready.length})</p>
+            <p className="text-xs text-emerald-800">
+              Documents verified in the last {READY_WINDOW_DAYS} days, nothing still waiting, and no agreement sent yet.
+            </p>
+          </div>
+          <ul className="divide-y divide-emerald-100">
+            {ready.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5">
+                <div>
+                  <Link href={`/contractors/${p.id}`} className="text-sm font-medium text-gray-900 hover:text-blue-600">
+                    {p.firstName} {p.lastName}
+                  </Link>
+                  <p className="text-xs text-gray-500">
+                    {p.jobTitle || "No job title"} · verified {formatDate(p.lastVerified)}
+                  </p>
+                </div>
+                <SendAgreementButton
+                  prefill={{ personName: `${p.firstName} ${p.lastName}`, supplyOf: p.jobTitle, sendToEmail: p.email }}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

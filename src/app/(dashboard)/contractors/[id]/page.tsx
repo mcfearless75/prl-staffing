@@ -15,6 +15,8 @@ import { auth } from "@/lib/auth";
 import { canViewSensitive } from "@/lib/sensitive-crypto";
 import { DeclarationsPanel } from "./declarations-panel";
 import { DoNotEmploy } from "./do-not-employ";
+import { AgreementPrompt } from "./agreement-prompt";
+import { shouldPromptAgreement } from "@/lib/agreement-readiness";
 import { TabNav } from "./tabs/tab-nav";
 import { OverviewTab } from "./tabs/overview-tab";
 import { RightToWorkTab } from "./tabs/right-to-work-tab";
@@ -31,7 +33,7 @@ export default async function ContractorDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ tab?: string }>;
+  searchParams?: Promise<{ tab?: string; agreementPrompt?: string }>;
 }) {
   const { id } = await params;
   const tabParams = searchParams ? await searchParams : {};
@@ -83,6 +85,8 @@ export default async function ContractorDetailPage({
   if (!contractor) {
     notFound();
   }
+
+  const offerAgreement = tabParams.agreementPrompt === "1" && (await shouldPromptAgreement(id));
 
   // Health & declarations: only named admins see the panel at all.
   const session = await auth();
@@ -261,6 +265,16 @@ export default async function ContractorDetailPage({
           </div>
         </div>
       </div>
+
+      {offerAgreement && contractor.email && (
+        <AgreementPrompt
+          prefill={{
+            personName: `${contractor.firstName} ${contractor.lastName}`,
+            supplyOf: contractor.jobTitle,
+            sendToEmail: contractor.email,
+          }}
+        />
+      )}
 
       <DoNotEmploy
         contractorId={contractor.id}
