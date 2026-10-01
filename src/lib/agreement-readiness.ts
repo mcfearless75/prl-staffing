@@ -27,10 +27,14 @@ export async function shouldPromptAgreement(contractorId: string): Promise<boole
     select: {
       email: true,
       doNotEmploy: true,
+      agreementNotNeededAt: true,
       compliances: { select: { status: true } },
+      _count: { select: { assignments: true } },
     },
   });
-  if (!c || c.doNotEmploy || !c.email) return false;
+  if (!c || c.doNotEmploy || !c.email || c.agreementNotNeededAt) return false;
+  // Already worked for PRL — they don't need one now (Erica/Jenni, 2026-10-01).
+  if (c._count.assignments > 0) return false;
   if (!c.compliances.some((r) => r.status === "Verified")) return false;
   // Still verifying a batch — ask once they've finished, not after every click.
   if (c.compliances.some((r) => r.status === "Pending")) return false;
@@ -52,6 +56,10 @@ export async function readyForAgreement(now: Date = new Date()): Promise<ReadyPe
     where: {
       doNotEmploy: false,
       email: { not: "" },
+      // Staff said "not needed" (tests etc.), or they've already worked — any
+      // assignment, current or past, means they started without one.
+      agreementNotNeededAt: null,
+      assignments: { none: {} },
       compliances: { some: { status: "Verified", updatedAt: { gte: since } }, none: { status: "Pending" } },
     },
     select: {

@@ -8,6 +8,7 @@ import { ExternalLink } from "lucide-react";
 import { MetlenInductionButton } from "./metlen-induction-button";
 import { NewSupplierButton } from "./new-supplier-button";
 import { SendAgreementButton } from "./send-agreement-button";
+import { AgreementNotNeededButton } from "./agreement-not-needed-button";
 import { readyForAgreement, READY_WINDOW_DAYS } from "@/lib/agreement-readiness";
 
 const OPEN_STATUSES = ["Pending", "Reviewed"];
@@ -82,7 +83,8 @@ export default async function OnboardingSubmissionsPage({
           <div className="border-b border-emerald-200 px-5 py-3">
             <p className="text-sm font-semibold text-emerald-900">Ready for an agreement ({ready.length})</p>
             <p className="text-xs text-emerald-800">
-              Documents verified in the last {READY_WINDOW_DAYS} days, nothing still waiting, and no agreement sent yet.
+              Documents verified in the last {READY_WINDOW_DAYS} days, nothing still waiting, no agreement sent, and not yet
+              worked a job. Use &ldquo;Not needed&rdquo; for tests or anyone who doesn&apos;t need one.
             </p>
           </div>
           <ul className="divide-y divide-emerald-100">
@@ -96,9 +98,12 @@ export default async function OnboardingSubmissionsPage({
                     {p.jobTitle || "No job title"} · verified {formatDate(p.lastVerified)}
                   </p>
                 </div>
-                <SendAgreementButton
-                  prefill={{ personName: `${p.firstName} ${p.lastName}`, supplyOf: p.jobTitle, sendToEmail: p.email }}
-                />
+                <span className="flex items-center gap-2">
+                  <AgreementNotNeededButton contractorId={p.id} name={`${p.firstName} ${p.lastName}`} />
+                  <SendAgreementButton
+                    prefill={{ personName: `${p.firstName} ${p.lastName}`, supplyOf: p.jobTitle, sendToEmail: p.email }}
+                  />
+                </span>
               </li>
             ))}
           </ul>

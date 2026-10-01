@@ -98,6 +98,10 @@ model Contractor {
   doNotEmployReason        String?
   doNotEmployAt            DateTime?
   doNotEmployBy            String?
+  // Dismissed from Onboarding's "Ready for an agreement" list (tests, people
+  // already working) — src/lib/agreement-readiness.ts.
+  agreementNotNeededAt     DateTime?
+  agreementNotNeededBy     String?
   // When staff explicitly approved this applicant. Set ONLY by a deliberate
   // individual approval — never by bulk import, onboarding create, or a
   // contractor going back to work. welcomeAgent keys off this; `updatedAt` was
