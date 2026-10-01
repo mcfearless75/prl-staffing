@@ -1,3 +1,5 @@
+import { Share } from "lucide-react";
+
 export const dynamic = "force-static";
 
 export default function InstallPage() {
@@ -36,7 +38,13 @@ export default function InstallPage() {
             </li>
             <li className="flex items-start gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1F4E79] text-white text-xs font-bold mt-0.5">2</span>
-              <p className="text-sm text-gray-700 leading-relaxed">Tap the <strong>Share</strong> button — the box with an arrow pointing up ⬆. In Safari it&apos;s at the bottom (or tap <strong>•••</strong> first); in Chrome it&apos;s at the top, next to the web address</p>
+              <div className="text-sm text-gray-700 leading-relaxed">
+                <p>Tap the <strong>Share</strong> button — the box with an arrow pointing up. It looks like this:</p>
+                <span className="my-2 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-gray-50" role="img" aria-label="Share icon">
+                  <Share className="h-6 w-6 text-[#007AFF]" strokeWidth={2} aria-hidden="true" />
+                </span>
+                <p>In Safari it&apos;s at the bottom (or tap <strong>•••</strong> first); in Chrome it&apos;s at the top, next to the web address</p>
+              </div>
             </li>
             <li className="flex items-start gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1F4E79] text-white text-xs font-bold mt-0.5">3</span>
