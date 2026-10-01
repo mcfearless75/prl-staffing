@@ -19,12 +19,13 @@ const CATEGORY_NAMES = new Set<string>(COMPLIANCE_CATEGORIES.filter((c) => c !==
 /**
  * Cards accepted IN PLACE OF a family. Jenni, 2026-10-01: Andrew Carroll holds
  * an ECS card "which is the same level, so he'll never have a CSCS". ECS (JIB
- * electrical), JIB and CPCS are CSCS partner schemes — they carry the CSCS logo
- * and sites accept them where CSCS is asked for. Only the family-level "CSCS"
+ * electrical), JIB, CPCS and NPORS are CSCS partner schemes — they carry the
+ * CSCS logo and sites accept them where CSCS is asked for. NPORS added the same
+ * day: groundworkers "can have CSCS or NPORS" (Balvinder Singh). Only the family-level "CSCS"
  * requirement takes them; a specific colour requirement still needs that card.
  */
 export const ACCEPTED_INSTEAD: Record<string, { categories: string[]; types: string[] }> = {
-  CSCS: { categories: ["CPCS"], types: ["ECS Card", "JIB Card"] },
+  CSCS: { categories: ["CPCS", "NPORS"], types: ["ECS Card", "JIB Card"] },
 };
 
 /**

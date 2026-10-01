@@ -112,3 +112,10 @@ describe("CSCS colours: that card or higher", () => {
     for (const c of CSCS_LADDER) assert.ok(COMPLIANCE_TYPES.includes(c), c);
   });
 });
+
+// Jenni, 2026-10-01: Balvinder Singh holds NPORS — groundworkers can have CSCS or NPORS.
+test("NPORS cards meet a plain CSCS requirement", () => {
+  assert.ok(recordMatchesRequirement("CSCS", "NPORS Excavator (360)"));
+  assert.ok(recordMatchesRequirement("CSCS", "NPORS"));
+  assert.equal(recordMatchesRequirement("CSCS (Blue) — Skilled Worker", "NPORS Excavator (360)"), false);
+});
