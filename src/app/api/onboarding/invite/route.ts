@@ -2,13 +2,9 @@ import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
 import { sendEmail, ONBOARDING_REPLY_TO } from "@/lib/email";
-import { createSetPasswordUrl, DAY_MS } from "@/lib/set-password-link";
 import { formatGbpRate } from "@/lib/rate-format";
 import { isValidUnpaidBreak, unpaidBreakLabel, unpaidBreakTimesheetNote } from "@/lib/unpaid-break";
 
-// The supplier may not open the email the same day; a staff-sent invite is
-// trusted, so give them a week rather than the 24h of a password reset.
-const SETUP_LINK_TTL_MS = 7 * DAY_MS;
 
 // Fixed wording from Jenni (25/09/2026), added to every subcontractor
 // agreement so staff never retype it and it stays off the PRISM form.
@@ -122,13 +118,13 @@ export async function POST(request: Request) {
   const cleanRates = (rates || []).map((r) => ({ ...r, rate: formatGbpRate(r.rate) }));
 
   /**
-   * PRL wrote this agreement, so there is no review step: the recipient gets
-   * the agreement and a working login link in the same email. The link goes to
-   * `sendToEmail`, which is therefore the person's login email.
+   * PRL wrote this agreement, so there is no review step. `sendToEmail`
+   * becomes the person's contractor (and later login) email; the login itself
+   * is set up from the App Invite, not from this email.
    */
   const loginEmail = sendToEmail.toLowerCase().trim();
 
-  // A set-password link for a staff address would reset that staff password.
+  // A staff address would end up as a contractor's login email.
   const staffUser = await prisma.user.findUnique({ where: { email: loginEmail }, select: { id: true } });
   if (staffUser) {
     return NextResponse.json(
@@ -230,7 +226,9 @@ export async function POST(request: Request) {
          <p style="margin:0;font-size:13px;color:#333;line-height:1.6;">${escapeHtml(additionalInfo)}</p>`
       : "";
 
-    const buildHtml = (setupUrl: string | null) => `
+    // No login link (Erica, 2026-10-01): the agreement is just the agreement.
+    // Portal access goes out separately as the App Invite.
+    const buildHtml = () => `
 <!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -253,7 +251,7 @@ export async function POST(request: Request) {
             <td style="padding:32px 40px 0;">
               <p style="margin:0 0 10px;color:#333;font-size:15px;line-height:1.6;">Hi ${escapeHtml(personName)},</p>
               <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.6;">
-                Here is your subcontractor agreement with PRL Site Solutions. Please check the details below, then set up your PRISM login to upload your compliance documents.
+                Here is your subcontractor agreement with PRL Site Solutions.
               </p>
             </td>
           </tr>
@@ -296,36 +294,9 @@ export async function POST(request: Request) {
             </td>
           </tr>
 
-          <!-- CTA -->
-          <tr>
-            <td style="padding:32px 40px;">
-              ${setupUrl ? `
-              <p style="margin:0 0 20px;color:#333;font-size:14px;line-height:1.6;">
-                Click the button below to choose your password and set up your PRISM login:
-              </p>
-              <table cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="background:#005f8c;border-radius:6px;">
-                    <a href="${setupUrl}"
-                       style="display:inline-block;padding:14px 36px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">
-                      Set Up My PRISM Login &rarr;
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:16px 0 0;color:#666;font-size:13px;line-height:1.6;">
-                This link works for 7 days. After that, just reply to this email and we'll send a new one.
-                You can also add PRISM to your phone: <a href="https://www.prismworkforce.online/install" style="color:#005f8c;">www.prismworkforce.online/install</a>
-              </p>` : `
-              <p style="margin:0;color:#333;font-size:14px;line-height:1.6;">
-                <strong>Staff copy.</strong> The PRISM login link was sent only to ${escapeHtml(loginEmail)}.
-              </p>`}
-            </td>
-          </tr>
-
           <!-- Standing information: same on every agreement, never on the staff form -->
           <tr>
-            <td style="padding:0 40px 32px;">
+            <td style="padding:32px 40px;">
               ${standingInfoHtml(unpaidBreakTimesheetNote(unpaidBreak))}
             </td>
           </tr>
@@ -346,13 +317,12 @@ export async function POST(request: Request) {
 </body>
 </html>`;
 
-    const setupUrl = await createSetPasswordUrl(loginEmail, SETUP_LINK_TTL_MS);
     const subject = `Your Subcontractor Agreement — ${companyName}`;
 
     const emailResult = await sendEmail({
       to: loginEmail,
       subject,
-      html: buildHtml(setupUrl),
+      html: buildHtml(),
       template: "supply-agreement-invite",
       replyTo: ONBOARDING_REPLY_TO,
     });
@@ -368,14 +338,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Records copy for the team — without the login link, which is personal.
+    // Records copy for the team.
     const staffCopyTo = ["helen@prlsitesolutions.co.uk"];
     const sessionEmail = session.user.email;
     if (sessionEmail && !staffCopyTo.includes(sessionEmail)) staffCopyTo.push(sessionEmail);
     const copyResult = await sendEmail({
       to: staffCopyTo,
       subject: `[Copy] ${subject}`,
-      html: buildHtml(null),
+      html: buildHtml(),
       template: "supply-agreement-invite-copy",
     });
     if (!copyResult.success) {
