@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search, Check } from "lucide-react";
 import { COMPLIANCE_TYPE_GROUPS } from "@/lib/compliance-types";
-import { ACCEPTED_INSTEAD } from "@/lib/requirement-match";
+import { ACCEPTED_INSTEAD, CSCS_LADDER } from "@/lib/requirement-match";
 
 /**
  * The family-level entry ("CSCS", "Right to Work") is met by ANY document in
@@ -12,6 +12,8 @@ import { ACCEPTED_INSTEAD } from "@/lib/requirement-match";
  * ticking the one family entry, not each passport.
  */
 function anyLabel(type: string, category: string): string | null {
+  const rung = (CSCS_LADDER as readonly string[]).indexOf(type);
+  if (rung >= 0 && rung < CSCS_LADDER.length - 1) return "or higher";
   if (type !== category) return null;
   const alt = ACCEPTED_INSTEAD[category];
   const extra = alt ? `, or ${[...alt.types.map((t) => t.replace(/ Card$/, "")), ...alt.categories].join(" / ")}` : "";

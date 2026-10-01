@@ -27,8 +27,28 @@ export const ACCEPTED_INSTEAD: Record<string, { categories: string[]; types: str
   CSCS: { categories: ["CPCS"], types: ["ECS Card", "JIB Card"] },
 };
 
+/**
+ * CSCS colours that rank, lowest first. A colour requirement is met by that
+ * card "or higher" (Paul, 2026-10-01): a Joiner required to hold Blue who has
+ * Gold or Black is not flagged. White (AQP/PQP), Red (trainee) and Yellow
+ * (visitor) aren't on the ladder and only ever meet themselves.
+ */
+export const CSCS_LADDER = [
+  "CSCS (Green) — Labourer",
+  "CSCS (Blue) — Skilled Worker",
+  "CSCS (Gold) — Advanced Craft / Supervisor",
+  "CSCS (Black) — Manager",
+] as const;
+
+function meetsOnLadder(requirementType: string, recordType: string): boolean {
+  const need = (CSCS_LADDER as readonly string[]).indexOf(requirementType);
+  const held = (CSCS_LADDER as readonly string[]).indexOf(recordType);
+  return need >= 0 && held >= need;
+}
+
 export function recordMatchesRequirement(requirementType: string, recordType: string): boolean {
   if (recordType === requirementType) return true;
+  if (meetsOnLadder(requirementType, recordType)) return true;
   if (!CATEGORY_NAMES.has(requirementType)) return false;
   const category = categoryForType(recordType);
   if (category === requirementType) return true;

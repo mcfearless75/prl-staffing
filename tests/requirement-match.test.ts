@@ -17,6 +17,7 @@ describe("a category requirement is met by any card in that category", () => {
 
   test("a specific requirement still needs that exact card", () => {
     assert.equal(recordMatchesRequirement("CSCS (Gold) — Advanced Craft / Supervisor", "CSCS (Green) — Labourer"), false);
+    assert.equal(recordMatchesRequirement("CSCS (Blue) — Skilled Worker", "CSCS (Green) — Labourer"), false);
   });
 
   test("other categories don't cross over", () => {
@@ -82,5 +83,32 @@ describe("CSCS partner schemes are accepted for a CSCS requirement", () => {
     assert.equal(recordMatchesRequirement("CSCS (Blue) — Skilled Worker", "ECS Card"), false);
     assert.equal(recordMatchesRequirement("CPCS", "CSCS (Blue) — Skilled Worker"), false);
     assert.equal(recordMatchesRequirement("ECS Card", "CSCS (Blue) — Skilled Worker"), false);
+  });
+});
+
+// Paul, 2026-10-01: a colour requirement is met by that card "or higher".
+describe("CSCS colours: that card or higher", () => {
+  const BLUE = "CSCS (Blue) — Skilled Worker";
+  test("Blue is met by Blue, Gold or Black", () => {
+    for (const held of [BLUE, "CSCS (Gold) — Advanced Craft / Supervisor", "CSCS (Black) — Manager"]) {
+      assert.ok(recordMatchesRequirement(BLUE, held), held);
+    }
+  });
+
+  test("but not by Green, or by cards off the ladder", () => {
+    for (const held of ["CSCS (Green) — Labourer", "CSCS (Red) — Trainee / Experienced Worker", "CSCS (Yellow) — Visitor", "CSCS (White) — AQP / PQP", "ECS Card"]) {
+      assert.equal(recordMatchesRequirement(BLUE, held), false, held);
+    }
+  });
+
+  test("Gold is met by Black, not Blue", () => {
+    assert.ok(recordMatchesRequirement("CSCS (Gold) — Advanced Craft / Supervisor", "CSCS (Black) — Manager"));
+    assert.equal(recordMatchesRequirement("CSCS (Gold) — Advanced Craft / Supervisor", BLUE), false);
+  });
+
+  test("every ladder name is a real document type, so it can't silently never match", async () => {
+    const { COMPLIANCE_TYPES } = await import("@/lib/compliance-types");
+    const { CSCS_LADDER } = await import("@/lib/requirement-match");
+    for (const c of CSCS_LADDER) assert.ok(COMPLIANCE_TYPES.includes(c), c);
   });
 });
