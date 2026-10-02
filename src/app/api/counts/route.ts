@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
+import { STILL_WORKING_FILTER } from "@/lib/contractor-statuses";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,11 @@ export async function GET() {
       prisma.timesheet.count({
         where: { status: { in: ["Submitted", "Draft"] } },
       }),
+      // Must equal "Records Needing Action (N)" on /compliance's landing view,
+      // so the badge is a number staff can actually find. It used to count
+      // leavers' old records and skip Expiring ones — matching nothing on the page.
       prisma.complianceRecord.count({
-        where: { status: { in: ["Pending", "Non-Compliant", "Expired"] } },
+        where: { status: { notIn: ["Verified"] }, contractor: STILL_WORKING_FILTER },
       }),
       prisma.invoice.count({
         where: { status: "Draft" },
