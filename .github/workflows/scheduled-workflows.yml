@@ -1,6 +1,7 @@
 name: PRISM Scheduled Workflows
 
-# Runs the PRISM workflow agents (compliance chase, welcome, stale applicant).
+# Runs the PRISM workflow agents (welcome, stale applicant, staff digest, etc.).
+# The contractor compliance chase is not among them — see /api/workflows/run.
 # These have always been built but had no trigger — /api/workflows/run was written
 # ready for a scheduler that was never wired up, so no automatic compliance expiry
 # alert had ever fired.
