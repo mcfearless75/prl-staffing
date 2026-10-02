@@ -1045,6 +1045,14 @@ model WorkflowLog {
   @@index([target])
 }
 
+// On/off switch per scheduled workflow, flipped from /workflows. No row = off.
+model WorkflowSetting {
+  workflow  String   @id // e.g. "compliance-chase"
+  enabled   Boolean  @default(false)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
 // ─── Auditor Users (external auditors) ───
 model AuditorUser {
   id           String    @id @default(cuid())

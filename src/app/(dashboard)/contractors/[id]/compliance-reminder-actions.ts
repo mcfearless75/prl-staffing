@@ -35,10 +35,15 @@ export async function sendComplianceReminderAction(contractorId: string): Promis
       "Sent Compliance Reminder",
       "Contractor",
       contractorId,
-      buildSentEmailRecord({ by: sentBy, note: `${result.docCount} document(s) listed`, ...result.email })
+      buildSentEmailRecord({
+        by: sentBy,
+        note: `${result.missingCount} missing, ${result.docCount} expiring/expired document(s) listed`,
+        ...result.email,
+      })
     );
     revalidatePath(`/contractors/${contractorId}`);
-    return { type: "ok", message: `Reminder sent (${result.docCount} document${result.docCount === 1 ? "" : "s"}).` };
+    const total = result.missingCount + result.docCount;
+    return { type: "ok", message: `Reminder sent (${total} document${total === 1 ? "" : "s"}).` };
   } catch (err) {
     console.error("[compliance-reminder] send failed:", err);
     return { type: "error", message: "Could not send the reminder. Please try again." };

@@ -3,12 +3,14 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/page-header";
 import { formatDate } from "@/lib/utils";
 import { WorkflowRunButton } from "./run-button";
+import { WorkflowToggle } from "./workflow-toggle";
 
 const WORKFLOWS = [
   {
     name: "compliance-chase",
     label: "Compliance Chase",
-    description: "Paused — no longer runs daily. Send reminders per person from the contractor profile",
+    description: "Emails contractors whose compliance docs expire within 30 days, every morning when switched on",
+    switchable: true,
     color: "orange",
   },
   {
@@ -61,6 +63,9 @@ export default async function WorkflowsPage() {
     lastRunMap[row.workflow] = row._max.createdAt;
   }
 
+  const settings = await prisma.workflowSetting.findMany();
+  const enabledMap: Record<string, boolean> = Object.fromEntries(settings.map((s) => [s.workflow, s.enabled]));
+
   // Recent log entries
   const recentLogs = await prisma.workflowLog.findMany({
     orderBy: { createdAt: "desc" },
@@ -89,6 +94,9 @@ export default async function WorkflowsPage() {
                   <p className={`text-sm font-semibold ${c.text}`}>{wf.label}</p>
                   <p className="mt-1 text-xs text-gray-500">{wf.description}</p>
                 </div>
+                {"switchable" in wf && wf.switchable && (
+                  <WorkflowToggle workflow={wf.name} enabled={enabledMap[wf.name] ?? false} />
+                )}
               </div>
               <div className="mt-4 flex items-center gap-4">
                 <div>

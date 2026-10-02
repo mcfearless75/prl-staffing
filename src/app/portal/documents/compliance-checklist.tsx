@@ -2,18 +2,12 @@ import { prisma } from "@/lib/db";
 import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { ComplianceUploader } from "../compliance/compliance-uploader";
-import { loadRequirementMatcher } from "@/lib/compliance-gaps";
+import { loadChecklistTypes } from "@/lib/compliance-gaps";
 import { categoryForType } from "@/lib/compliance-types";
-import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { bestRecordFor, recordMeetsSpec, requirementLabel, type RequirementSpec } from "@/lib/requirement-match";
 
-const ACTIVE_ASSIGNMENT_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
-
-/**
- * Shown only when no requirements are configured at all. Without a fallback the
- * portal would tell a contractor holding nothing that they need nothing.
- */
-const FALLBACK_TYPES = ["Right to Work", "CSCS"];
+// Moved to compliance-gaps so the staff reminder can use the same checklist.
+export { loadChecklistTypes };
 
 /** One emoji per document family, so the list stays scannable on a phone. */
 const CATEGORY_ICONS: Record<string, string> = {
@@ -34,34 +28,6 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Insurance & Legal": "🛡️",
   General: "📄",
 };
-
-/**
- * The document types configured for this contractor's role — the same list the
- * Gap Report chases them for — or the fallback when none are configured.
- */
-export async function loadChecklistTypes(
-  contractorId: string
-): Promise<{ type: string; alternatives: string[]; description: string | null; isMandatory: boolean }[]> {
-  const [contractor, matcher] = await Promise.all([
-    prisma.contractor.findUnique({
-      where: { id: contractorId },
-      select: {
-        jobTitle: true,
-        assignments: {
-          where: { status: { in: ACTIVE_ASSIGNMENT_STATUSES } },
-          select: { role: true, companyId: true },
-        },
-      },
-    }),
-    loadRequirementMatcher(),
-  ]);
-  const assignment =
-    contractor?.assignments.find((a) => a.role?.trim()) ?? contractor?.assignments[0];
-  const checklist = matcher.forRole(assignment?.role, contractor?.jobTitle, assignment?.companyId);
-  return checklist.length > 0
-    ? checklist.map((c) => ({ type: c.type, alternatives: c.alternatives, description: c.description ?? null, isMandatory: c.isMandatory }))
-    : FALLBACK_TYPES.map((type) => ({ type, alternatives: [] as string[], description: null, isMandatory: true }));
-}
 
 /**
  * The worker's required-documents checklist for their role, with an upload per

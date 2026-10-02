@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   chaseCutoff,
   docsToChase,
+  missingToChase,
   reminderBlockReason,
 } from "@/lib/compliance-reminder";
 
@@ -82,5 +83,39 @@ describe("reminderBlockReason", () => {
 
   test("blocks a second send the same day — the daily chase counts too", () => {
     assert.match(reminderBlockReason({ ...ok, alreadyChasedToday: true })!, /today/);
+  });
+});
+
+describe("missingToChase", () => {
+  const req = (type: string, isMandatory = true, alternatives: string[] = []) => ({ type, alternatives, isMandatory });
+
+  test("lists mandatory requirements nothing on file meets", () => {
+    const missing = missingToChase(
+      [req("Right to Work"), req("CSCS")],
+      [{ type: "Passport — UK or Ireland", status: "Verified" }]
+    );
+    assert.deepEqual(missing, ["CSCS"]);
+  });
+
+  test("a category requirement is met by a specific card in that family", () => {
+    assert.deepEqual(missingToChase([req("CSCS")], [{ type: "CSCS (Blue) — Skilled Worker", status: "Verified" }]), []);
+  });
+
+  test("an either/or requirement is met by any alternative and labelled with both", () => {
+    assert.deepEqual(missingToChase([req("NPORS", true, ["CPCS"])], [{ type: "CPCS", status: "Verified" }]), []);
+    assert.deepEqual(missingToChase([req("NPORS", true, ["CPCS"])], []), ["NPORS or CPCS"]);
+  });
+
+  test("optional requirements are never chased", () => {
+    assert.deepEqual(missingToChase([req("DBS", false)], []), []);
+  });
+
+  test("a pending upload counts as held; a rejected one does not", () => {
+    assert.deepEqual(missingToChase([req("CSCS")], [{ type: "CSCS", status: "Pending" }]), []);
+    assert.deepEqual(missingToChase([req("CSCS")], [{ type: "CSCS", status: "Non-Compliant" }]), ["CSCS"]);
+  });
+
+  test("expired documents are not reported as missing (the expiry list covers them)", () => {
+    assert.deepEqual(missingToChase([req("CSCS")], [{ type: "CSCS", status: "Expired" }]), []);
   });
 });
