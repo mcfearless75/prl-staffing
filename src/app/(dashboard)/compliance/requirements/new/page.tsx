@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { AlertTriangle } from "lucide-react";
 import { createRequirement } from "../actions";
 import { TypePicker } from "../type-picker";
-import { CANONICAL_ROLES, resolveRole } from "@/lib/role-normalisation";
+import { CANONICAL_ROLES, normaliseRole, resolveRole } from "@/lib/role-normalisation";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 
 const ACTIVE_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
@@ -44,16 +44,29 @@ export default async function NewRequirementPage({
   searchParams: Promise<{ role?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const [companies, usage] = await Promise.all([
+  const [companies, usage, jobRoles] = await Promise.all([
     prisma.company.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     getRoleUsage(),
+    prisma.jobRole.findMany({ where: { active: true }, select: { name: true } }),
   ]);
 
+  // The vocabulary is the built-in list PLUS whatever staff add on the Job
+  // Roles page, PLUS any role already in use — otherwise a role added there
+  // (e.g. "IT Commissioner", 2026-10-02) can't be given requirements here.
+  // Each name goes through normaliseRole so "Labourer Nights" collapses into
+  // "Labourer"; deduped case-insensitively, first spelling wins.
+  const allRoles = new Map<string, string>();
+  for (const name of [...CANONICAL_ROLES, ...jobRoles.map((j) => j.name), ...usage.counts.keys()]) {
+    const canonical = normaliseRole(name).canonical;
+    if (canonical && !allRoles.has(canonical.toLowerCase())) allRoles.set(canonical.toLowerCase(), canonical);
+  }
+  const roleList = [...allRoles.values()].sort((a, b) => a.localeCompare(b));
+
   // Roles in use first (with counts), then the rest of the vocabulary.
-  const inUse = CANONICAL_ROLES.filter((r) => usage.counts.has(r)).sort(
+  const inUse = roleList.filter((r) => usage.counts.has(r)).sort(
     (a, b) => (usage.counts.get(b) ?? 0) - (usage.counts.get(a) ?? 0)
   );
-  const notInUse = CANONICAL_ROLES.filter((r) => !usage.counts.has(r));
+  const notInUse = roleList.filter((r) => !usage.counts.has(r));
 
   return (
     <div className="space-y-6">
