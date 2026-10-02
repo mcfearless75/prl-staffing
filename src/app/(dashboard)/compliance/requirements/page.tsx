@@ -99,7 +99,7 @@ export default async function RequirementsPage() {
       />
 
       <p className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-900">
-        Off-site roles — {NON_SITE_ROLES.join(" and ")} — skip the &ldquo;All roles&rdquo; rules except Right to Work,
+        Off-site roles — {NON_SITE_ROLES.slice(0, -1).join(", ")} and {NON_SITE_ROLES[NON_SITE_ROLES.length - 1]} — skip the &ldquo;All roles&rdquo; rules except Right to Work,
         so they aren&apos;t asked for CSCS. Rules added for those roles themselves still apply.
       </p>
 

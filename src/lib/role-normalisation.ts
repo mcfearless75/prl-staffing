@@ -295,8 +295,17 @@ export function resolveRole(
  * Bookkeeper do not need a CSCS card etc to work". Right to Work still applies
  * to everyone - that is the law, not a site rule - and anything configured
  * for the role itself on Manage requirements still applies too.
+ * Paul, 2026-10-02: Warehouse Operative, Facilities, Quality Manager and H&S
+ * Advisor added, so the compliance reminder stops asking them for a CSCS.
  */
-export const NON_SITE_ROLES = ["Cleaner", "Bookkeeper"] as const;
+export const NON_SITE_ROLES = [
+  "Cleaner",
+  "Bookkeeper",
+  "Warehouse Operative",
+  "Facilities",
+  "Quality Manager",
+  "H&S Advisor",
+] as const;
 
 export function isNonSiteRole(resolved: ResolvedRole): boolean {
   const c = resolved.canonical?.toLowerCase();
