@@ -8,7 +8,7 @@ const WORKFLOWS = [
   {
     name: "compliance-chase",
     label: "Compliance Chase",
-    description: "Emails contractors whose compliance docs expire within 30 days",
+    description: "Paused — no longer runs daily. Send reminders per person from the contractor profile",
     color: "orange",
   },
   {

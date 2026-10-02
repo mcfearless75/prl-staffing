@@ -163,7 +163,8 @@ export async function checkComplianceReminder(contractorId: string): Promise<Rem
   });
   if (!contractor) return null;
   const docs = docsToChase(contractor.compliances);
-  const alreadyChasedToday = await alreadyActedToday(CHASE_WORKFLOW, contractorId, CHASE_ACTION);
+  // Only a delivered email counts: a failed send must not block the retry.
+  const alreadyChasedToday = await alreadyActedToday(CHASE_WORKFLOW, contractorId, CHASE_ACTION, "sent");
   return {
     docs,
     blockReason: reminderBlockReason({

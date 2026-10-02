@@ -26,16 +26,21 @@ export async function logAction(
   });
 }
 
-/** Check if we already ran a specific action for this target today */
+/**
+ * Check if we already ran a specific action for this target today.
+ * Pass `outcome` to count only that outcome (e.g. "sent", so a failed send
+ * doesn't block a retry).
+ */
 export async function alreadyActedToday(
   workflow: string,
   target: string,
-  action: string
+  action: string,
+  outcome?: "sent" | "skipped" | "failed" | "escalated"
 ): Promise<boolean> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const count = await prisma.workflowLog.count({
-    where: { workflow, target, action, createdAt: { gte: today } },
+    where: { workflow, target, action, createdAt: { gte: today }, ...(outcome ? { outcome } : {}) },
   });
   return count > 0;
 }

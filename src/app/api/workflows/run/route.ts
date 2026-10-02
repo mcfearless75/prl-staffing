@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireStaff } from "@/lib/require-staff";
 import { runAllWorkflows } from "@/lib/workflows/engine";
-import { complianceChaseAgent } from "@/lib/workflows/compliance-chase";
 import { complianceDigestAgent } from "@/lib/workflows/compliance-digest";
 import { welcomeAgent } from "@/lib/workflows/welcome-agent";
 import { staleApplicantAgent } from "@/lib/workflows/stale-applicant";
@@ -23,7 +22,11 @@ const agents = [
   leavingDateAgent,
   // After leavers are made Inactive, so a leaver's retention clock is current.
   declarationRetentionAgent,
-  complianceChaseAgent,
+  // complianceChaseAgent is deliberately NOT here. The office chases documents
+  // person by person from the contractor profile ("Send Compliance Reminder");
+  // the automatic 07:15 send used the same once-a-day slot, so staff found the
+  // button blocked by an email they never sent. The staff digest below still
+  // flags expiring documents to the office every morning.
   complianceDigestAgent,
   welcomeAgent,
   staleApplicantAgent,
