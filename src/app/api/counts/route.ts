@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { STILL_WORKING_FILTER } from "@/lib/contractor-statuses";
+import { syncComplianceStatuses } from "@/lib/compliance-sync";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,12 @@ export async function GET() {
   if (!guard.ok) return NextResponse.json({ error: "Unauthorized" }, { status: guard.reason === "forbidden" ? 403 : 401 });
 
   try {
+    // Expiry statuses are only rolled forward when something calls this, so do
+    // it here too — otherwise the badge goes stale until someone opens the
+    // Dashboard or /compliance after a document's date passes. A failed sync
+    // must not blank every other badge, so it can't throw into the catch below.
+    await syncComplianceStatuses().catch(() => {});
+
     const [pendingTimesheets, complianceAlerts, draftInvoices, pendingOnboarding, pendingApplicants, openQueries, openGrievances, newStarters, newCallEnquiries] = await Promise.all([
       prisma.timesheet.count({
         where: { status: { in: ["Submitted", "Draft"] } },
