@@ -1,7 +1,7 @@
 import { sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/db";
 import { isPlaceholderEmail } from "@/lib/placeholder-email";
-import { logAction, alreadyActedToday } from "./engine";
+import { logAction, alreadyActedToday, isWorkflowEnabled } from "./engine";
 import type { WorkflowResult } from "./engine";
 import {
   CHASE_ACTION,
@@ -9,11 +9,13 @@ import {
   CHASE_WORKFLOW,
   chaseCutoff,
   docsToChase,
+  missingToChase,
   reminderBlockReason,
 } from "@/lib/compliance-reminder";
 import { greetingName } from "@/lib/contractor-name";
 import { STILL_WORKING_FILTER } from "@/lib/contractor-statuses";
 import type { ComposedEmail } from "@/lib/sent-email-record";
+import { loadChecklistTypes } from "@/lib/compliance-gaps";
 
 const PORTAL_URL = "https://www.prismworkforce.online";
 const CHASE_SUBJECT = "Action Required: Compliance Documents Need Attention — PRL Site Solutions";
@@ -30,8 +32,17 @@ function urgencyLabel(expiryDate: Date): { label: string; daysOut: number } {
   return { label: "expires in " + daysOut + " days", daysOut };
 }
 
-export function buildComplianceChaseEmail(firstName: string, docs: Array<{ type: string; expiryDate: Date }>): string {
-  const rows = docs.map((d) => {
+export function buildComplianceChaseEmail(
+  firstName: string,
+  docs: Array<{ type: string; expiryDate: Date }>,
+  missing: string[] = []
+): string {
+  const missingRows = missing.map((type) => `<tr>
+      <td style="padding:10px 14px;border-bottom:1px solid #E5E7EB;color:#374151;">${type}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #E5E7EB;color:#374151;">—</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #E5E7EB;color:#DC2626;font-weight:600;">NOT ON FILE — please upload</td>
+    </tr>`).join("");
+  const rows = missingRows + docs.map((d) => {
     const { label, daysOut } = urgencyLabel(d.expiryDate);
     const color = daysOut < 0 ? "#DC2626" : daysOut <= 7 ? "#D97706" : "#374151";
     return `<tr>
@@ -83,6 +94,13 @@ export const complianceChaseAgent = {
   name: "compliance-chase",
   async run(): Promise<WorkflowResult> {
     const result: WorkflowResult = { workflow: "compliance-chase", acted: 0, skipped: 0, failed: 0, log: [] };
+
+    // Switched on/off at /workflows. Off by default: the office chases person
+    // by person from the contractor profile.
+    if (!(await isWorkflowEnabled(CHASE_WORKFLOW))) {
+      result.log.push("Automatic compliance chase is switched off.");
+      return result;
+    }
 
     const expiring = await prisma.complianceRecord.findMany({
       where: {
@@ -147,6 +165,8 @@ export const complianceChaseAgent = {
 
 export type ReminderCheck = {
   docs: Array<{ type: string; expiryDate: Date }>;
+  /** Mandatory documents for their role with nothing on file. */
+  missing: string[];
   blockReason: string | null;
 };
 
@@ -163,15 +183,31 @@ export async function checkComplianceReminder(contractorId: string): Promise<Rem
   });
   if (!contractor) return null;
   const docs = docsToChase(contractor.compliances);
-  // Only a delivered email counts: a failed send must not block the retry.
-  const alreadyChasedToday = await alreadyActedToday(CHASE_WORKFLOW, contractorId, CHASE_ACTION, "sent");
+  const missing = missingToChase(await loadChecklistTypes(contractorId), contractor.compliances);
+  // Only a delivered MANUAL email counts. A failed send must not block the
+  // retry, and the automatic morning send must not stop staff chasing someone
+  // they are working through (the reason the button was first reported broken).
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const alreadyChasedToday =
+    (await prisma.workflowLog.count({
+      where: {
+        workflow: CHASE_WORKFLOW,
+        action: CHASE_ACTION,
+        target: contractorId,
+        outcome: "sent",
+        detail: { startsWith: "manual by" },
+        createdAt: { gte: startOfToday },
+      },
+    })) > 0;
   return {
     docs,
+    missing,
     blockReason: reminderBlockReason({
       status: contractor.status,
       email: contractor.email,
       emailBounced: contractor.emailBounced,
-      docCount: docs.length,
+      docCount: docs.length + missing.length,
       alreadyChasedToday,
     }),
   };
@@ -200,7 +236,7 @@ export async function composeComplianceReminder(
     email: {
       to: contractor.email,
       subject: CHASE_SUBJECT,
-      html: buildComplianceChaseEmail(greetingName(contractor), check.docs),
+      html: buildComplianceChaseEmail(greetingName(contractor), check.docs, check.missing),
     },
   };
 }
@@ -208,7 +244,7 @@ export async function composeComplianceReminder(
 export async function sendComplianceReminder(
   contractorId: string,
   sentBy: string
-): Promise<{ ok: true; docCount: number; email: ComposedEmail } | { ok: false; error: string }> {
+): Promise<{ ok: true; docCount: number; missingCount: number; email: ComposedEmail } | { ok: false; error: string }> {
   const check = await composeComplianceReminder(contractorId);
   if (!check) return { ok: false, error: "Contractor not found" };
   if (check.blockReason) return { ok: false, error: check.blockReason };
@@ -225,7 +261,7 @@ export async function sendComplianceReminder(
     CHASE_ACTION,
     "sent",
     contractorId,
-    `manual by ${sentBy} — ${check.docs.length} doc(s): ${check.docs.map((d) => d.type).join(", ")}`
+    `manual by ${sentBy} — ${check.docs.length + check.missing.length} doc(s): ${[...check.missing, ...check.docs.map((d) => d.type)].join(", ")}`
   );
-  return { ok: true, docCount: check.docs.length, email };
+  return { ok: true, docCount: check.docs.length, missingCount: check.missing.length, email };
 }

@@ -307,7 +307,7 @@ export default async function ContractorDetailPage({
               <ComplianceReminderButton
                 contractorId={contractor.id}
                 blockReason={reminder.blockReason}
-                docTypes={reminder.docs.map((d) => d.type)}
+                docTypes={[...reminder.missing, ...reminder.docs.map((d) => d.type)]}
               />
             )}
             <DeleteContractorButton contractorId={contractor.id} />

@@ -57,6 +57,12 @@ export async function everActed(
   return count > 0;
 }
 
+/** Is this workflow switched on at /workflows? No setting saved = off. */
+export async function isWorkflowEnabled(workflow: string): Promise<boolean> {
+  const setting = await prisma.workflowSetting.findUnique({ where: { workflow } });
+  return setting?.enabled ?? false;
+}
+
 /** Run all registered workflow agents and return aggregated results */
 export async function runAllWorkflows(agents: WorkflowAgent[]) {
   const results: WorkflowResult[] = [];

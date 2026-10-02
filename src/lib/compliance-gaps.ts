@@ -228,3 +228,38 @@ export async function getRequiredTypesForRole(
   const matcher = await loadRequirementMatcher();
   return matcher.forRole(role, jobTitle, companyId);
 }
+
+/**
+ * Shown only when no requirements are configured at all. Without a fallback the
+ * portal would tell a contractor holding nothing that they need nothing.
+ */
+const FALLBACK_TYPES = ["Right to Work", "CSCS"];
+
+/**
+ * The document types configured for this contractor's role — the list the
+ * portal shows them and the compliance reminder chases them for — or the
+ * fallback when none are configured.
+ */
+export async function loadChecklistTypes(
+  contractorId: string
+): Promise<{ type: string; alternatives: string[]; description: string | null; isMandatory: boolean }[]> {
+  const [contractor, matcher] = await Promise.all([
+    prisma.contractor.findUnique({
+      where: { id: contractorId },
+      select: {
+        jobTitle: true,
+        assignments: {
+          where: { status: { in: ACTIVE_STATUSES } },
+          select: { role: true, companyId: true },
+        },
+      },
+    }),
+    loadRequirementMatcher(),
+  ]);
+  const assignment =
+    contractor?.assignments.find((a) => a.role?.trim()) ?? contractor?.assignments[0];
+  const checklist = matcher.forRole(assignment?.role, contractor?.jobTitle, assignment?.companyId);
+  return checklist.length > 0
+    ? checklist.map((c) => ({ type: c.type, alternatives: c.alternatives, description: c.description ?? null, isMandatory: c.isMandatory }))
+    : FALLBACK_TYPES.map((type) => ({ type, alternatives: [] as string[], description: null, isMandatory: true }));
+}
