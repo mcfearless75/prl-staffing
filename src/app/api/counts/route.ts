@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
-import { STILL_WORKING_FILTER } from "@/lib/contractor-statuses";
+import { WORKFORCE_FILTER } from "@/lib/contractor-statuses";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
 import { NextResponse } from "next/server";
+import { countUnreadWorkerReplies } from "@/lib/contractor-messages-server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export async function GET() {
     // must not blank every other badge, so it can't throw into the catch below.
     await syncComplianceStatuses().catch(() => {});
 
-    const [pendingTimesheets, complianceAlerts, draftInvoices, pendingOnboarding, pendingApplicants, openQueries, openGrievances, newStarters, newCallEnquiries] = await Promise.all([
+    const [pendingTimesheets, complianceAlerts, draftInvoices, pendingOnboarding, pendingApplicants, openQueries, openGrievances, newStarterChecklists, newCallEnquiries, openPlacements, unreadMessages] = await Promise.all([
       prisma.timesheet.count({
         where: { status: { in: ["Submitted", "Draft"] } },
       }),
@@ -25,7 +26,7 @@ export async function GET() {
       // so the badge is a number staff can actually find. It used to count
       // leavers' old records and skip Expiring ones — matching nothing on the page.
       prisma.complianceRecord.count({
-        where: { status: { notIn: ["Verified"] }, contractor: STILL_WORKING_FILTER },
+        where: { status: { notIn: ["Verified"] }, contractor: WORKFORCE_FILTER },
       }),
       prisma.invoice.count({
         where: { status: "Draft" },
@@ -48,7 +49,14 @@ export async function GET() {
       prisma.callEnquiry.count({
         where: { status: "New" },
       }),
+      // New Starter pipeline: people lined up but not yet started.
+      prisma.newStarterPlacement.count({
+        where: { completedAt: null, cancelledAt: null },
+      }),
+      countUnreadWorkerReplies(),
     ]);
+    // The New Starters page has both tabs: the pipeline and HMRC checklists.
+    const newStarters = newStarterChecklists + openPlacements;
 
     return NextResponse.json({
       pendingTimesheets,
@@ -60,8 +68,9 @@ export async function GET() {
       openGrievances,
       newStarters,
       newCallEnquiries,
+      unreadMessages,
     });
   } catch {
-    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0 });
+    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0 });
   }
 }

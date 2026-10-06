@@ -30,6 +30,8 @@ import {
   Phone,
   ChevronDown,
   MonitorDot,
+  Inbox,
+  UserCog,
 } from "lucide-react";
 import { canViewSessions } from "@/lib/session-monitor";
 
@@ -56,6 +58,7 @@ const navigationSections = [
     title: "Workforce",
     items: [
       { name: "Subcontractors", href: "/contractors", icon: Users, badgeKey: null },
+      { name: "Messages", href: "/messages", icon: Inbox, badgeKey: "unreadMessages" as const },
       { name: "Clients", href: "/companies", icon: Building2, badgeKey: null },
     ],
   },
@@ -113,6 +116,7 @@ type Counts = {
   openGrievances: number;
   newStarters: number;
   newCallEnquiries: number;
+  unreadMessages: number;
 };
 
 const COLLAPSE_STORAGE_KEY = "prism-sidebar-collapsed-sections";
@@ -121,7 +125,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
-  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0 });
+  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0 });
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   // Restore collapsed sections from localStorage on mount
@@ -278,6 +282,18 @@ export function Sidebar() {
             Sessions
           </Link>
         )}
+        <Link
+          href="/settings/my-details"
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 lg:py-2 text-sm font-medium transition-colors",
+            pathname.startsWith("/settings/my-details")
+              ? "bg-white/10 text-prism-paper"
+              : "text-white/60 hover:bg-white/5 hover:text-prism-paper"
+          )}
+        >
+          <UserCog className="h-5 w-5" />
+          My details
+        </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 lg:py-2 text-sm font-medium text-white/60 hover:bg-white/5 hover:text-prism-paper transition-colors"
