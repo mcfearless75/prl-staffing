@@ -28,6 +28,7 @@ export const TAB_LABELS = [
   "Application",
   "Activity",
   "Notes",
+  "Messages",
 ] as const;
 
 export type TabLabel = (typeof TAB_LABELS)[number];

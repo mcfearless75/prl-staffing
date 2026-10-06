@@ -6,10 +6,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { StatusBadge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
-import { ShieldCheck, FileUp, User, Plus, ChevronRight, Smartphone, MessageSquare } from "lucide-react";
+import { ShieldCheck, FileUp, User, Plus, ChevronRight, Smartphone, MessageSquare, MessageCircle } from "lucide-react";
 import { portalFeatureEnabled } from "@/lib/portal-features";
 import { greetingName } from "@/lib/contractor-name";
 import { ProfileBanner } from "./profile-banner";
+import { countUnreadForWorker } from "@/lib/contractor-messages-server";
 
 export default async function PortalDashboard() {
   const session = await auth();
@@ -36,6 +37,8 @@ export default async function PortalDashboard() {
   });
 
   if (!contractor) redirect("/login");
+
+  const unreadMessages = await countUnreadForWorker(contractorId);
 
   // Timesheets are a hidden future feature (portal-features.ts).
   const showTimesheets = portalFeatureEnabled("timesheets");
@@ -106,6 +109,30 @@ export default async function PortalDashboard() {
 
       {/* Quick Action Buttons */}
       <div className="grid grid-cols-2 gap-3">
+        {/* In-app messages from PRL — full width so a new one can't be missed. */}
+        <Link
+          href="/portal/messages"
+          className={`col-span-2 flex items-center gap-3 rounded-xl border-2 p-4 transition-colors ${
+            unreadMessages > 0 ? "border-blue-400 bg-blue-50 hover:bg-blue-100" : "border-blue-200 bg-blue-50/60 hover:bg-blue-100"
+          }`}
+        >
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+            <MessageCircle className="h-5 w-5" />
+            {unreadMessages > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                {unreadMessages}
+              </span>
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-blue-900">Messages</p>
+            <p className="text-[10px] text-blue-700">
+              {unreadMessages > 0
+                ? `${unreadMessages} new ${unreadMessages === 1 ? "message" : "messages"} from PRL`
+                : "Messages from PRL"}
+            </p>
+          </div>
+        </Link>
         {showTimesheets && (
         <Link
           href="/portal/timesheets/new"

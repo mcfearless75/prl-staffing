@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/page-header";
 import { formatDate, getInitials } from "@/lib/utils";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { addDaysToKey, londonDayBounds, londonDayKey, parseDayKey } from "@/lib/london-day";
+import { MESSAGE_TO_WORKER } from "@/lib/contractor-messages";
+import { MessageInAppButton } from "./message-in-app-button";
 
 const PRL_PHONE = "0800 772 3959";
 
@@ -54,12 +56,38 @@ export default async function TodaysStartersPage({
       location: true,
       startDate: true,
       contractor: {
-        select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          contractorLogin: { select: { id: true } },
+        },
       },
       company: { select: { name: true } },
       site: { select: { name: true } },
     },
   });
+
+  // "Messaged ✓" means a PRL message went to them TODAY (London), whichever
+  // day is being viewed — it's a same-day check-in.
+  const today = londonDayBounds(todayKey);
+  const messagedToday = new Set(
+    assignments.length
+      ? (
+          await prisma.contractorMessage.findMany({
+            where: {
+              contractorId: { in: [...new Set(assignments.map((a) => a.contractor.id))] },
+              direction: MESSAGE_TO_WORKER,
+              createdAt: { gte: today.start, lt: today.end },
+            },
+            select: { contractorId: true },
+            distinct: ["contractorId"],
+          })
+        ).map((m) => m.contractorId)
+      : []
+  );
 
   const peopleCount = new Set(assignments.map((a) => a.contractor.id)).size;
   const dayLabel = isToday ? "today" : describeDay(dayKey);
@@ -158,16 +186,24 @@ export default async function TodaysStartersPage({
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{a.role || "—"}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{formatDate(a.startDate)}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-right">
-                      {c.email ? (
-                        <a
-                          href={checkInHref(c.email, c.firstName, siteName || "your site")}
-                          className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
-                        >
-                          Check in
-                        </a>
-                      ) : (
-                        <span className="text-xs text-gray-400">No email</span>
-                      )}
+                      <span className="inline-flex items-center justify-end gap-2">
+                        {c.email ? (
+                          <a
+                            href={checkInHref(c.email, c.firstName, siteName || "your site")}
+                            className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                          >
+                            Check in
+                          </a>
+                        ) : (
+                          <span className="text-xs text-gray-400">No email</span>
+                        )}
+                        <MessageInAppButton
+                          assignmentId={a.id}
+                          firstName={c.firstName}
+                          alreadySent={messagedToday.has(c.id)}
+                          hasAppLogin={!!c.contractorLogin}
+                        />
+                      </span>
                     </td>
                   </tr>
                 );

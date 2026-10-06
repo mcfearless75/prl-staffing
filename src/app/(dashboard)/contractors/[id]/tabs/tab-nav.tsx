@@ -7,12 +7,15 @@ export function TabNav({
   compsCertsCount,
   activityCount,
   notesCount,
+  unreadMessages,
 }: {
   contractorId: string;
   activeTab: TabLabel;
   compsCertsCount?: number;
   activityCount?: number;
   notesCount?: number;
+  /** Worker replies not yet opened — shown as a blue pill, not a grey count. */
+  unreadMessages?: number;
 }) {
   return (
     <div className="border-b border-gray-200">
@@ -41,6 +44,11 @@ export function TabNav({
               {label}
               {badgeCount !== undefined && (
                 <span className="ml-1.5 text-xs text-gray-400">({badgeCount})</span>
+              )}
+              {label === "Messages" && !!unreadMessages && (
+                <span className="ml-1.5 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {unreadMessages} new
+                </span>
               )}
             </Link>
           );

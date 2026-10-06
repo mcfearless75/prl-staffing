@@ -29,8 +29,12 @@ import { CompsCertsTab } from "./tabs/comps-certs-tab";
 import { effectiveKnownAs } from "@/lib/contractor-name";
 import { AssignmentsTab } from "./tabs/assignments-tab";
 import { ApplicationTab } from "./tabs/application-tab";
+import { WaiverReferencesCard } from "./waiver-references-card";
 import { ActivityTab } from "./tabs/activity-tab";
 import { NotesTab } from "./tabs/notes-tab";
+import { MessagesTab } from "./tabs/messages-tab";
+import { loadThread, markThreadRead } from "@/lib/contractor-messages-server";
+import { countUnread, MESSAGE_FROM_WORKER } from "@/lib/contractor-messages";
 import { isTabLabel, type TabLabel } from "./tabs/types";
 
 export default async function ContractorDetailPage({
@@ -126,6 +130,14 @@ export default async function ContractorDetailPage({
         : lastJob
           ? "from their last job"
           : null;
+
+  // Messages: unread is counted BEFORE opening the tab marks them read, so the
+  // "New" highlight shows on this render and is gone on the next.
+  const thread = activeTab === "Messages" ? await loadThread(id) : null;
+  const unreadMessages = thread
+    ? countUnread(thread, "staff")
+    : await prisma.contractorMessage.count({ where: { contractorId: id, direction: MESSAGE_FROM_WORKER, readAt: null } });
+  if (thread && unreadMessages > 0) await markThreadRead(id, "staff");
 
   const offerAgreement = tabParams.agreementPrompt === "1" && (await shouldPromptAgreement(id));
 
@@ -354,6 +366,7 @@ export default async function ContractorDetailPage({
         compsCertsCount={complianceRecords.length > 0 ? complianceRecords.length : undefined}
         activityCount={activityLogs.length > 0 ? activityLogs.length : undefined}
         notesCount={contractor.noteEntries.length > 0 ? contractor.noteEntries.length : undefined}
+        unreadMessages={activeTab === "Messages" ? undefined : unreadMessages}
       />
 
       {activeTab === "Overview" && (
@@ -397,10 +410,19 @@ export default async function ContractorDetailPage({
           projects={projects}
         />
       )}
-      {activeTab === "Application" && <ApplicationTab notes={contractor.notes} />}
+      {activeTab === "Application" && (
+        <div className="space-y-6">
+          {/* 48-hour waiver + references now come from the app, not /apply */}
+          <WaiverReferencesCard contractorId={contractor.id} />
+          <ApplicationTab notes={contractor.notes} />
+        </div>
+      )}
       {activeTab === "Activity" && <ActivityTab activityLogs={activityLogs} />}
       {activeTab === "Notes" && (
         <NotesTab contractorId={contractor.id} notes={contractor.noteEntries} />
+      )}
+      {activeTab === "Messages" && thread && (
+        <MessagesTab contractorId={contractor.id} messages={thread} hasAppLogin={hasPortalAccount} />
       )}
     </div>
   );
