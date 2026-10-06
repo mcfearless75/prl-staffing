@@ -16,6 +16,13 @@ export interface GraphSendResult {
   error?: string;
 }
 
+/** A file sent with the message. Graph wants the bytes base64-encoded. */
+export interface GraphAttachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
+
 export interface GraphConfig {
   tenantId: string;
   clientId: string;
@@ -106,6 +113,8 @@ export async function sendViaGraph(
     html: string;
     replyTo?: string | string[];
     from?: string;
+    cc?: string[];
+    attachments?: GraphAttachment[];
   }
 ): Promise<GraphSendResult> {
   try {
@@ -122,6 +131,21 @@ export async function sendViaGraph(
       message.from = {
         emailAddress: { address: config.sender, name: displayName },
       };
+    }
+
+    if (opts.cc && opts.cc.length > 0) {
+      message.ccRecipients = opts.cc.map((address) => ({ emailAddress: { address } }));
+    }
+
+    // Inline fileAttachment on sendMail is limited to ~3 MB per request; the
+    // reports sent this way are a few tens of KB.
+    if (opts.attachments && opts.attachments.length > 0) {
+      message.attachments = opts.attachments.map((a) => ({
+        "@odata.type": "#microsoft.graph.fileAttachment",
+        name: a.filename,
+        contentType: a.contentType,
+        contentBytes: a.content.toString("base64"),
+      }));
     }
 
     const replyTo = opts.replyTo === undefined ? [] : [opts.replyTo].flat();

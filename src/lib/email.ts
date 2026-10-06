@@ -1,9 +1,12 @@
 import { Resend } from "resend";
 import { prisma } from "@/lib/db";
-import { getGraphConfig, sendViaGraph } from "@/lib/email-graph";
+import { getGraphConfig, sendViaGraph, type GraphAttachment } from "@/lib/email-graph";
 import { isPlaceholderEmail } from "@/lib/placeholder-email";
 
 export const DEFAULT_EMAIL_FROM = "PRL Site Solutions <prism@prlsitesolutions.co.uk>";
+
+/** A file attached to an outbound email. Supported on both transports. */
+export type EmailAttachment = GraphAttachment;
 
 export interface SendEmailResult {
   success: boolean;
@@ -132,6 +135,9 @@ export async function sendEmail(opts: {
   template?: string;
   replyTo?: string | string[];
   text?: string;
+  /** Copied in; placeholder addresses are dropped as for `to`. */
+  cc?: string | string[];
+  attachments?: EmailAttachment[];
 }): Promise<SendEmailResult> {
   const requested = Array.isArray(opts.to) ? opts.to : [opts.to];
   // Invented import addresses can never be delivered; sending to them only
@@ -143,6 +149,10 @@ export async function sendEmail(opts: {
     return { success: false, error };
   }
   const toLabel = recipients.join(", ");
+  const cc = (opts.cc === undefined ? [] : [opts.cc].flat()).filter(
+    (r) => r && !isPlaceholderEmail(r) && !recipients.includes(r)
+  );
+  const attachments = opts.attachments ?? [];
 
   const graphConfig = getGraphConfig();
   if (graphConfig) {
@@ -152,6 +162,8 @@ export async function sendEmail(opts: {
       html: opts.html,
       replyTo: opts.replyTo,
       from: getEmailFrom(),
+      ...(cc.length > 0 ? { cc } : {}),
+      ...(attachments.length > 0 ? { attachments } : {}),
     });
 
     if (!result.success) {
@@ -193,6 +205,16 @@ export async function sendEmail(opts: {
       html: opts.html,
       ...(opts.text ? { text: opts.text } : {}),
       ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
+      ...(cc.length > 0 ? { cc } : {}),
+      ...(attachments.length > 0
+        ? {
+            attachments: attachments.map((a) => ({
+              filename: a.filename,
+              content: a.content,
+              contentType: a.contentType,
+            })),
+          }
+        : {}),
     });
 
     if (error) {

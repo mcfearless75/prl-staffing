@@ -15,6 +15,7 @@ import {
   Users2,
   FileStack,
   PhoneOff,
+  UserPlus,
 } from "lucide-react";
 import { getRedeploymentReport } from "@/app/api/reports/_lib/redeployment";
 import { getReconciliationReport } from "@/app/api/reports/_lib/reconciliation";
@@ -138,6 +139,15 @@ export default async function ReportsHubPage() {
       iconBg: "bg-red-100",
       count: emergencyContactRows.length,
       countLabel: "people missing a contact",
+    },
+    {
+      title: "New Starter Report",
+      description: "Everyone starting in a date range, with NI numbers, for the payroll provider. View, download CSV/PDF or email the PDF.",
+      href: "/reports/new-starters",
+      actionLabel: "Open",
+      icon: UserPlus,
+      color: "bg-sky-50 text-sky-600 border-sky-200",
+      iconBg: "bg-sky-100",
     },
     {
       title: "QMS Reports",
