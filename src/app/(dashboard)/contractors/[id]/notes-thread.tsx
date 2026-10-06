@@ -1,12 +1,21 @@
 "use client";
 
-import { useActionState, useMemo } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 import type { ContractorNote } from "@prisma/client";
-import { addContractorNote, deleteContractorNote, toggleNotePin } from "./notes-actions";
+import { addContractorNote, deleteContractorNote, toggleNotePin, type NoteActionResult } from "./notes-actions";
+import {
+  activeMentionQuery,
+  mentionHandle,
+  segmentMentions,
+  suggestMentions,
+  type MentionableUser,
+} from "@/lib/note-mentions";
 
 interface NotesThreadProps {
   contractorId: string;
   notes: ContractorNote[];
+  /** Staff users, for @mention autocomplete and highlighting. */
+  staff?: MentionableUser[];
 }
 
 function formatNoteTimestamp(date: Date | string) {
@@ -16,7 +25,7 @@ function formatNoteTimestamp(date: Date | string) {
   }).format(new Date(date));
 }
 
-export function NotesThread({ contractorId, notes }: NotesThreadProps) {
+export function NotesThread({ contractorId, notes, staff = [] }: NotesThreadProps) {
   const sortedNotes = useMemo(() => {
     const pinned = notes
       .filter((n) => n.isPinned)
@@ -27,8 +36,61 @@ export function NotesThread({ contractorId, notes }: NotesThreadProps) {
     return [...pinned, ...unpinned];
   }, [notes]);
 
-  const addAction = addContractorNote.bind(null, contractorId);
-  const [addState, addFormAction, addPending] = useActionState(addAction, null);
+  const [body, setBody] = useState("");
+  const [query, setQuery] = useState<string | null>(null);
+  const [highlight, setHighlight] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const [addState, addFormAction, addPending] = useActionState(
+    async (prev: NoteActionResult, formData: FormData) => {
+      const result = await addContractorNote(contractorId, prev, formData);
+      if (result?.type === "ok") {
+        setBody("");
+        setQuery(null);
+      }
+      return result;
+    },
+    null
+  );
+
+  const suggestions = query === null ? [] : suggestMentions(query, staff);
+
+  function updateQuery(value: string, caret: number) {
+    setQuery(activeMentionQuery(value.slice(0, caret)));
+    setHighlight(0);
+  }
+
+  function pick(user: MentionableUser) {
+    const el = textareaRef.current;
+    const caret = el?.selectionStart ?? body.length;
+    const before = body.slice(0, caret).replace(/@[A-Za-z0-9._'-]*$/, "");
+    const inserted = `@${mentionHandle(user, staff)} `;
+    const next = before + inserted + body.slice(caret);
+    setBody(next);
+    setQuery(null);
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      const pos = before.length + inserted.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (suggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlight((h) => (h + 1) % suggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlight((h) => (h - 1 + suggestions.length) % suggestions.length);
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      pick(suggestions[Math.min(highlight, suggestions.length - 1)]);
+    } else if (e.key === "Escape") {
+      setQuery(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -39,16 +101,59 @@ export function NotesThread({ contractorId, notes }: NotesThreadProps) {
       </div>
 
       <form action={addFormAction} className="space-y-2">
-        <textarea
-          name="body"
-          rows={3}
-          required
-          placeholder="Add a note for this contractor..."
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        />
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            name="body"
+            rows={3}
+            required
+            value={body}
+            onChange={(e) => {
+              setBody(e.target.value);
+              updateQuery(e.target.value, e.target.selectionStart ?? e.target.value.length);
+            }}
+            onKeyDown={onKeyDown}
+            onClick={(e) => updateQuery(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)}
+            onBlur={() => setQuery(null)}
+            placeholder="Add a note for this contractor..."
+            aria-autocomplete="list"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          {suggestions.length > 0 && (
+            <ul
+              role="listbox"
+              className="absolute left-0 z-20 mt-1 max-h-56 w-72 overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+            >
+              {suggestions.map((u, i) => (
+                <li
+                  key={u.id}
+                  role="option"
+                  aria-selected={i === highlight}
+                  // mousedown, not click: click fires after the textarea's blur closes the list
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    pick(u);
+                  }}
+                  className={`cursor-pointer px-3 py-1.5 text-sm ${
+                    i === highlight ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <span className="font-medium">{u.name}</span>{" "}
+                  <span className="text-xs text-gray-400">@{mentionHandle(u, staff)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <p className="text-xs text-gray-400">Type @name to notify a colleague by email.</p>
         <div className="flex items-center justify-between gap-2">
           {addState?.type === "error" ? (
             <span className="text-xs text-red-600">{addState.message}</span>
+          ) : addState?.type === "ok" ? (
+            <span className="text-xs">
+              <span className="text-emerald-700">{addState.message}</span>
+              {addState.notice && <span className="ml-1 text-amber-700">{addState.notice}</span>}
+            </span>
           ) : (
             <span />
           )}
@@ -69,7 +174,7 @@ export function NotesThread({ contractorId, notes }: NotesThreadProps) {
       ) : (
         <ul className="space-y-3">
           {sortedNotes.map((note) => (
-            <NoteRow key={note.id} note={note} />
+            <NoteRow key={note.id} note={note} staff={staff} />
           ))}
         </ul>
       )}
@@ -77,7 +182,7 @@ export function NotesThread({ contractorId, notes }: NotesThreadProps) {
   );
 }
 
-function NoteRow({ note }: { note: ContractorNote }) {
+function NoteRow({ note, staff }: { note: ContractorNote; staff: MentionableUser[] }) {
   const deleteAction = deleteContractorNote.bind(null, note.id);
   const pinAction = toggleNotePin.bind(null, note.id);
   const [, deleteFormAction, deletePending] = useActionState(
@@ -131,7 +236,21 @@ function NoteRow({ note }: { note: ContractorNote }) {
           </form>
         </div>
       </div>
-      <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{note.body}</p>
+      <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">
+        {segmentMentions(note.body, staff).map((seg, i) =>
+          seg.kind === "mention" ? (
+            <span
+              key={i}
+              title={seg.user.name}
+              className="rounded bg-indigo-50 px-0.5 font-medium text-indigo-700"
+            >
+              {seg.text}
+            </span>
+          ) : (
+            <span key={i}>{seg.text}</span>
+          )
+        )}
+      </p>
     </li>
   );
 }

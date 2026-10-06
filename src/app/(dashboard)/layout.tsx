@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/sidebar";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { HelpButton } from "@/components/help-button";
 import { SessionHeartbeat } from "@/components/session-heartbeat";
+import { NotificationBell } from "@/components/notification-bell";
 
 export default function DashboardLayout({
   children,
@@ -14,6 +15,7 @@ export default function DashboardLayout({
       {/* Auto-refresh every 30s — keeps dashboard, timesheets, compliance live */}
       <AutoRefresh intervalMs={30000} />
       <HelpButton />
+      <NotificationBell />
       <SessionHeartbeat />
       <main className="relative min-h-screen pt-14 lg:pt-0 lg:ml-64 bg-prism-canvas">
         {/* Full-screen watermark */}

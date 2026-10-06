@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { formatDate } from "@/lib/utils";
 import { ProfileForm } from "./profile-form";
 import { DeclarationsForm } from "./declarations-form";
+import { WaiverForm } from "./waiver-form";
+import { ReferencesForm } from "./references-form";
 
 export default async function PortalProfilePage() {
   const session = await auth();
@@ -74,6 +76,10 @@ export default async function PortalProfilePage() {
       {/* Medical, drugs & alcohol, criminal record — encrypted, admins only.
           Hides itself if the encryption key isn't configured. */}
       <DeclarationsForm />
+
+      {/* 48 Hour Waiver and References — moved here from the public /apply form (2026-10-06). */}
+      <WaiverForm />
+      <ReferencesForm />
 
       {/* Compliance Summary */}
       <div className="rounded-xl border border-gray-200 bg-white">
