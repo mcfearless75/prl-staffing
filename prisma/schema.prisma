@@ -17,6 +17,9 @@ model User {
   failedAttempts Int       @default(0)
   lockedUntil    DateTime?
   tokenVersion   Int       @default(0) // increment to invalidate all sessions
+  // Contact details shown on messages staff send (Jen, 2026-10-06)
+  phone          String?
+  jobTitle       String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
@@ -41,6 +44,7 @@ model Company {
   invoices      Invoice[]
   projects      Project[]
   creditNotes   CreditNote[]
+  placements    NewStarterPlacement[]
 }
 
 // ─── Suppliers (agencies) ───
@@ -60,7 +64,7 @@ model Supplier {
 
 // ─── Contractors ───
 model Contractor {
-  id                       String              @id @default(cuid())
+  id                       String                @id @default(cuid())
   firstName                String
   lastName                 String
   // The name they actually go by ("Bob" for Robert). Emails greet by it and the
@@ -75,13 +79,13 @@ model Contractor {
   nameChangedFrom          String? // full name before the worker's edit
   rtwRoute                 String? // uk-irish-passport | passport-share-code | birth-cert-ni
   shareCode                String? // Home Office share code, normalised (9 chars, no spaces)
-  email                    String              @unique
+  email                    String                @unique
   // Set by the bounce-check workflow agent when a hard bounce (SMTP 5xx) for
   // this address comes back through the infotech@ mailbox — e.g. a typo'd
   // address that's still syntactically valid, so nothing at entry time could
   // have caught it. Not auto-cleared: a human fixing the email should clear
   // it via the contractor form, same place they'd fix the address itself.
-  emailBounced             Boolean             @default(false)
+  emailBounced             Boolean               @default(false)
   emailBouncedAt           DateTime?
   emailBounceReason        String?
   personalEmail            String?
@@ -90,11 +94,11 @@ model Contractor {
   dayRate                  Float?
   payRate                  Float? // hourly pay rate
   chargeRate               Float? // hourly charge rate
-  status                   String              @default("Inactive") // See src/lib/contractor-statuses.ts — Active, Inactive, plus pipeline Applied/Looking (New/On Hold/Suspended/Left retired 2026-09-27)
+  status                   String                @default("Inactive") // See src/lib/contractor-statuses.ts — Active, Inactive, plus pipeline Applied/Looking (New/On Hold/Suspended/Left retired 2026-09-27)
   leavingDate              DateTime? // once passed, the daily run makes them Inactive (src/lib/leaving-date.ts)
   // "Do not employ" — staff flag with a reason (src/lib/do-not-employ.ts).
   // Blocks new placements and automatic re-activation.
-  doNotEmploy              Boolean             @default(false)
+  doNotEmploy              Boolean               @default(false)
   doNotEmployReason        String?
   doNotEmployAt            DateTime?
   doNotEmployBy            String?
@@ -111,7 +115,7 @@ model Contractor {
   // predating this column and for imported records.
   approvedAt               DateTime?
   supplierId               String?
-  supplier                 Supplier?           @relation(fields: [supplierId], references: [id])
+  supplier                 Supplier?             @relation(fields: [supplierId], references: [id])
   niNumber                 String?
   utrNumber                String?
   ir35Status               String? // Inside, Outside, TBD
@@ -140,13 +144,18 @@ model Contractor {
   visaNumber               String?
   visaExpiry               DateTime?
   notes                    String?
-  ref                      String?             @unique // human-readable reference, e.g. C00001
+  ref                      String?               @unique // human-readable reference, e.g. C00001
   inviteSentAt             DateTime?
   inviteOpenedAt           DateTime?
-  inviteToken              String?             @unique
+  inviteToken              String?               @unique
   profileCompletionSentAt  DateTime?
-  createdAt                DateTime            @default(now())
-  updatedAt                DateTime            @updatedAt
+  // Working Time Regulations 48-hour opt-out, answered in the app (moved off
+  // /apply 2026-10-06). "opt-out" = signed the opt-out, "no-opt-out" = declined.
+  waiverDecision           String?
+  waiverSignature          String?
+  waiverSignedAt           DateTime?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
   assignments              Assignment[]
   timesheets               Timesheet[]
   compliances              ComplianceRecord[]
@@ -160,6 +169,9 @@ model Contractor {
   chaseLogs                ChaseLog[]
   declaration              SensitiveDeclaration?
   jobRoles                 ContractorJobRole[]
+  references               ContractorReference[]
+  messages                 ContractorMessage[]
+  placements               NewStarterPlacement[]
 
   // These three indexes already exist in the database — the migrations that
   // added their columns created them directly in SQL, but never declared them
@@ -257,7 +269,7 @@ model SensitiveAccessLog {
 
 // ─── Sites (physical locations under a Company) ───
 model Site {
-  id          String       @id @default(cuid())
+  id          String                @id @default(cuid())
   name        String
   address     String?
   city        String?
@@ -265,13 +277,14 @@ model Site {
   latitude    Float? // geocoded from postcode, for coverage map
   longitude   Float?
   geocodedAt  DateTime?
-  isActive    Boolean      @default(true)
+  isActive    Boolean               @default(true)
   companyId   String
-  company     Company      @relation(fields: [companyId], references: [id])
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  company     Company               @relation(fields: [companyId], references: [id])
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
   departments Department[]
   assignments Assignment[]
+  placements  NewStarterPlacement[]
 }
 
 // ─── Departments (trade/function groupings under a Site) ───
@@ -402,17 +415,17 @@ model ComplianceRecord {
 
 // ─── Compliance Requirements (checklists per role/site) ───
 model ComplianceRequirement {
-  id          String   @id @default(cuid())
-  role        String // e.g. "Electrician", "Labourer", "All"
-  companyId   String? // null = applies to all sites
-  company     Company? @relation(fields: [companyId], references: [id])
-  type        String // CSCS, DBS, Right to Work, Insurance, IR35 Assessment, Qualification
-  description String? // extra detail, e.g. "NVQ Level 3"
+  id           String   @id @default(cuid())
+  role         String // e.g. "Electrician", "Labourer", "All"
+  companyId    String? // null = applies to all sites
+  company      Company? @relation(fields: [companyId], references: [id])
+  type         String // CSCS, DBS, Right to Work, Insurance, IR35 Assessment, Qualification
+  description  String? // extra detail, e.g. "NVQ Level 3"
   // "Any one of these will do": met by `type` OR any of these (requirement-match.ts)
   alternatives String[] @default([])
-  isMandatory Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isMandatory  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([role, companyId, type])
 }
@@ -1007,6 +1020,13 @@ model SupplyAgreement {
   emergencyContactRelation String?
   // Status
   status                   String    @default("Pending") // Pending, Reviewed, Approved, Rejected
+  // Digital signing by the worker (2026-10-06): the emailed link carries
+  // signToken; signing stamps signedAt/signedName/signedIp.
+  contractorId             String?
+  signToken                String?   @unique
+  signedAt                 DateTime?
+  signedName               String?
+  signedIp                 String?
   reviewedBy               String?
   reviewedAt               DateTime?
   notes                    String?
@@ -1194,4 +1214,73 @@ model CallEnquiry {
 
   @@index([status, receivedAt])
   @@index([category])
+}
+
+// Optional work references, given by the worker in the app (moved off /apply
+// 2026-10-06). Every field optional, per Jen.
+model ContractorReference {
+  id           String     @id @default(cuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  companyName  String?
+  contactName  String?
+  email        String?
+  phone        String?
+  jobRole      String?
+  startDate    DateTime?
+  endDate      DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([contractorId])
+}
+
+// In-app messages between PRL staff and one worker (Jen, 2026-10-06: "like the
+// school app"). The worker is emailed that a message is waiting and reads and
+// replies in the portal. direction: "to-worker" | "from-worker".
+model ContractorMessage {
+  id           String     @id @default(cuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  direction    String
+  body         String
+  senderUserId String?
+  senderName   String
+  readAt       DateTime?
+  createdAt    DateTime   @default(now())
+
+  @@index([contractorId, createdAt])
+  @@index([direction, readAt])
+}
+
+// The job a staff-added New Starter is lined up for (Jen's scenario 1). Held
+// here, not as an Assignment, until the agreement is signed and induction is
+// done or skipped; only then is the real Assignment created, so nothing
+// pre-start counts as live work. See src/lib/new-starter-pipeline.ts.
+model NewStarterPlacement {
+  id                String     @id @default(cuid())
+  contractorId      String
+  contractor        Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  companyId         String
+  company           Company    @relation(fields: [companyId], references: [id])
+  siteId            String?
+  site              Site?      @relation(fields: [siteId], references: [id])
+  role              String
+  startDate         DateTime
+  payRate           Float?
+  chargeRate        Float?
+  rateBasis         String?
+  inductionRequired Boolean    @default(true)
+  inductionDoneAt   DateTime?
+  inductionSkipped  Boolean    @default(false)
+  supplyAgreementId String?
+  assignmentId      String?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  createdBy         String
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([contractorId])
+  @@index([completedAt, cancelledAt])
 }
