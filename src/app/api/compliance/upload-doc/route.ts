@@ -37,6 +37,11 @@ export async function POST(request: NextRequest) {
 
     // Security: Contractors can only upload to their own profile
     const sessionUser = session.user as { contractorId?: string; userType?: string };
+    // Only staff and workers — a signed-in account still waiting for staff
+    // access ("pending", src/lib/staff-access.ts) is neither.
+    if (sessionUser.userType !== "staff" && sessionUser.userType !== "contractor") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
     if (sessionUser.userType === "contractor" && sessionUser.contractorId !== contractorId) {
       return NextResponse.json(
         { error: "Unauthorized — you can only upload to your own profile" },

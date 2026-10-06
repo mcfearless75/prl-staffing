@@ -4,6 +4,7 @@ import { WORKFORCE_FILTER } from "@/lib/contractor-statuses";
 import { syncComplianceStatuses } from "@/lib/compliance-sync";
 import { NextResponse } from "next/server";
 import { countUnreadWorkerReplies } from "@/lib/contractor-messages-server";
+import { STAFF_ROLE_PENDING } from "@/lib/staff-access";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export async function GET() {
     // must not blank every other badge, so it can't throw into the catch below.
     await syncComplianceStatuses().catch(() => {});
 
-    const [pendingTimesheets, complianceAlerts, draftInvoices, pendingOnboarding, pendingApplicants, openQueries, openGrievances, newStarterChecklists, newCallEnquiries, openPlacements, unreadMessages] = await Promise.all([
+    const [pendingTimesheets, complianceAlerts, draftInvoices, pendingOnboarding, pendingApplicants, openQueries, openGrievances, newStarterChecklists, newCallEnquiries, openPlacements, unreadMessages, pendingStaff] = await Promise.all([
       prisma.timesheet.count({
         where: { status: { in: ["Submitted", "Draft"] } },
       }),
@@ -54,6 +55,8 @@ export async function GET() {
         where: { completedAt: null, cancelledAt: null },
       }),
       countUnreadWorkerReplies(),
+      // Staff waiting for access on /settings/staff (badge shown to admins only).
+      prisma.user.count({ where: { role: STAFF_ROLE_PENDING } }),
     ]);
     // The New Starters page has both tabs: the pipeline and HMRC checklists.
     const newStarters = newStarterChecklists + openPlacements;
@@ -69,8 +72,9 @@ export async function GET() {
       newStarters,
       newCallEnquiries,
       unreadMessages,
+      pendingStaff,
     });
   } catch {
-    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0 });
+    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0, pendingStaff: 0 });
   }
 }

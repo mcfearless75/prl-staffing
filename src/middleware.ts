@@ -92,6 +92,17 @@ export default auth((req) => {
     return Response.redirect(new URL("/login", req.url));
   }
 
+  // Signed in but not yet approved (or access removed) on /settings/staff:
+  // the only page they can see is the one saying so. src/lib/staff-access.ts
+  const isPendingPage = req.nextUrl.pathname === "/pending-approval";
+  if (userType === "pending") {
+    if (isPendingPage) return;
+    return Response.redirect(new URL("/pending-approval", req.url));
+  }
+  if (isPendingPage) {
+    return Response.redirect(new URL(userType === "contractor" ? "/portal" : "/", req.url));
+  }
+
   // Contractor trying to access staff pages
   if (userType === "contractor" && !isPortalPage) {
     return Response.redirect(new URL("/portal", req.url));

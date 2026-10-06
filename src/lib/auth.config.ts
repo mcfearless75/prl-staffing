@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import { prisma } from "@/lib/db";
+import { STAFF_ROLE_ADMIN, STAFF_ROLE_PENDING, staffUserType } from "@/lib/staff-access";
 
 export const authConfig = {
   trustHost: true,
@@ -28,16 +29,35 @@ export const authConfig = {
         try {
           const existing = await prisma.user.findUnique({ where: { email: user.email } });
           if (!existing) {
-            // New staff created by first SSO login start as "viewer" — an
-            // existing admin must promote them. Do not default to "admin".
+            // A first Microsoft sign-in gets NO access until an admin approves
+            // it on /settings/staff (2026-10-06). It used to be "viewer", which
+            // passed almost every staff check — any company email got in.
+            const name = user.name || user.email.split("@")[0];
             await prisma.user.create({
               data: {
                 email: user.email,
-                name: user.name || user.email.split("@")[0],
-                role: "viewer",
+                name,
+                role: STAFF_ROLE_PENDING,
                 passwordHash: "", // SSO users have no password
               },
             });
+            // Tell the admins on their bell. Never blocks the sign-in.
+            try {
+              const admins = await prisma.user.findMany({ where: { role: STAFF_ROLE_ADMIN }, select: { id: true } });
+              if (admins.length > 0) {
+                await prisma.notification.createMany({
+                  data: admins.map((a) => ({
+                    recipientType: "user",
+                    recipientId: a.id,
+                    title: `${name} is waiting for PRISM access`,
+                    body: `${user.email} signed in with Microsoft. Approve or refuse them on Staff access.`,
+                    url: "/settings/staff",
+                  })),
+                });
+              }
+            } catch (err) {
+              console.error("[auth] pending-staff alert failed:", err);
+            }
           }
         } catch {
           // allow login even if DB op fails
@@ -53,8 +73,8 @@ export const authConfig = {
         token.ssoProvider = "microsoft";
         token.sid = crypto.randomUUID(); // session-monitor id (src/lib/session-monitor.ts)
         token.loginMethod = "microsoft";
-        token.role = "viewer"; // transient default until the DB lookup below sets the real role
-        token.userType = "staff";
+        token.role = STAFF_ROLE_PENDING; // no access unless the DB lookup below finds a real role
+        token.userType = "pending";
         if (email) {
           token.email = email;
           token.name = (profile?.name as string) || (user?.name as string) || token.name;
@@ -68,6 +88,7 @@ export const authConfig = {
               token.tokenVersion = dbUser.tokenVersion;
               token.role = dbUser.role;
             }
+            token.userType = staffUserType(token.role as string);
           } catch {
             // allow login even if DB lookup fails
           }
@@ -80,14 +101,18 @@ export const authConfig = {
         token.id = user.id;
         token.role = (user as { role?: string }).role || "viewer";
         token.userType = (user as { userType?: string }).userType || "staff";
+        // A password login on a staff row whose access was removed is held at the door too.
+        if (token.userType === "staff") token.userType = staffUserType(token.role as string);
         token.contractorId = (user as { contractorId?: string }).contractorId;
         token.tokenVersion = (user as { tokenVersion?: number }).tokenVersion ?? 0;
         token.sid = crypto.randomUUID(); // session-monitor id (src/lib/session-monitor.ts)
         token.loginMethod = "password";
       }
 
-      // Subsequent requests: validate tokenVersion (credentials users only, not SSO)
-      if (!user && !account && token.id && token.tokenVersion !== undefined && token.ssoProvider !== "microsoft") {
+      // Subsequent requests: re-check the DB so "sign out everywhere" and access
+      // changes on /settings/staff take effect at once — for Microsoft sign-ins
+      // too, which previously were never re-checked after login.
+      if (!user && !account && token.id && (token.tokenVersion !== undefined || token.ssoProvider === "microsoft")) {
         try {
           if (token.userType === "contractor") {
             // Contractors are stored in ContractorLogin, not User
@@ -101,11 +126,14 @@ export const authConfig = {
           } else {
             const dbUser = await prisma.user.findUnique({
               where: { id: token.id as string },
-              select: { tokenVersion: true },
+              select: { tokenVersion: true, role: true },
             });
-            if (!dbUser || dbUser.tokenVersion !== token.tokenVersion) {
+            if (!dbUser) return null; // Invalidate the session
+            if (token.tokenVersion !== undefined && dbUser.tokenVersion !== token.tokenVersion) {
               return null; // Invalidate the session
             }
+            token.role = dbUser.role;
+            token.userType = staffUserType(dbUser.role);
           }
         } catch {
           // If DB check fails, allow token to continue

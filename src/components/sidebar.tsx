@@ -32,6 +32,7 @@ import {
   MonitorDot,
   Inbox,
   UserCog,
+  KeyRound,
 } from "lucide-react";
 import { canViewSessions } from "@/lib/session-monitor";
 
@@ -117,6 +118,7 @@ type Counts = {
   newStarters: number;
   newCallEnquiries: number;
   unreadMessages: number;
+  pendingStaff: number;
 };
 
 const COLLAPSE_STORAGE_KEY = "prism-sidebar-collapsed-sections";
@@ -125,7 +127,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
-  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0 });
+  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0, pendingStaff: 0 });
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   // Restore collapsed sections from localStorage on mount
@@ -280,6 +282,25 @@ export function Sidebar() {
           >
             <MonitorDot className="h-5 w-5" />
             Sessions
+          </Link>
+        )}
+        {(session?.user as { role?: string } | undefined)?.role === "admin" && (
+          <Link
+            href="/settings/staff"
+            className={cn(
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 lg:py-2 text-sm font-medium transition-colors",
+              pathname.startsWith("/settings/staff")
+                ? "bg-white/10 text-prism-paper"
+                : "text-white/60 hover:bg-white/5 hover:text-prism-paper"
+            )}
+          >
+            <KeyRound className="h-5 w-5" />
+            Staff access
+            {counts.pendingStaff > 0 && (
+              <span className="ml-auto rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white">
+                {counts.pendingStaff}
+              </span>
+            )}
           </Link>
         )}
         <Link

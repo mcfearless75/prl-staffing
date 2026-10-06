@@ -20,7 +20,13 @@ export async function GET(request: NextRequest) {
 
     // Security: contractors can only download their own documents
     const contractorId = (session.user as { contractorId?: string })?.contractorId;
-    const isStaff = !contractorId;
+    // "Not a worker" is not the same as staff: an account waiting for staff
+    // access (src/lib/staff-access.ts) has no contractorId either.
+    const userType = (session.user as { userType?: string }).userType;
+    const isStaff = userType === "staff";
+    if (!isStaff && !(userType === "contractor" && contractorId)) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
 
     let storageKey: string;
     let fileName: string;

@@ -4,6 +4,7 @@ import { requireStaff } from "@/lib/require-staff";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/page-header";
 import { resolveOwnUserId } from "@/lib/staff-contact";
+import { staffRoleLabel } from "@/lib/staff-access";
 import { MyDetailsForm } from "./my-details-form";
 
 // The signed-in staff member's own contact details, shown on messages they
@@ -39,7 +40,7 @@ export default async function MyDetailsPage() {
             <dt className="text-gray-500">Email</dt>
             <dd className="text-gray-900">{user.email}</dd>
             <dt className="text-gray-500">Role</dt>
-            <dd className="capitalize text-gray-900">{user.role}</dd>
+            <dd className="text-gray-900">{staffRoleLabel(user.role)}</dd>
           </dl>
           <MyDetailsForm initial={{ phone: user.phone ?? "", jobTitle: user.jobTitle ?? "" }} />
         </div>
