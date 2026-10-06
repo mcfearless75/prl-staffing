@@ -10,10 +10,15 @@ import { formatDate } from "@/lib/utils";
 
 export default async function EditComplianceRecordPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ uploadError?: string }>;
 }) {
   const { id } = await params;
+  // Set by the create form when the record saved but its attached file didn't
+  // upload, so the user lands here (next to the uploader) knowing what to do.
+  const uploadError = (await searchParams)?.uploadError?.slice(0, 500);
   const [record, contractors] = await Promise.all([
     prisma.complianceRecord.findUnique({
       where: { id },
@@ -67,6 +72,11 @@ export default async function EditComplianceRecordPage({
           </div>
         }
       />
+      {uploadError && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {uploadError}
+        </div>
+      )}
       <ComplianceForm
         record={record}
         contractors={contractors}

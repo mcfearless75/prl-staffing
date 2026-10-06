@@ -153,10 +153,15 @@ export async function POST(request: NextRequest) {
         type === "Passport" || type === "Share Code" ? "Right to Work"
         : type;
 
-      // Check for existing compliance record
-      const existingCompliance = await prisma.complianceRecord.findFirst({
-        where: { contractorId, type: complianceType },
-      });
+      // Staff uploading against a specific record (the create form, the edit
+      // page) name it, so a renewal doesn't land on an older record of the
+      // same type. Otherwise fall back to the first record of that type.
+      const recordId = formData.get("complianceRecordId");
+      const existingCompliance = typeof recordId === "string" && recordId
+        ? await prisma.complianceRecord.findFirst({ where: { id: recordId, contractorId } })
+        : await prisma.complianceRecord.findFirst({
+            where: { contractorId, type: complianceType },
+          });
 
       if (existingCompliance) {
         // Update existing record — mark as Pending review (staff will verify)

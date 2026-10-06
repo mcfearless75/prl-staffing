@@ -12,6 +12,9 @@ import { requirementLabel } from "@/lib/requirement-match";
 
 const ACTIVE_STATUSES = [...LIVE_ASSIGNMENT_STATUSES];
 
+/** A–Z, ignoring case, so "IT Commissioner" sits with "Insulator". */
+const byRoleName = (a: string, b: string) => a.localeCompare(b, "en-GB", { sensitivity: "base" });
+
 /** How many assigned subcontractors resolve to each canonical role today. */
 async function getRoleUsage() {
   const assignments = await prisma.assignment.findMany({
@@ -57,7 +60,7 @@ export default async function RequirementsPage() {
   // Roles with people in them but no checklist configured.
   const uncovered = [...usage.counts.entries()]
     .filter(([role]) => !configuredRoles.has(role))
-    .sort((a, b) => b[1] - a[1]);
+    .sort((a, b) => byRoleName(a[0], b[0]));
 
   const coveredHeadcount = [...usage.counts.entries()]
     .filter(([role]) => configuredRoles.has(role))
@@ -66,12 +69,12 @@ export default async function RequirementsPage() {
   // An "All" rule reaches everyone, including people with no role on record.
   const reached = hasGlobalRule ? usage.total : coveredHeadcount;
 
-  // Sort role groups by how many people they affect, so the rules that matter
-  // most are at the top rather than whatever sorts first alphabetically.
+  // Role groups A–Z so a role is easy to find; the "All roles" group stays
+  // pinned first because it applies to everyone.
   const roleOrder = Object.keys(grouped).sort((a, b) => {
     if (a === "All") return -1;
     if (b === "All") return 1;
-    return (usage.counts.get(b) ?? 0) - (usage.counts.get(a) ?? 0);
+    return byRoleName(a, b);
   });
 
   return (

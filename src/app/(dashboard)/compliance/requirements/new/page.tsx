@@ -60,12 +60,12 @@ export default async function NewRequirementPage({
     const canonical = normaliseRole(name).canonical;
     if (canonical && !allRoles.has(canonical.toLowerCase())) allRoles.set(canonical.toLowerCase(), canonical);
   }
-  const roleList = [...allRoles.values()].sort((a, b) => a.localeCompare(b));
-
-  // Roles in use first (with counts), then the rest of the vocabulary.
-  const inUse = roleList.filter((r) => usage.counts.has(r)).sort(
-    (a, b) => (usage.counts.get(b) ?? 0) - (usage.counts.get(a) ?? 0)
+  const roleList = [...allRoles.values()].sort((a, b) =>
+    a.localeCompare(b, "en-GB", { sensitivity: "base" })
   );
+
+  // Roles in use first (A–Z, with counts), then the rest of the vocabulary A–Z.
+  const inUse = roleList.filter((r) => usage.counts.has(r));
   const notInUse = roleList.filter((r) => !usage.counts.has(r));
 
   return (

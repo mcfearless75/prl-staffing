@@ -133,6 +133,7 @@ export function StaffDocUploader({
       formData.append("file", selectedFile);
       formData.append("type", docType);
       formData.append("contractorId", contractorId);
+      if (recordId) formData.append("complianceRecordId", recordId);
       if (profile.frontBack) {
         formData.append("notes", `Side: ${side}`);
       }
