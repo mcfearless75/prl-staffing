@@ -8,7 +8,7 @@ import { formatDate, getInitials } from "@/lib/utils";
 import { getComplianceScore } from "@/lib/compliance-score";
 import {
   Users,
-  Building2,
+  CalendarCheck,
   Clock,
   ShieldCheck,
   TrendingUp,
@@ -23,6 +23,7 @@ import {
   LIVE_ASSIGNMENT_STATUSES,
   IN_PROGRESS_ASSIGNMENT_STATUSES,
 } from "@/lib/assignment-statuses";
+import { londonDayBounds, londonDayKey } from "@/lib/london-day";
 import { CampaignActivityFeed } from "@/components/campaign-activity-feed";
 
 export default async function DashboardPage({
@@ -37,13 +38,15 @@ export default async function DashboardPage({
 
   const now = new Date();
   const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  // Today in UK time, not server-local (UTC) — see src/lib/london-day.ts.
+  const today = londonDayBounds(londonDayKey(now));
 
   const [
     totalContractors,
     assignedContractorRows,
     pendingTimesheets,
     complianceAlerts,
-    totalCompanies,
+    todaysStarterRows,
     docsAwaitingReview,
     recentContractors,
     recentAlerts,
@@ -76,7 +79,16 @@ export default async function DashboardPage({
     prisma.complianceRecord.count({
       where: { status: { in: ["Expiring", "Expired", "Non-Compliant"] } },
     }),
-    prisma.company.count(),
+    // People starting today — distinct contractors with a live (not Completed)
+    // assignment whose start date falls on today's London calendar day.
+    prisma.assignment.findMany({
+      where: {
+        status: { in: [...LIVE_ASSIGNMENT_STATUSES] },
+        startDate: { gte: today.start, lt: today.end },
+      },
+      select: { contractorId: true },
+      distinct: ["contractorId"],
+    }),
     prisma.complianceRecord.count({ where: { status: "Pending" } }),
     prisma.contractor.findMany({
       orderBy: { createdAt: "desc" },
@@ -231,10 +243,10 @@ export default async function DashboardPage({
           href="/compliance?status=Expiring"
         />
         <StatCard
-          title="Clients"
-          value={totalCompanies}
-          icon={Building2}
-          href="/companies"
+          title="Today's Starters"
+          value={todaysStarterRows.length}
+          icon={CalendarCheck}
+          href="/starters/today"
         />
         <StatCard
           title="Docs Awaiting Review"
