@@ -12,74 +12,14 @@ const labelCls = "block text-sm font-medium text-gray-700 mb-1";
 const sectionCls = "rounded-xl border border-gray-200 bg-white p-6";
 const headingCls = "text-lg font-semibold text-gray-900 mb-4";
 
-function YesNo({
-  label,
-  value,
-  onChange,
-  required,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  required?: boolean;
-}) {
-  return (
-    <div>
-      <span className={labelCls}>
-        {label}
-        {required && " *"}
-      </span>
-      <div className="flex gap-4 mt-1">
-        {["Yes", "No"].map((opt) => (
-          <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
-            <input
-              type="radio"
-              name={label}
-              checked={value === opt}
-              onChange={() => onChange(opt)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-            />
-            {opt}
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ---------- form state type ---------- */
 interface FormState {
-  /* Section 1 */
+  /* Section 1: Personal Details */
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
-  dob: string;
-  country: string;
-  address: string;
-  city: string;
-  postcode: string;
-  nonBritishNational: string;
-  requiresWorkPermit: string;
-  niNumber: string;
-  passportNumber: string;
-  passportExpiry: string;
-  visaNumber: string;
-  visaExpiry: string;
-  fullDrivingLicence: string;
-  motoringConvictions: string;
-  regularUseOf: string[];
-  endorsementDetails: string;
-  nokName: string;
-  nokRelationship: string;
-  nokPhone: string;
-  /* Section 2 */
-  bankName: string;
-  nameOnAccount: string;
-  accountInYourName: string;
-  accountNumber: string;
-  sortCode: string;
-  /* Section 3 */
+  /* Section 2: Work Requirements */
   positionsSought: string;
   positionsSoughtOther: string;
   salaryRequired: string;
@@ -88,28 +28,9 @@ interface FormState {
   locationsPreferred: string;
   requiredHours: string;
   relevantSkills: string;
-  doNotContact: string;
-  /* Section 5 */
-  hasDbs: string;
-  dbsNumber: string;
-  dbsIssued: string;
-  hasCriminalConviction: string;
-  hasPreviousConvictions: string;
-  hasSecurityClearance: string;
-  clearanceLevel: string;
-  clearanceDateGranted: string;
-  clearanceDateExpiring: string;
-  clearancePlaceOfWork: string;
-  /* Section 6 */
-  waiverDecision: string;
-  waiverDay: string;
-  waiverMonth: string;
-  waiverYear: string;
-  /* Section 7 */
+  /* Section 4: Data Protection & Declaration */
   privacyAgreed: boolean;
   signature: string;
-  /* Section 8 */
-  references: string;
 }
 
 const INITIAL: FormState = {
@@ -117,30 +38,6 @@ const INITIAL: FormState = {
   lastName: "",
   email: "",
   phone: "",
-  dob: "",
-  country: "United Kingdom",
-  address: "",
-  city: "",
-  postcode: "",
-  nonBritishNational: "",
-  requiresWorkPermit: "",
-  niNumber: "",
-  passportNumber: "",
-  passportExpiry: "",
-  visaNumber: "",
-  visaExpiry: "",
-  fullDrivingLicence: "",
-  motoringConvictions: "",
-  regularUseOf: [],
-  endorsementDetails: "",
-  nokName: "",
-  nokRelationship: "",
-  nokPhone: "",
-  bankName: "",
-  nameOnAccount: "",
-  accountInYourName: "",
-  accountNumber: "",
-  sortCode: "",
   positionsSought: "",
   positionsSoughtOther: "",
   salaryRequired: "",
@@ -149,49 +46,12 @@ const INITIAL: FormState = {
   locationsPreferred: "",
   requiredHours: "",
   relevantSkills: "",
-  doNotContact: "",
-  hasDbs: "",
-  dbsNumber: "",
-  dbsIssued: "",
-  hasCriminalConviction: "",
-  hasPreviousConvictions: "",
-  hasSecurityClearance: "",
-  clearanceLevel: "",
-  clearanceDateGranted: "",
-  clearanceDateExpiring: "",
-  clearancePlaceOfWork: "",
-  waiverDecision: "",
-  waiverDay: "",
-  waiverMonth: "",
-  waiverYear: "",
   privacyAgreed: false,
   signature: "",
-  references: "",
 };
-
-const COUNTRIES = [
-  "United Kingdom",
-  "Ireland",
-  "Poland",
-  "Romania",
-  "Lithuania",
-  "Latvia",
-  "Bulgaria",
-  "Portugal",
-  "Spain",
-  "Italy",
-  "France",
-  "Germany",
-  "Netherlands",
-  "Czech Republic",
-  "Hungary",
-  "Slovakia",
-  "Other",
-];
 
 const HOURS_OPTIONS = ["Days", "Evenings", "Nights", "Rotating Shifts"];
 const DAYS_OPTIONS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const VEHICLE_OPTIONS = ["Car", "Bicycle", "Motorbike"];
 
 export default function ApplyPage() {
   const [form, setForm] = useState<FormState>(INITIAL);
@@ -203,9 +63,8 @@ export default function ApplyPage() {
    * Whether this email already belongs to a PRISM record.
    *
    * Checked as the applicant leaves the email field rather than at submit,
-   * because the form below asks for passport, bank and next-of-kin details and
-   * there is no reason to make somebody who already has an account fill any of
-   * it in. `hasLogin` distinguishes "sign in" from "you have a record but no
+   * because there is no reason to make somebody who already has an account
+   * fill the rest of the form in. `hasLogin` distinguishes "sign in" from "you have a record but no
    * password yet", which needs Set up account instead.
    */
   const [existing, setExisting] = useState<{ registered: boolean; hasLogin: boolean } | null>(null);
@@ -246,16 +105,6 @@ export default function ApplyPage() {
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
   const [rolesError, setRolesError] = useState(false);
 
-  // Upper bound for the date-of-birth picker, so the browser greys out future
-  // dates. Set after mount, not during render: server and browser can straddle
-  // midnight or sit in different zones, and a `max` that differs between the
-  // two is a hydration mismatch. The check in /api/apply is the real gate, so
-  // an unset bound on the first paint costs nothing.
-  const [todayIso, setTodayIso] = useState("");
-  useEffect(() => {
-    setTodayIso(new Date().toISOString().slice(0, 10));
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     fetch("/api/job-roles")
@@ -279,9 +128,9 @@ export default function ApplyPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function toggleArray(key: "hoursPreferred" | "daysPreferred" | "regularUseOf", item: string) {
+  function toggleArray(key: "hoursPreferred" | "daysPreferred", item: string) {
     setForm((prev) => {
-      const arr = prev[key] as string[];
+      const arr = prev[key];
       return {
         ...prev,
         [key]: arr.includes(item) ? arr.filter((x) => x !== item) : [...arr, item],
@@ -297,15 +146,8 @@ export default function ApplyPage() {
     try {
       const payload = {
         ...form,
-        regularUseOf: form.regularUseOf.join(", "),
         hoursPreferred: form.hoursPreferred.join(", "),
         daysPreferred: form.daysPreferred.join(", "),
-        waiverSignedDate: [form.waiverDay, form.waiverMonth, form.waiverYear]
-          .filter(Boolean)
-          .join("/"),
-        emergencyContactName: form.nokName,
-        emergencyContactRelation: form.nokRelationship,
-        emergencyContactPhone: form.nokPhone,
         // Canonical ids, so the roles can be linked properly rather than
         // matched on a typed string.
         jobRoleIds: selectedRoleIds,
@@ -372,7 +214,7 @@ export default function ApplyPage() {
             <p className="text-xs text-gray-500">
               We&apos;ll be in touch shortly. If you have any questions, call us on{" "}
               <strong>0800 772 3959</strong> or email{" "}
-              <strong>info@prlsitesolutions.co.uk</strong>.
+              <strong>admin@prlsitesolutions.co.uk</strong>.
             </p>
           </div>
         </div>
@@ -389,7 +231,7 @@ export default function ApplyPage() {
           <p className="text-sm text-blue-900">
             Please complete all sections below. Fields marked with <strong>*</strong> are required.
             Contact us on <strong>0800 772 3959</strong> or{" "}
-            <strong>info@prlsitesolutions.co.uk</strong> with any queries.
+            <strong>admin@prlsitesolutions.co.uk</strong> with any queries.
           </p>
         </div>
 
@@ -457,206 +299,12 @@ export default function ApplyPage() {
                 className={inputCls}
               />
             </div>
-            <div>
-              <label className={labelCls}>Date of Birth *</label>
-              <input
-                type="date"
-                required
-                max={todayIso || undefined}
-                value={form.dob}
-                onChange={(e) => set("dob", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Country/Region</label>
-              <select
-                value={form.country}
-                onChange={(e) => set("country", e.target.value)}
-                className={inputCls}
-              >
-                {COUNTRIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Address</label>
-              <input
-                type="text"
-                value={form.address}
-                onChange={(e) => set("address", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>City</label>
-              <input
-                type="text"
-                value={form.city}
-                onChange={(e) => set("city", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Zip/Postal Code</label>
-              <input
-                type="text"
-                value={form.postcode}
-                onChange={(e) => set("postcode", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-
-            <YesNo
-              label="Are you a NON-British National?"
-              value={form.nonBritishNational}
-              onChange={(v) => set("nonBritishNational", v)}
-              required
-            />
-            <YesNo
-              label="Do you require a work permit?"
-              value={form.requiresWorkPermit}
-              onChange={(v) => set("requiresWorkPermit", v)}
-              required
-            />
-
-            <div>
-              <label className={labelCls}>NI Number</label>
-              <input
-                type="text"
-                value={form.niNumber}
-                onChange={(e) => set("niNumber", e.target.value)}
-                placeholder="e.g. AB123456C"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Passport Number</label>
-              <input
-                type="text"
-                value={form.passportNumber}
-                onChange={(e) => set("passportNumber", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Passport Expiry</label>
-              <input
-                type="date"
-                value={form.passportExpiry}
-                onChange={(e) => set("passportExpiry", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Visa Number</label>
-              <input
-                type="text"
-                value={form.visaNumber}
-                onChange={(e) => set("visaNumber", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Visa Expiry</label>
-              <input
-                type="date"
-                value={form.visaExpiry}
-                onChange={(e) => set("visaExpiry", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-
-            <YesNo
-              label="Do you hold a full UK driving licence?"
-              value={form.fullDrivingLicence}
-              onChange={(v) => set("fullDrivingLicence", v)}
-              required
-            />
-            <YesNo
-              label="Do you have any motoring convictions?"
-              value={form.motoringConvictions}
-              onChange={(v) => set("motoringConvictions", v)}
-              required
-            />
-
-            <div className="sm:col-span-2">
-              <span className={labelCls}>Do you have regular use of:</span>
-              <div className="flex flex-wrap gap-4 mt-1">
-                {VEHICLE_OPTIONS.map((v) => (
-                  <label key={v} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.regularUseOf.includes(v)}
-                      onChange={() => toggleArray("regularUseOf", v)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    {v}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Give details of any endorsements</label>
-              <textarea
-                value={form.endorsementDetails}
-                onChange={(e) => set("endorsementDetails", e.target.value)}
-                rows={2}
-                className={inputCls}
-              />
-            </div>
-
-            {/* Next of Kin — 3 separate required fields */}
-            <div className="sm:col-span-2">
-              <p className="text-sm font-semibold text-gray-800 mb-3 border-t border-gray-200 pt-4">
-                Next of Kin / Emergency Contact *
-              </p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div>
-                  <label className={labelCls}>Full Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.nokName}
-                    onChange={(e) => set("nokName", e.target.value)}
-                    placeholder="e.g. Victoria Smith"
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Relationship *</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.nokRelationship}
-                    onChange={(e) => set("nokRelationship", e.target.value)}
-                    placeholder="e.g. Parent, Spouse, Partner"
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Contact Number *</label>
-                  <input
-                    type="tel"
-                    required
-                    value={form.nokPhone}
-                    onChange={(e) => set("nokPhone", e.target.value)}
-                    placeholder="e.g. 07700 900000"
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
         {/* ===================== SECTION 2: Work Requirements ===================== */}
         <div className={sectionCls}>
-          <h2 className={headingCls}>Section 3: Work Requirements</h2>
+          <h2 className={headingCls}>Section 2: Work Requirements</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Roles come from the JobRole table via /api/job-roles, so this
                 list tracks PRISM automatically as roles are added, renamed or
@@ -772,19 +420,10 @@ export default function ApplyPage() {
                 className={inputCls}
               />
             </div>
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Organisations you DO NOT wish us to contact</label>
-              <textarea
-                value={form.doNotContact}
-                onChange={(e) => set("doNotContact", e.target.value)}
-                rows={2}
-                className={inputCls}
-              />
-            </div>
           </div>
         </div>
 
-        {/* ===================== SECTION 4: Documents =====================
+        {/* ===================== SECTION 3: Documents =====================
             This section previously offered four file inputs (CV, Photo ID,
             Passport/Visa, Other) above the text "Please upload any relevant
             documents". None of them worked: they had no onChange handler, were
@@ -793,14 +432,14 @@ export default function ApplyPage() {
             files were discarded silently.
 
             Rather than add an unauthenticated public upload endpoint, documents
-            are collected through the existing portal compliance upload once the
+            are collected through the PRISM app's compliance upload once the
             application is accepted and the applicant has a login. Removing the
             inputs removes a promise the form could not keep. */}
         <div className={sectionCls}>
-          <h2 className={headingCls}>Section 4: Documents</h2>
+          <h2 className={headingCls}>Section 3: Documents</h2>
           <p className="text-sm text-gray-600">
             You do not need to attach anything now. Once your application has been
-            reviewed we will email you a secure link to your PRL portal, where you
+            reviewed we will email you a secure link to the PRISM app, where you
             can upload your CV, photo ID, passport or visa, and any certificates.
           </p>
           <p className="mt-2 text-xs text-gray-500">
@@ -809,156 +448,9 @@ export default function ApplyPage() {
           </p>
         </div>
 
-        {/* ===================== SECTION 5: Criminal Record & Security ===================== */}
+        {/* ===================== SECTION 4: Data Protection & Declaration ===================== */}
         <div className={sectionCls}>
-          <h2 className={headingCls}>Section 5: Criminal Record And Security Checks</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <YesNo
-              label="Do you hold a DBS check within last 3 years?"
-              value={form.hasDbs}
-              onChange={(v) => set("hasDbs", v)}
-            />
-            <div>
-              <label className={labelCls}>Enhanced DBS No</label>
-              <input
-                type="text"
-                value={form.dbsNumber}
-                onChange={(e) => set("dbsNumber", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>DBS Issued</label>
-              <input
-                type="date"
-                value={form.dbsIssued}
-                onChange={(e) => set("dbsIssued", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <YesNo
-              label="Have you been convicted of a criminal offence?"
-              value={form.hasCriminalConviction}
-              onChange={(v) => set("hasCriminalConviction", v)}
-            />
-            <YesNo
-              label="Do you have previous convictions?"
-              value={form.hasPreviousConvictions}
-              onChange={(v) => set("hasPreviousConvictions", v)}
-            />
-            <YesNo
-              label="Do you hold security clearance?"
-              value={form.hasSecurityClearance}
-              onChange={(v) => set("hasSecurityClearance", v)}
-            />
-            <div>
-              <label className={labelCls}>Level of Clearance</label>
-              <input
-                type="text"
-                value={form.clearanceLevel}
-                onChange={(e) => set("clearanceLevel", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Date Granted</label>
-              <input
-                type="date"
-                value={form.clearanceDateGranted}
-                onChange={(e) => set("clearanceDateGranted", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Date Expiring</label>
-              <input
-                type="date"
-                value={form.clearanceDateExpiring}
-                onChange={(e) => set("clearanceDateExpiring", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Place of Work Granted</label>
-              <input
-                type="text"
-                value={form.clearancePlaceOfWork}
-                onChange={(e) => set("clearancePlaceOfWork", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ===================== SECTION 6: 48 Hour Waiver ===================== */}
-        <div className={sectionCls}>
-          <h2 className={headingCls}>Section 6: 48 Hour Waiver</h2>
-          <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 mb-4 text-xs text-gray-700 leading-relaxed space-y-2">
-            <p>
-              <strong>Working Time Regulations</strong>
-            </p>
-            <p>
-              The Working Time Regulations 1998 state that a worker&apos;s average working time,
-              including overtime, shall not exceed 48 hours for each seven-day period averaged over a
-              reference period of 17 weeks.
-            </p>
-            <p>
-              However, you may agree with PRL Site Solutions to exclude this limit. If you do, you
-              will not be required or expected to work more than 48 hours per week on average, but you
-              may do so if you wish. You may cancel this agreement by giving PRL Site Solutions not
-              less than seven days&apos; notice in writing.
-            </p>
-          </div>
-
-          <div className="mb-4">
-            <span className={labelCls}>48 Hour Waiver Proposal *</span>
-            <div className="flex gap-4 mt-1">
-              {["I agree", "I disagree"].map((opt) => (
-                <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                  <input
-                    type="radio"
-                    name="waiverDecision"
-                    checked={form.waiverDecision === opt}
-                    onChange={() => set("waiverDecision", opt)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                  />
-                  {opt}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <span className={labelCls}>Signed by on the:</span>
-            <div className="flex gap-2 mt-1">
-              <input
-                type="text"
-                placeholder="Day"
-                value={form.waiverDay}
-                onChange={(e) => set("waiverDay", e.target.value)}
-                className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Month"
-                value={form.waiverMonth}
-                onChange={(e) => set("waiverMonth", e.target.value)}
-                className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Year"
-                value={form.waiverYear}
-                onChange={(e) => set("waiverYear", e.target.value)}
-                className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ===================== SECTION 7: Data Protection & Declaration ===================== */}
-        <div className={sectionCls}>
-          <h2 className={headingCls}>Section 7: Data Protection &amp; Declaration</h2>
+          <h2 className={headingCls}>Section 4: Data Protection &amp; Declaration</h2>
 
           <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 mb-4 text-xs text-gray-700 leading-relaxed space-y-2">
             <p>
@@ -1026,25 +518,10 @@ export default function ApplyPage() {
           </div>
         </div>
 
-        {/* ===================== SECTION 8: References ===================== */}
-        <div className={sectionCls}>
-          <h2 className={headingCls}>Section 8: References</h2>
-          <div>
-            <label className={labelCls}>Reference Details</label>
-            <textarea
-              value={form.references}
-              onChange={(e) => set("references", e.target.value)}
-              rows={4}
-              placeholder="Please provide details of your referees including name, company, position, contact number and email address."
-              className={inputCls}
-            />
-          </div>
-        </div>
-
         {/* Submit */}
         <button
           type="submit"
-          disabled={submitting || existing?.registered || !form.firstName || !form.lastName || !form.email || !form.phone || !form.nokName || !form.nokRelationship || !form.nokPhone || !form.privacyAgreed || !form.signature}
+          disabled={submitting || existing?.registered || !form.firstName || !form.lastName || !form.email || !form.phone || !form.privacyAgreed || !form.signature}
           className="w-full rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
         >
           {submitting ? "Submitting..." : "Apply Now"}
@@ -1052,7 +529,7 @@ export default function ApplyPage() {
 
         {/* Footer */}
         <div className="text-center text-xs text-prism-ink-muted pb-8">
-          <p>PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk</p>
+          <p>PRL Site Solutions | 0800 772 3959 | admin@prlsitesolutions.co.uk</p>
           <p className="mt-1">259 Wallasey Village, Wallasey, Wirral, Merseyside CH45 3LR | Company Reg: 14358717</p>
         </div>
       </form>

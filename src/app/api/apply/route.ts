@@ -2,18 +2,18 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendEmail, APPLICATION_RECIPIENTS } from "@/lib/email";
 import { Prisma } from "@prisma/client";
-import { maskNI, maskPassportNumber, maskBankAccount, maskSortCode } from "@/lib/utils";
 import { checkPublicFormRateLimit } from "@/lib/rate-limit";
-import { parseDate } from "@/lib/parse-date";
 import { emailMatches } from "@/lib/contractor-email";
-import { refreshGeocode } from "@/lib/geo-refresh";
-import { sensitiveStorageAvailable } from "@/lib/sensitive-crypto";
-import { saveApplyAnswers } from "@/lib/declaration-store";
 import {
   findPotentialDuplicates,
   describeReasons,
   type DuplicateMatch,
 } from "@/lib/duplicate-check";
+
+/** A trimmed string, or undefined for anything else (absent, blank, non-string). */
+function str(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -25,9 +25,9 @@ function escapeHtml(str: string): string {
 }
 
 export async function POST(request: Request) {
-  // This endpoint stores passport, visa and NI numbers, DOB, address and bank
-  // details, so it must not be an uncapped public write. Same 20/hr/IP as the
-  // other public forms.
+  // A public, unauthenticated write that creates a Contractor record and emails
+  // the office, so it must not be uncapped. Same 20/hr/IP as the other public
+  // forms.
   if (!checkPublicFormRateLimit(request, "apply")) {
     return NextResponse.json(
       { error: "Too many submissions. Please try again later." },
@@ -50,80 +50,38 @@ export async function POST(request: Request) {
       );
     }
 
-    // Parsed once, up front, so the two writes below cannot disagree. This
-    // also rejects a malformed date rather than quietly storing null — see
-    // parseDate for why a half-typed "03/04" must not be guessed at.
-    const dateOfBirth = parseDate(body.dob);
-    if (!dateOfBirth) {
-      return NextResponse.json(
-        { error: "A valid date of birth is required." },
-        { status: 400 }
-      );
-    }
-
-    // A mistyped year is the likely shape of this: "2026" for "1926" passes
-    // parseDate perfectly well. Compared against today's UTC midnight rather
-    // than the current instant, because parseDate normalises to UTC midnight
-    // and an applicant a few hours ahead of UTC would otherwise be told their
-    // own birthday is in the future.
-    const todayUtc = new Date();
-    todayUtc.setUTCHours(0, 0, 0, 0);
-    if (dateOfBirth.getTime() > todayUtc.getTime()) {
-      return NextResponse.json(
-        { error: "Date of birth cannot be in the future." },
-        { status: 400 }
-      );
-    }
-
-    // Create contractor record in Prisma
+    /**
+     * The form is deliberately short (PRL, 2026-10): name, contact details,
+     * work preferences and the declaration. Date of birth, address, right to
+     * work, passport/visa, NI, driving, next of kin, criminal record, the 48
+     * hour waiver and references are all collected later in the contractor
+     * app, so none of them is read here. A stale cached copy of the old form
+     * that still sends them has them dropped, not stored.
+     */
     const ipAddress =
       request.headers.get("x-forwarded-for") ||
       request.headers.get("x-real-ip") ||
       "unknown";
 
-    const applicationNotes = JSON.stringify({
-            country: body.country,
-            city: body.city,
-            nonBritishNational: body.nonBritishNational,
-            requiresWorkPermit: body.requiresWorkPermit,
-            passportNumber: body.passportNumber,
-            passportExpiry: body.passportExpiry,
-            visaNumber: body.visaNumber,
-            visaExpiry: body.visaExpiry,
-            fullDrivingLicence: body.fullDrivingLicence,
-            motoringConvictions: body.motoringConvictions,
-            regularUseOf: body.regularUseOf,
-            endorsementDetails: body.endorsementDetails,
-            emergencyContactName: body.emergencyContactName || null,
-            emergencyContactRelation: body.emergencyContactRelation || null,
-            emergencyContactPhone: body.emergencyContactPhone || null,
-            nextOfKin: [body.emergencyContactName, body.emergencyContactRelation, body.emergencyContactPhone]
-              .filter(Boolean).join(" | ") || null,
-            bankName: body.bankName,
-            nameOnAccount: body.nameOnAccount,
-            accountInYourName: body.accountInYourName,
-            positionsSought: body.positionsSought,
-            // Recorded separately as well as merged into positionsSought: a
-            // non-empty value here means the applicant wanted a trade that is
-            // not in the JobRole list, which is the prompt to add one.
-            positionsSoughtOther: body.positionsSoughtOther,
-            salaryRequired: body.salaryRequired,
-            hoursPreferred: body.hoursPreferred,
-            daysPreferred: body.daysPreferred,
-            locationsPreferred: body.locationsPreferred,
-            requiredHours: body.requiredHours,
-            relevantSkills: body.relevantSkills,
-            hasDbs: body.hasDbs,
-            dbsNumber: body.dbsNumber,
-            dbsIssued: body.dbsIssued,
-            // hasCriminalConviction / hasPreviousConvictions: NOT stored here
-            // any more — encrypted in SensitiveDeclaration (see below).
-            hasSecurityClearance: body.hasSecurityClearance,
-            clearanceLevel: body.clearanceLevel,
-            waiverDecision: body.waiverDecision,
-            signature: body.signature,
-            references: body.references,
-          });
+    const submitted = {
+      positionsSought: str(body.positionsSought),
+      // Recorded separately as well as merged into positionsSought: a
+      // non-empty value here means the applicant wanted a trade that is not
+      // in the JobRole list, which is the prompt to add one.
+      positionsSoughtOther: str(body.positionsSoughtOther),
+      salaryRequired: str(body.salaryRequired),
+      hoursPreferred: str(body.hoursPreferred),
+      daysPreferred: str(body.daysPreferred),
+      locationsPreferred: str(body.locationsPreferred),
+      requiredHours: str(body.requiredHours),
+      relevantSkills: str(body.relevantSkills),
+      privacyAgreed: body.privacyAgreed === true,
+      signature: str(body.signature),
+    };
+
+    // JSON.stringify omits undefined keys, so unanswered optional fields
+    // leave no junk in the blob.
+    const applicationNotes = JSON.stringify(submitted);
 
     /**
      * Same person, different email address.
@@ -135,18 +93,10 @@ export async function POST(request: Request) {
      * notification so the office can merge, and never blocks a submission,
      * because two real people genuinely do share a name.
      *
-     * Candidates are narrowed to an exact NI match or a name match; the full
-     * rules then run over that handful in JS, where phone and DOB can be
-     * compared in their normalised form rather than as raw column values.
+     * The form no longer asks for NI or date of birth, so this matches on
+     * email, name and phone only; phone is compared in normalised form.
      */
-    const candidate = {
-      email,
-      firstName,
-      lastName,
-      phone,
-      niNumber: body.niNumber,
-      dateOfBirth,
-    };
+    const candidate = { email, firstName, lastName, phone };
     let softMatches: DuplicateMatch<{
       id: string;
       ref: string | null;
@@ -156,12 +106,10 @@ export async function POST(request: Request) {
       status: string;
     }>[] = [];
     try {
-      // Whole-book scan, on purpose. Narrowing this to an indexed NI or name
-      // query looks cheaper but silently misses the matches that matter: NI is
-      // free text and is stored variously as "AB123456C" and "AB 12 34 56 C",
-      // so no SQL equality or `contains` finds both, and a phone written as
-      // +44... never matches one written as 07... . Normalising in JS compares
-      // them properly. The contractor book is in the hundreds of rows and this
+      // Whole-book scan, on purpose. Narrowing this to an indexed name query
+      // looks cheaper but silently misses the matches that matter: a phone
+      // written as +44... never matches one written as 07... in SQL.
+      // Normalising in JS compares them properly. The contractor book is in the hundreds of rows and this
       // runs once per rate-limited public submission; revisit if it reaches
       // five figures.
       const nearby = await prisma.contractor.findMany({
@@ -173,8 +121,6 @@ export async function POST(request: Request) {
           email: true,
           status: true,
           phone: true,
-          niNumber: true,
-          dateOfBirth: true,
         },
       });
       softMatches = findPotentialDuplicates(candidate, nearby);
@@ -218,31 +164,12 @@ export async function POST(request: Request) {
           email,
           phone: phone || null,
           status: "Applied",
-          address: body.address || null,
-          postcode: body.postcode || null,
-          niNumber: body.niNumber || null,
-          // These four columns already existed on Contractor but /apply only
-          // ever wrote them into the notes blob, leaving the real columns empty.
-          emergencyContactName: body.emergencyContactName || body.nokName || null,
-          emergencyContactPhone: body.emergencyContactPhone || body.nokPhone || null,
-          emergencyContactRelation:
-            body.emergencyContactRelation || body.nokRelationship || null,
-          nextOfKin: body.nextOfKin || null,
-          dateOfBirth,
-          // Right to work — see migration 20260730_contractor_right_to_work.
-          nonBritishNational: body.nonBritishNational || null,
-          requiresWorkPermit: body.requiresWorkPermit || null,
-          passportNumber: body.passportNumber || null,
-          passportExpiry: parseDate(body.passportExpiry),
-          visaNumber: body.visaNumber || null,
-          visaExpiry: parseDate(body.visaExpiry),
           // Retained deliberately: the blob is the full audit trail of exactly
           // what was submitted, including anything not yet promoted to a column.
           notes: applicationNotes,
         },
       });
       contractorId = contractor.id;
-      await refreshGeocode("contractor", contractor.id); // never throws; 3s cap
 
       // Link the selected roles properly via ContractorJobRole. The readable
       // names stay in the application blob too, but these ids are what lets
@@ -297,25 +224,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Criminal-record answers go ONLY into the encrypted store. With no key
-    // configured they are dropped rather than kept in the clear.
-    const applyAnswers = {
-      hasCriminalConviction: typeof body.hasCriminalConviction === "string" ? body.hasCriminalConviction : undefined,
-      hasPreviousConvictions: typeof body.hasPreviousConvictions === "string" ? body.hasPreviousConvictions : undefined,
-    };
-    const criminalAnswered = !!(applyAnswers.hasCriminalConviction || applyAnswers.hasPreviousConvictions);
-    if (contractorId && criminalAnswered) {
-      if (sensitiveStorageAvailable()) {
-        try {
-          await saveApplyAnswers(contractorId, applyAnswers);
-        } catch (err) {
-          console.error("Failed to store application declarations:", err instanceof Error ? err.message : "unknown");
-        }
-      } else {
-        console.warn("SENSITIVE_DATA_KEY not set: application criminal-record answers were not stored.");
-      }
-    }
-
     // Create activity log entry
     try {
       await prisma.activityLog.create({
@@ -325,16 +233,16 @@ export async function POST(request: Request) {
           entityId: contractorId || null,
           userName: `${firstName} ${lastName}`,
           userEmail: email,
+          // Built from the known fields rather than spreading the raw body,
+          // so nothing an old or hand-crafted client sends (passport, NI,
+          // criminal-record answers) can end up in the log.
           details: JSON.stringify({
-            ...body,
-            niNumber: maskNI(body.niNumber),
-            passportNumber: maskPassportNumber(body.passportNumber),
-            accountNumber: maskBankAccount(body.accountNumber),
-            sortCode: maskSortCode(body.sortCode),
-            // Criminal-record answers are special-category data: held only
-            // in the encrypted SensitiveDeclaration row, never in this log.
-            hasCriminalConviction: undefined,
-            hasPreviousConvictions: undefined,
+            firstName,
+            lastName,
+            email,
+            phone,
+            jobRoleIds: Array.isArray(body.jobRoleIds) ? body.jobRoleIds : undefined,
+            ...submitted,
           }),
           ipAddress,
         },
@@ -404,87 +312,39 @@ export async function POST(request: Request) {
             </div>
 
             ${section("Personal Details", [
-              ["Name", `${body.firstName} ${body.lastName}`],
-              ["Email", body.email],
-              ["Phone", body.phone],
-              ["Date of Birth", body.dob],
-              ["Country/Region", body.country],
-              ["Address", body.address],
-              ["City", body.city],
-              ["Postcode", body.postcode],
-              ["Non-British National", body.nonBritishNational],
-              ["Requires Work Permit", body.requiresWorkPermit],
-              ["NI Number", body.niNumber],
-              ["Passport Number", body.passportNumber],
-              ["Passport Expiry", body.passportExpiry],
-              ["Visa Number", body.visaNumber],
-              ["Visa Expiry", body.visaExpiry],
-              ["Full UK Driving Licence", body.fullDrivingLicence],
-              ["Motoring Convictions", body.motoringConvictions],
-              ["Regular Use Of", body.regularUseOf],
-              ["Endorsement Details", body.endorsementDetails],
-              ["Next of Kin — Name", body.emergencyContactName],
-              ["Next of Kin — Relationship", body.emergencyContactRelation],
-              ["Next of Kin — Phone", body.emergencyContactPhone],
-            ])}
-
-            ${section("Bank Details", [
-              ["Bank Name", body.bankName],
-              ["Name on Account", body.nameOnAccount],
-              ["Account in Your Name", body.accountInYourName],
-              ["Account Number", body.accountNumber],
-              ["Sort Code", body.sortCode],
+              ["Name", `${firstName} ${lastName}`],
+              ["Email", email],
+              ["Phone", String(phone)],
             ])}
 
             ${section("Work Requirements", [
-              ["Positions Sought", body.positionsSought],
-              ["Salary/Rate Required", body.salaryRequired],
-              ["Hours Preferred", body.hoursPreferred],
-              ["Days Preferred", body.daysPreferred],
-              ["Locations Preferred", body.locationsPreferred],
-              ["Required Hours", body.requiredHours],
-              ["Relevant Skills", body.relevantSkills],
-              ["Do Not Contact", body.doNotContact],
-            ])}
-
-            ${section("Criminal Record & Security", [
-              ["DBS Check (last 3 years)", body.hasDbs],
-              ["Enhanced DBS No", body.dbsNumber],
-              ["DBS Issued", body.dbsIssued],
-              // The answers themselves never go in an email.
-              ["Criminal record questions", criminalAnswered ? "Answered: held securely in PRISM (restricted)" : ""],
-              ["Security Clearance", body.hasSecurityClearance],
-              ["Level of Clearance", body.clearanceLevel],
-              ["Date Granted", body.clearanceDateGranted],
-              ["Date Expiring", body.clearanceDateExpiring],
-              ["Place of Work Granted", body.clearancePlaceOfWork],
-            ])}
-
-            ${section("48 Hour Waiver", [
-              ["Waiver Decision", body.waiverDecision],
-              ["Signed Date", body.waiverSignedDate],
+              ["Positions Sought", submitted.positionsSought ?? ""],
+              ["Salary/Rate Required", submitted.salaryRequired ?? ""],
+              ["Hours Preferred", submitted.hoursPreferred ?? ""],
+              ["Days Preferred", submitted.daysPreferred ?? ""],
+              ["Locations Preferred", submitted.locationsPreferred ?? ""],
+              ["Required Hours", submitted.requiredHours ?? ""],
+              ["Relevant Skills", submitted.relevantSkills ?? ""],
             ])}
 
             ${section("Declaration", [
-              ["Signature", body.signature],
-              ["Privacy Policy Agreed", body.privacyAgreed ? "Yes" : "No"],
+              ["Signature", submitted.signature ?? ""],
+              ["Privacy Policy Agreed", submitted.privacyAgreed ? "Yes" : "No"],
             ])}
 
-            ${body.references ? section("References", [["Reference Details", body.references]]) : ""}
-
             <div style="margin-top:24px;padding:16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;text-align:center;">
-              <p style="margin:0;font-size:13px;color:#0369a1;">Note: Any uploaded documents (CV, Photo ID, Passport/Visa, Supporting Docs) were attached by the applicant. Please request them directly if not received.</p>
+              <p style="margin:0;font-size:13px;color:#0369a1;">Date of birth, address, right to work, ID, next of kin and documents are not collected on this form. The applicant provides them later in the PRISM app.</p>
             </div>
           </div>
           <p style="text-align:center;font-size:11px;color:#999;margin-top:16px;">
-            PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk
+            PRL Site Solutions | 0800 772 3959 | admin@prlsitesolutions.co.uk
           </p>
         </div>
       `;
 
       const emailResult = await sendEmail({
         to: APPLICATION_RECIPIENTS,
-        subject: `${isReapplication ? "Re-Application (existing record)" : softMatches.length ? "New Application [POSSIBLE DUPLICATE]" : "New Application"}: ${escapeHtml(body.firstName)} ${escapeHtml(body.lastName)} -- ${escapeHtml(body.positionsSought || "General")}`,
+        subject: `${isReapplication ? "Re-Application (existing record)" : softMatches.length ? "New Application [POSSIBLE DUPLICATE]" : "New Application"}: ${escapeHtml(firstName)} ${escapeHtml(lastName)} -- ${escapeHtml(submitted.positionsSought || "General")}`,
         html: emailHtml,
         template: "application-received",
       });
