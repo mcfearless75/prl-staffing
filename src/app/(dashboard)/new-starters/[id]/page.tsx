@@ -52,7 +52,7 @@ export default async function NewStarterDetailPage({
         description={`New starter checklist submitted ${formatDate(submission.createdAt)}`}
         action={
           <Link
-            href="/new-starters"
+            href="/new-starters?tab=checklists"
             className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Back to list

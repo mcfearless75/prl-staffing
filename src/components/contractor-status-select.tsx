@@ -18,6 +18,8 @@ const STATUS_COLORS: Record<string, string> = {
   Left:           "bg-rose-100 text-rose-700 border-rose-200",
   Applied:        "bg-purple-100 text-purple-700 border-purple-200",
   Looking:        "bg-sky-100 text-sky-700 border-sky-200",
+  "New Starter":  "bg-sky-100 text-sky-700 border-sky-200",
+  Onboarding:     "bg-violet-100 text-violet-700 border-violet-200",
   "On Site":      "bg-blue-100 text-blue-700 border-blue-200",
   Benched:        "bg-amber-100 text-amber-700 border-amber-200",
   "Pending Docs": "bg-orange-100 text-orange-700 border-orange-200",

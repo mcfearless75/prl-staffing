@@ -13,7 +13,7 @@ import {
   reminderBlockReason,
 } from "@/lib/compliance-reminder";
 import { greetingName } from "@/lib/contractor-name";
-import { STILL_WORKING_FILTER } from "@/lib/contractor-statuses";
+import { WORKFORCE_FILTER } from "@/lib/contractor-statuses";
 import type { ComposedEmail } from "@/lib/sent-email-record";
 import { loadChecklistTypes } from "@/lib/compliance-gaps";
 
@@ -106,8 +106,10 @@ export const complianceChaseAgent = {
       where: {
         status: { in: [...CHASE_STATUSES] },
         expiryDate: { lte: chaseCutoff() },
-        // Leavers keep their old records; never chase them about them.
-        contractor: STILL_WORKING_FILTER,
+        // Leavers keep their old records; never chase them about them. People
+        // still in the applicant / new-starter pipeline are chased by staff from
+        // /new-starters, not by this automatic email.
+        contractor: WORKFORCE_FILTER,
       },
       include: { contractor: true },
       orderBy: { expiryDate: "asc" },

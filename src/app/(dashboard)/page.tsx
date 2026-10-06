@@ -6,6 +6,7 @@ import { Badge } from "@/components/badge";
 import { PageHeader } from "@/components/page-header";
 import { formatDate, getInitials } from "@/lib/utils";
 import { getComplianceScore } from "@/lib/compliance-score";
+import { NOT_PRE_WORK_FILTER } from "@/lib/contractor-statuses";
 import {
   Users,
   CalendarCheck,
@@ -62,7 +63,9 @@ export default async function DashboardPage({
     assignmentsOverdueCompletion,
     pendingExpenses,
   ] = await Promise.all([
-    prisma.contractor.count(),
+    // Workforce only: applicants and new starters who have not started yet
+    // are counted on their own pages, not as subcontractors.
+    prisma.contractor.count({ where: NOT_PRE_WORK_FILTER }),
     // Distinct CONTRACTORS on live work — deliberately not a count of assignment
     // rows. Counting rows with status exactly "Active" reported 394 while
     // /compliance reported 416 for what staff read as the same thing: it missed

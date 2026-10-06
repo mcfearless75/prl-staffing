@@ -25,7 +25,7 @@ import { ChaseEmailButton } from "./chase-email-button";
 import { ExpiryAlertButton } from "./expiry-alert-button";
 import { ComplianceTypeRows } from "./compliance-type-rows";
 import { COMPLIANCE_CATEGORIES, categoryForType } from "@/lib/compliance-types";
-import { STILL_WORKING_FILTER } from "@/lib/contractor-statuses";
+import { STILL_WORKING_FILTER, WORKFORCE_FILTER } from "@/lib/contractor-statuses";
 import { CompliancePeopleList, inTileGroup, type PeopleGroupKey } from "./compliance-people-list";
 
 export default async function CompliancePage({
@@ -44,9 +44,11 @@ export default async function CompliancePage({
 
   const where: Record<string, unknown> = {};
 
-  // The records table is a work list too — leavers' old records are not work.
+  // The records table is a work list too — leavers' old records are not work,
+  // and nor are the uploads of people who haven't started yet: those are
+  // verified from /compliance/review and tracked on /new-starters.
   where.contractor = {
-    ...STILL_WORKING_FILTER,
+    ...WORKFORCE_FILTER,
     ...(search ? { AND: nameSearchClauses(search, ["firstName", "lastName", "knownAs"]) } : {}),
   };
 

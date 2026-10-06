@@ -4,6 +4,11 @@ import assert from "node:assert/strict";
 import {
   NO_LONGER_WORKING_STATUSES,
   isNoLongerWorking,
+  PRE_WORK_CONTRACTOR_STATUSES,
+  isPreWork,
+  NOT_PRE_WORK_FILTER,
+  STILL_WORKING_FILTER,
+  WORKFORCE_FILTER,
   PIPELINE_CONTRACTOR_STATUSES,
   RETIRED_CONTRACTOR_STATUSES,
   SETTABLE_CONTRACTOR_STATUSES,
@@ -134,5 +139,48 @@ describe("NO_LONGER_WORKING_STATUSES", () => {
   test("every member is the leaver status or a retired one", () => {
     const known: readonly string[] = ["Inactive", ...RETIRED_CONTRACTOR_STATUSES];
     for (const s of NO_LONGER_WORKING_STATUSES) assert.ok(known.includes(s), s);
+  });
+});
+
+describe("PRE_WORK_CONTRACTOR_STATUSES", () => {
+  const preWork: readonly string[] = PRE_WORK_CONTRACTOR_STATUSES;
+
+  test("is a subset of the valid vocabulary, so the pipeline can write them", () => {
+    for (const s of preWork) assert.ok(valid.includes(s), `"${s}" must be writable`);
+  });
+
+  test("never overlaps what staff can pick — Active people are workforce", () => {
+    for (const s of preWork) assert.equal(settable.includes(s), false, `"${s}" must not be in a picker`);
+  });
+
+  test("never overlaps the leaver statuses — the two exclusions mean different things", () => {
+    for (const s of preWork) assert.equal(isNoLongerWorking(s), false, s);
+  });
+
+  test("covers the applicant funnel and the new-starter pipeline", () => {
+    for (const s of ["Applied", "Looking", "New Starter", "Onboarding"]) {
+      assert.ok(isPreWork(s), s);
+    }
+    assert.equal(isPreWork("Active"), false);
+    assert.equal(isPreWork(null), false);
+  });
+
+  test("the new-starter statuses are pipeline statuses (writable, not pickable)", () => {
+    for (const s of ["New Starter", "Onboarding"]) assert.ok(pipeline.includes(s), s);
+  });
+});
+
+describe("WORKFORCE_FILTER", () => {
+  const excluded = WORKFORCE_FILTER.status.notIn as readonly string[];
+
+  test("excludes exactly leavers plus pre-work people", () => {
+    assert.deepEqual(
+      [...excluded].sort(),
+      [...STILL_WORKING_FILTER.status.notIn, ...NOT_PRE_WORK_FILTER.status.notIn].sort()
+    );
+  });
+
+  test("still includes Active — the workforce itself", () => {
+    assert.equal(excluded.includes("Active"), false);
   });
 });

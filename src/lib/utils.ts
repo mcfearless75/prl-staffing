@@ -89,6 +89,8 @@ export function escapeHtml(value: string): string {
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     Applied: "bg-purple-100 text-purple-700",
+    "New Starter": "bg-sky-100 text-sky-700",
+    Onboarding: "bg-violet-100 text-violet-700",
     New: "bg-indigo-100 text-indigo-700",
     Active: "bg-emerald-100 text-emerald-700",
     "On Site": "bg-blue-100 text-blue-700",

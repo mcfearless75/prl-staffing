@@ -41,13 +41,40 @@ export const SETTABLE_CONTRACTOR_STATUSES = ["Active", "Inactive"] as const;
 export const RETIRED_CONTRACTOR_STATUSES = ["New", "On Hold", "Suspended", "Left"] as const;
 
 /**
- * Applicant-pipeline statuses. Valid to hold and valid to write, but NOT
- * offered in the status pickers: they are managed on the Applicants page, and
- * `workflows/stale-applicant.ts` matches on them. Letting staff set "Applied"
+ * Pipeline statuses. Valid to hold and valid to write, but NOT offered in the
+ * status pickers: Applied/Looking are managed on the Applicants page (and
+ * `workflows/stale-applicant.ts` matches on those two only); New Starter and
+ * Onboarding are managed on /new-starters. Letting staff set "Applied"
  * on an existing contractor from a badge dropdown would put a working operative
  * back into the applicant funnel.
  */
-export const PIPELINE_CONTRACTOR_STATUSES = ["Applied", "Looking"] as const;
+export const PIPELINE_CONTRACTOR_STATUSES = ["Applied", "Looking", "New Starter", "Onboarding"] as const;
+
+/**
+ * People PRL is bringing on but who have not started work yet (Jen's "Scenario
+ * 1" new-starter pipeline, 2026-10-06, plus the applicant funnel):
+ *
+ *   - Applied / Looking  — the public applicant funnel (/applicants)
+ *   - New Starter        — added by staff on /new-starters and sent the app
+ *                          invite; their documents are not verified yet
+ *   - Onboarding         — documents verified; agreement / induction in progress
+ *
+ * They are not workforce yet, so they stay OUT of the Subcontractors default
+ * view, the dashboard headcount, the /compliance records table and the
+ * automatic compliance chase. They must stay IN the documents-awaiting-review
+ * queue (/compliance/review), which is how staff verify what they upload.
+ *
+ * The pipeline completes by setting Active (with a Placed assignment), which
+ * is the moment they become workforce.
+ */
+export const PRE_WORK_CONTRACTOR_STATUSES = ["Applied", "Looking", "New Starter", "Onboarding"] as const;
+
+export function isPreWork(status: string | null | undefined): boolean {
+  return (PRE_WORK_CONTRACTOR_STATUSES as readonly string[]).includes(status ?? "");
+}
+
+/** Prisma filter: anyone who is past the pre-work pipeline (any other status). */
+export const NOT_PRE_WORK_FILTER = { status: { notIn: [...PRE_WORK_CONTRACTOR_STATUSES] } };
 
 /**
  * Everything the API will accept — what staff can set, plus what the pipeline
@@ -78,6 +105,16 @@ export function isNoLongerWorking(status: string | null | undefined): boolean {
 
 /** Prisma filter: contractors who still work for PRL. */
 export const STILL_WORKING_FILTER = { status: { notIn: [...NO_LONGER_WORKING_STATUSES] } };
+
+/**
+ * Prisma filter: the current workforce — still with PRL AND past the pre-work
+ * pipeline. Use this, not STILL_WORKING_FILTER, for work lists and automatic
+ * chasers that should only reach people who have started (a single object
+ * because two spread `status` keys would silently overwrite each other).
+ */
+export const WORKFORCE_FILTER = {
+  status: { notIn: [...NO_LONGER_WORKING_STATUSES, ...PRE_WORK_CONTRACTOR_STATUSES] },
+};
 
 export function isValidContractorStatus(status: string): boolean {
   return (VALID_CONTRACTOR_STATUSES as readonly string[]).includes(status);

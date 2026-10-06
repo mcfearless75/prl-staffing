@@ -196,6 +196,30 @@ describe("activateContractorIfInactive", () => {
     await activateContractorIfInactive("a", db);
     assert.equal(statusOf("a"), "Active");
   });
+
+  // 2026-10-06: placed straight from the assignment form, skipping the New
+  // Starter pipeline — they're on site, so they must not stay hidden as pre-start.
+  test("promotes New Starter and Onboarding when they are placed", async () => {
+    for (const status of ["New Starter", "Onboarding"]) {
+      const { db, statusOf } = fakeDb([{ id: "a", status }]);
+      await activateContractorIfInactive("a", db);
+      assert.equal(statusOf("a"), "Active", `${status} should become Active`);
+    }
+  });
+
+  test("still leaves Applied and Looking to the Applicants page", async () => {
+    for (const status of ["Applied", "Looking"]) {
+      const { db, statusOf } = fakeDb([{ id: "a", status }]);
+      await activateContractorIfInactive("a", db);
+      assert.equal(statusOf("a"), status);
+    }
+  });
+
+  test('a "Do not employ" New Starter is not switched on either', async () => {
+    const { db, statusOf } = fakeDb([{ id: "a", status: "New Starter", doNotEmploy: true }]);
+    await activateContractorIfInactive("a", db);
+    assert.equal(statusOf("a"), "New Starter");
+  });
 });
 
 describe("activateContractorForAssignment", () => {

@@ -65,15 +65,20 @@ export default async function ApplicantsPage({
   const view = params?.view === "looking" ? "looking" : "pending";
 
   // Pending = Applied status
+  // _count of Pending records = documents they uploaded in the app that staff
+  // have not verified yet ("Waiting verification").
+  const pendingDocs = { _count: { select: { compliances: { where: { status: "Pending" } } } } } as const;
   const applied = await prisma.contractor.findMany({
     where: { status: "Applied" },
     orderBy: { createdAt: "desc" },
+    include: pendingDocs,
   });
 
   // Looking = contractors marked as actively looking
   const looking = await prisma.contractor.findMany({
     where: { status: "Looking" },
     orderBy: { updatedAt: "desc" },
+    include: pendingDocs,
   });
 
   const activeList = view === "looking" ? looking : applied;
@@ -85,7 +90,7 @@ export default async function ApplicantsPage({
         description={
           view === "looking"
             ? `${looking.length} contractors actively looking`
-            : `${applied.length} pending applications — approving keeps them Inactive until they're placed on a job`
+            : `${applied.length} pending applications — verifying moves them to Subcontractors as Inactive until they're placed on a job`
         }
       />
 
@@ -160,6 +165,15 @@ export default async function ApplicantsPage({
                           <span className="text-sm font-medium text-gray-900">
                             {a.firstName} {a.lastName}
                           </span>
+                          {a._count.compliances > 0 && (
+                            <Link
+                              href="/compliance/review"
+                              title={`${a._count.compliances} uploaded document${a._count.compliances === 1 ? "" : "s"} waiting to be checked`}
+                              className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 hover:bg-amber-200"
+                            >
+                              Waiting verification
+                            </Link>
+                          )}
                           {inviteSentLabel && (
                             <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                               Invite sent {inviteSentLabel}
@@ -206,7 +220,7 @@ export default async function ApplicantsPage({
                             type="submit"
                             className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
                           >
-                            Approve
+                            Verify &amp; move to Subcontractors
                           </button>
                         </form>
                         {view === "pending" && a.status !== "Looking" && (

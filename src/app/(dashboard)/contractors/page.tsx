@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/badge";
 import { getInitials } from "@/lib/utils";
 import { Plus, Search, Upload, Download, ArrowUpDown, ArrowUp, ArrowDown, MailWarning } from "lucide-react";
 import { ContractorStatusSelect } from "@/components/contractor-status-select";
-import { SETTABLE_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
+import { SETTABLE_CONTRACTOR_STATUSES, PRE_WORK_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
 import { WorkBoard } from "./work-board";
 import type { ContractorSort } from "@/lib/contractor-list";
@@ -189,6 +189,14 @@ export default async function ContractorsPage({
             </option>
           ))}
           <option value={NAME_CHECK_FILTER}>Name changes to check</option>
+          {/* Hidden from the default view; reachable only by asking for them. */}
+          <optgroup label="Not started yet">
+            {PRE_WORK_CONTRACTOR_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </optgroup>
         </select>
         <select name="title" defaultValue={titleFilter} className={`${selectCls} max-w-[220px]`} aria-label="Job title">
           <option value="">All Job Titles</option>

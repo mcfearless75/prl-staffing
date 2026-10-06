@@ -25,6 +25,24 @@ export interface AgreementPrefill {
   personName: string;
   supplyOf?: string | null;
   sendToEmail: string;
+  // From the new-starter pipeline (/new-starters): the job is already agreed.
+  companyName?: string;
+  siteLocation?: string | null;
+  /** yyyy-mm-dd */
+  startDate?: string;
+  /** The worker's pay rate, put on the Basic Rate (Day) row. Never the charge rate. */
+  payRate?: number | null;
+  rateBasis?: string | null;
+  contractorId?: string;
+  placementId?: string;
+}
+
+function prefilledRates(prefill?: AgreementPrefill) {
+  return DEFAULT_RATES.map((r, i) =>
+    i === 0 && prefill?.payRate
+      ? { ...r, rate: formatGbpRate(String(prefill.payRate)), basis: prefill.rateBasis === "Daily" ? "Per Day" : "Per Hour" }
+      : { ...r }
+  );
 }
 
 interface Props {
@@ -69,13 +87,13 @@ export default function NewSupplierModal({ open, onClose, onSuccess, prefill }: 
       setStepError("");
       setPersonName(prefill?.personName ?? "");
       setSupplyOf(prefill?.supplyOf ?? "");
-      setSiteLocation("");
-      setStartDate("");
+      setSiteLocation(prefill?.siteLocation ?? "");
+      setStartDate(prefill?.startDate ?? "");
       setUnpaidBreak("");
-      setRates(DEFAULT_RATES.map((r) => ({ ...r })));
+      setRates(prefilledRates(prefill));
       setBreakdown("");
       setAdditionalInfo("");
-      setCompanyName("");
+      setCompanyName(prefill?.companyName ?? "");
       setCompanyAddress("");
       setContactName("");
       setContactEmail("");
@@ -154,6 +172,8 @@ export default function NewSupplierModal({ open, onClose, onSuccess, prefill }: 
           breakdown: breakdown.split("\n").filter(Boolean),
           additionalInfo,
           sendToEmail,
+          // Links the agreement to the pipeline placement and adds the signing link.
+          ...(prefill?.placementId ? { contractorId: prefill.contractorId, placementId: prefill.placementId } : {}),
         }),
       });
       if (!res.ok) {

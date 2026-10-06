@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db";
 import { nameSearchClauses } from "@/lib/contractor-name";
 import { formatDate } from "@/lib/utils";
 import { LIVE_ASSIGNMENT_STATUSES } from "@/lib/assignment-statuses";
+import { PRE_WORK_CONTRACTOR_STATUSES } from "@/lib/contractor-statuses";
 import {
   appliedForFromNotes,
   effectiveJobTitle,
@@ -83,6 +84,12 @@ export async function loadContractorList(f: ContractorListFilters) {
     where.nameChangedAt = { not: null };
   } else if (f.status) {
     where.status = f.status;
+  } else if (!f.search) {
+    // Default view: the workforce. Applicants and new starters who have not
+    // started yet live on /applicants and /new-starters; they are still found
+    // by filtering on their status, or by searching for them by name (so
+    // nobody re-adds a person because the list hid them).
+    where.status = { notIn: [...PRE_WORK_CONTRACTOR_STATUSES] };
   }
 
   const found = await prisma.contractor.findMany({

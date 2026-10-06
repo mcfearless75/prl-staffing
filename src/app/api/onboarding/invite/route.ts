@@ -1,65 +1,16 @@
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { sendEmail, ONBOARDING_REPLY_TO } from "@/lib/email";
 import { formatGbpRate } from "@/lib/rate-format";
-import { isValidUnpaidBreak, unpaidBreakLabel, unpaidBreakTimesheetNote } from "@/lib/unpaid-break";
+import { isValidUnpaidBreak } from "@/lib/unpaid-break";
 import { logActivity } from "@/lib/activity-log";
+import { buildAgreementEmailHtml } from "@/lib/supply-agreement-html";
+import { SIGN_LINK_TTL_DAYS } from "@/lib/new-starter-pipeline";
 
-
-// Fixed wording from Jenni (25/09/2026), added to every subcontractor
-// agreement so staff never retype it and it stays off the PRISM form.
-// Edit the wording here.
-const PAY_QUERY_URL = "https://www.prismworkforce.online/portal/pay-query";
-const INFO_H3 = "margin:16px 0 6px;font-size:13px;font-weight:700;color:#005f8c;text-transform:uppercase;letter-spacing:0.05em;";
-const INFO_P = "margin:0;font-size:13px;color:#333;line-height:1.6;";
-// breakNote: the agreement's unpaid-break sentence, or null when breaks are paid.
-const standingInfoHtml = (breakNote: string | null) => `
-<div style="background:#fff8e6;border:1px solid #f3d98b;border-radius:6px;padding:4px 24px 20px;">
-  <h3 style="${INFO_H3}">Any Questions</h3>
-  <p style="${INFO_P}">
-    Call the team on <strong>0800 772 3959</strong> or email
-    <a href="mailto:admin@prlsitesolutions.co.uk" style="color:#005f8c;">admin@prlsitesolutions.co.uk</a>.
-  </p>
-
-  <h3 style="${INFO_H3}">Pay Queries</h3>
-  <p style="${INFO_P}">
-    Please call Jenni on <strong>07359 021 801</strong>, or complete a pay query form in the PRISM app:
-    <a href="${PAY_QUERY_URL}" style="color:#005f8c;">log a pay query</a>.
-  </p>
-
-  <h3 style="${INFO_H3}">How You Will Be Paid</h3>
-  <p style="${INFO_P}">
-    You will be paid via <strong>New Red Planet</strong>, who will contact you to get your details for payments
-    to be made, so please look out for them calling.
-  </p>
-
-  <h3 style="${INFO_H3}">Timesheets</h3>
-  <p style="${INFO_P}">
-    Please submit a timesheet each week by no later than <strong>Tuesday 12pm</strong> of the following week
-    to your contact on site. This will then be processed for authorisation.${breakNote ? `
-    ${escapeHtml(breakNote)}` : ""}
-  </p>
-  <p style="${INFO_P}margin-top:8px;">
-    You will be paid the following <strong>Friday</strong> of every week worked, by no later than <strong>5pm</strong>.
-    Pay is <strong>one week in hand</strong>.
-  </p>
-</div>
-<!-- Generic sign-off per Jenni: signed by the company, never a named person -->
-<p style="margin:24px 0 0;font-size:14px;color:#333;line-height:1.6;">
-  Kind regards,<br>
-  <strong>PRL Site Solutions</strong><br>
-  <span style="font-size:12px;color:#666;">Signed on behalf of PRL Site Solutions</span>
-</p>`;
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+// The agreement's wording and layout live in src/lib/supply-agreement-html.ts,
+// shared with the public signing page (/agreement/[token]).
 
 export async function POST(request: Request) {
   const guard = await requireStaff();
@@ -88,6 +39,8 @@ export async function POST(request: Request) {
     additionalInfo,
     unpaidBreak,
     sendToEmail,
+    contractorId,
+    placementId,
   } = body as {
     personName?: string;
     companyName?: string;
@@ -103,6 +56,9 @@ export async function POST(request: Request) {
     additionalInfo?: string;
     unpaidBreak?: string;
     sendToEmail?: string;
+    /** Set when sent from the new-starter pipeline (/new-starters). */
+    contractorId?: string;
+    placementId?: string;
   };
 
   // contactName/contactEmail/contactPhone are the client's SITE contact, not
@@ -137,10 +93,43 @@ export async function POST(request: Request) {
   const nameParts = personName.trim().split(/\s+/);
   const firstName = nameParts[0] || "Unknown";
   const lastName = nameParts.slice(1).join(" ") || "Unknown";
-  let contractor = await prisma.contractor.findFirst({
-    where: { email: { equals: loginEmail, mode: "insensitive" } },
-    select: { id: true },
-  });
+
+  // From the new-starter pipeline the person already exists and their status
+  // is the pipeline's to manage: never create or re-status them here. The
+  // agreement gets a signing link and is linked back to the placement.
+  const fromPipeline = Boolean(contractorId || placementId);
+  let contractor: { id: string } | null = null;
+  if (fromPipeline) {
+    if (typeof contractorId !== "string" || typeof placementId !== "string") {
+      return NextResponse.json({ error: "Both contractorId and placementId are required" }, { status: 400 });
+    }
+    const placement = await prisma.newStarterPlacement.findUnique({
+      where: { id: placementId },
+      select: { contractorId: true, completedAt: true, cancelledAt: true, supplyAgreementId: true },
+    });
+    if (!placement || placement.contractorId !== contractorId) {
+      return NextResponse.json({ error: "New starter placement not found" }, { status: 404 });
+    }
+    if (placement.completedAt || placement.cancelledAt) {
+      return NextResponse.json({ error: "This placement is already completed or cancelled" }, { status: 409 });
+    }
+    if (placement.supplyAgreementId) {
+      const previous = await prisma.supplyAgreement.findUnique({
+        where: { id: placement.supplyAgreementId },
+        select: { signedAt: true },
+      });
+      if (previous?.signedAt) {
+        return NextResponse.json({ error: "The agreement for this placement is already signed" }, { status: 409 });
+      }
+    }
+    contractor = await prisma.contractor.findUnique({ where: { id: contractorId }, select: { id: true } });
+    if (!contractor) return NextResponse.json({ error: "Contractor not found" }, { status: 404 });
+  } else {
+    contractor = await prisma.contractor.findFirst({
+      where: { email: { equals: loginEmail, mode: "insensitive" } },
+      select: { id: true },
+    });
+  }
   if (!contractor) {
     contractor = await prisma.contractor.create({
       data: {
@@ -157,6 +146,8 @@ export async function POST(request: Request) {
       select: { id: true },
     });
   }
+
+  const signToken = fromPipeline ? randomBytes(32).toString("base64url") : null;
 
   const agreement = await prisma.supplyAgreement.create({
     data: {
@@ -178,6 +169,7 @@ export async function POST(request: Request) {
       firstName,
       lastName,
       status: "Approved",
+      ...(fromPipeline ? { contractorId: contractor.id, signToken } : {}),
       reviewedBy: session.user.email || "staff",
       reviewedAt: new Date(),
       notes: `Sent from PRISM to ${loginEmail}. Contractor ${contractor.id}.${
@@ -186,137 +178,46 @@ export async function POST(request: Request) {
     },
   });
 
-  const ratesData = cleanRates;
-    const breakdownData = (breakdown || []) as string[];
+  if (fromPipeline && placementId) {
+    // A resend replaces the earlier unsigned agreement: kill its link so only
+    // the newest one can be signed, then point the placement at the new one.
+    const placement = await prisma.newStarterPlacement.findUnique({
+      where: { id: placementId },
+      select: { supplyAgreementId: true },
+    });
+    if (placement?.supplyAgreementId) {
+      await prisma.supplyAgreement.updateMany({
+        where: { id: placement.supplyAgreementId, signedAt: null },
+        data: { signToken: null },
+      });
+    }
+    await prisma.newStarterPlacement.update({
+      where: { id: placementId },
+      data: { supplyAgreementId: agreement.id },
+    });
+  }
 
-    const ratesRowsHtml = ratesData
-      .filter((r) => r.rate)
-      .map(
-        (r) =>
-          `<tr>
-            <td style="padding:7px 12px;font-size:13px;color:#333;border-bottom:1px solid #e8eef3;">${escapeHtml(r.description)}</td>
-            <td style="padding:7px 12px;font-size:13px;color:#333;font-weight:600;text-align:right;border-bottom:1px solid #e8eef3;">${escapeHtml(r.rate)}</td>
-            <td style="padding:7px 12px;font-size:13px;color:#666;border-bottom:1px solid #e8eef3;">${escapeHtml(r.basis)}</td>
-          </tr>`
-      )
-      .join("");
-
-    const ratesTableHtml = ratesRowsHtml
-      ? `<h3 style="margin:24px 0 8px;font-size:13px;font-weight:700;color:#005f8c;text-transform:uppercase;letter-spacing:0.05em;">Charge Rates</h3>
-         <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e0e6ed;border-radius:6px;overflow:hidden;border-collapse:collapse;">
-           <thead>
-             <tr style="background:#005f8c;">
-               <th style="padding:8px 12px;text-align:left;font-size:12px;color:#fff;font-weight:600;">Description</th>
-               <th style="padding:8px 12px;text-align:right;font-size:12px;color:#fff;font-weight:600;">Rate</th>
-               <th style="padding:8px 12px;text-align:left;font-size:12px;color:#fff;font-weight:600;">Basis</th>
-             </tr>
-           </thead>
-           <tbody>${ratesRowsHtml}</tbody>
-         </table>`
-      : "";
-
-    const breakdownHtml = breakdownData.length
-      ? `<h3 style="margin:24px 0 8px;font-size:13px;font-weight:700;color:#005f8c;text-transform:uppercase;letter-spacing:0.05em;">Rate Breakdown</h3>
-         <ul style="margin:0;padding:0 0 0 20px;">
-           ${breakdownData.map((b) => `<li style="font-size:13px;color:#333;padding:3px 0;">${escapeHtml(b)}</li>`).join("")}
-         </ul>`
-      : "";
-
-    const additionalHtml = additionalInfo
-      ? `<h3 style="margin:24px 0 8px;font-size:13px;font-weight:700;color:#005f8c;text-transform:uppercase;letter-spacing:0.05em;">Additional Information</h3>
-         <p style="margin:0;font-size:13px;color:#333;line-height:1.6;">${escapeHtml(additionalInfo)}</p>`
-      : "";
-
-    // No login link (Erica, 2026-10-01): the agreement is just the agreement.
-    // Portal access goes out separately as the App Invite.
-    const buildHtml = () => `
-<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f4f7fa;font-family:Arial,Helvetica,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fa;padding:40px 0;">
-    <tr>
-      <td align="center">
-        <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-
-          <!-- Header -->
-          <tr>
-            <td style="background:#005f8c;padding:28px 40px;">
-              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Welcome to PRISM Workforce</h1>
-              <p style="margin:6px 0 0;color:#b3d6e8;font-size:13px;">PRL Site Solutions — Recruitment Specialists</p>
-            </td>
-          </tr>
-
-          <!-- Intro -->
-          <tr>
-            <td style="padding:32px 40px 0;">
-              <p style="margin:0 0 10px;color:#333;font-size:15px;line-height:1.6;">Hi ${escapeHtml(personName)},</p>
-              <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.6;">
-                Here is your subcontractor agreement with PRL Site Solutions.
-              </p>
-            </td>
-          </tr>
-
-          <!-- Subcontractor Agreement Summary -->
-          <tr>
-            <td style="padding:0 40px;">
-              <div style="background:#f8fafc;border:1px solid #e0e6ed;border-radius:6px;padding:20px 24px;">
-
-                <!-- Company -->
-                <h3 style="margin:0 0 10px;font-size:13px;font-weight:700;color:#005f8c;text-transform:uppercase;letter-spacing:0.05em;">Company Details</h3>
-                <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;">
-                  <tr>
-                    <td style="padding:4px 0;color:#666;width:140px;">Company</td>
-                    <td style="padding:4px 0;color:#333;font-weight:600;">${escapeHtml(companyName)}</td>
-                  </tr>
-                  ${companyAddress ? `<tr><td style="padding:4px 0;color:#666;">Site Address</td><td style="padding:4px 0;color:#333;">${escapeHtml(companyAddress)}</td></tr>` : ""}
-                  <tr>
-                    <td style="padding:4px 0;color:#666;">Site Contact</td>
-                    <td style="padding:4px 0;color:#333;">${escapeHtml(contactName)}</td>
-                  </tr>
-                  ${contactEmail?.trim() ? `<tr><td style="padding:4px 0;color:#666;">Email</td><td style="padding:4px 0;color:#333;">${escapeHtml(contactEmail.trim())}</td></tr>` : ""}
-                  ${contactPhone ? `<tr><td style="padding:4px 0;color:#666;">Phone</td><td style="padding:4px 0;color:#333;">${escapeHtml(contactPhone)}</td></tr>` : ""}
-                </table>
-
-                <hr style="border:none;border-top:1px solid #e0e6ed;margin:16px 0;">
-                <h3 style="margin:0 0 10px;font-size:13px;font-weight:700;color:#005f8c;text-transform:uppercase;letter-spacing:0.05em;">Job Details</h3>
-                <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;">
-                  <tr><td style="padding:4px 0;color:#666;width:140px;">Name</td><td style="padding:4px 0;color:#333;font-weight:600;">${escapeHtml(personName)}</td></tr>
-                  ${supplyOf ? `<tr><td style="padding:4px 0;color:#666;">Job Role</td><td style="padding:4px 0;color:#333;">${escapeHtml(supplyOf)}</td></tr>` : ""}
-                  ${siteLocation ? `<tr><td style="padding:4px 0;color:#666;">Site Name</td><td style="padding:4px 0;color:#333;">${escapeHtml(siteLocation)}</td></tr>` : ""}
-                  ${startDate ? `<tr><td style="padding:4px 0;color:#666;">Start Date</td><td style="padding:4px 0;color:#333;">${new Date(startDate).toLocaleDateString("en-GB")}</td></tr>` : ""}
-                  <tr><td style="padding:4px 0;color:#666;">Unpaid Break</td><td style="padding:4px 0;color:#333;">${escapeHtml(unpaidBreakLabel(unpaidBreak))}</td></tr>
-                </table>
-
-                ${ratesTableHtml ? `<hr style="border:none;border-top:1px solid #e0e6ed;margin:16px 0;">${ratesTableHtml}` : ""}
-                ${breakdownHtml ? `<hr style="border:none;border-top:1px solid #e0e6ed;margin:16px 0;">${breakdownHtml}` : ""}
-                ${additionalHtml ? `<hr style="border:none;border-top:1px solid #e0e6ed;margin:16px 0;">${additionalHtml}` : ""}
-              </div>
-            </td>
-          </tr>
-
-          <!-- Standing information: same on every agreement, never on the staff form -->
-          <tr>
-            <td style="padding:32px 40px;">
-              ${standingInfoHtml(unpaidBreakTimesheetNote(unpaidBreak))}
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background:#f4f7fa;padding:16px 40px;border-top:1px solid #e0e6ed;">
-              <p style="margin:0;color:#999;font-size:12px;">
-                PRL Site Solutions &nbsp;|&nbsp; 0800 772 3959 &nbsp;|&nbsp; admin@prlsitesolutions.co.uk
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+  const appUrl = process.env.NEXTAUTH_URL || "https://www.prismworkforce.online";
+  const content = {
+    personName,
+    companyName,
+    companyAddress,
+    contactName,
+    contactEmail,
+    contactPhone,
+    supplyOf,
+    siteLocation,
+    startDate: startDate ? new Date(startDate) : null,
+    rates: cleanRates,
+    breakdown: (breakdown || []) as string[],
+    additionalInfo,
+    unpaidBreak,
+  };
+  const buildHtml = () =>
+    buildAgreementEmailHtml(
+      content,
+      signToken ? { signUrl: `${appUrl}/agreement/${signToken}`, signDays: SIGN_LINK_TTL_DAYS } : {}
+    );
 
     const subject = `Your Subcontractor Agreement — ${companyName}`;
 
@@ -348,7 +249,8 @@ export async function POST(request: Request) {
     const copyResult = await sendEmail({
       to: staffCopyTo,
       subject: `[Copy] ${subject}`,
-      html: buildHtml(),
+      // Never the signing link: only the worker may sign their agreement.
+      html: buildAgreementEmailHtml(content),
       template: "supply-agreement-invite-copy",
     });
     if (!copyResult.success) {

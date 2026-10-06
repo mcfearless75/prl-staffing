@@ -64,6 +64,15 @@ export const AUTO_ACTIVATE_FROM = "Inactive";
 export const AUTO_DEACTIVATE_FROM = "Active";
 
 /**
+ * Pre-start pipeline statuses (contractor-statuses.ts) that a real placement
+ * also promotes. Someone placed straight from the assignment form, skipping the
+ * New Starter pipeline, is on site: left as "New Starter" they'd be hidden from
+ * Subcontractors and the compliance table. Applied/Looking are NOT here — those
+ * stay with the Applicants page, as before.
+ */
+export const AUTO_ACTIVATE_FROM_PIPELINE = ["New Starter", "Onboarding"] as const;
+
+/**
  * Flips a contractor Inactive -> Active when they are put back to work.
  *
  * Deliberately narrow: it will not touch "On Hold" (a deliberate staff flag),
@@ -73,11 +82,16 @@ export async function activateContractorIfInactive(
   contractorId: string,
   db: ContractorStatusDb = prisma
 ): Promise<void> {
-  await db.contractor.updateMany({
-    // A "Do not employ" person is never switched back on by automation.
-    where: { id: contractorId, status: AUTO_ACTIVATE_FROM, doNotEmploy: false },
-    data: { status: "Active" },
-  });
+  // One updateMany per allowed source status keeps each `where` an exact
+  // match, so a status absent from these lists still cannot be rewritten.
+  for (const from of [AUTO_ACTIVATE_FROM, ...AUTO_ACTIVATE_FROM_PIPELINE]) {
+    const { count } = await db.contractor.updateMany({
+      // A "Do not employ" person is never switched back on by automation.
+      where: { id: contractorId, status: from, doNotEmploy: false },
+      data: { status: "Active" },
+    });
+    if (count > 0) return;
+  }
 }
 
 /**
