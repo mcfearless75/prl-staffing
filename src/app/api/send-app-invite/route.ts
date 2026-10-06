@@ -157,6 +157,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Stamp the send so the Applicants page (and campaign status) can show it
+    // and staff don't send the same person a second invite by accident.
+    await prisma.contractor.update({
+      where: { id: contractorId },
+      data: { inviteSentAt: new Date() },
+    });
+
     // Log the invite
     await prisma.activityLog.create({
       data: {

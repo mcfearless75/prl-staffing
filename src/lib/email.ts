@@ -40,9 +40,10 @@ export const GRIEVANCE_RECIPIENTS = recipientList(process.env.GRIEVANCE_RECIPIEN
   "keenan@prlsitesolutions.co.uk",
 ]);
 
+// PRL, 2026-10-06: new applications go to the shared admin@ mailbox rather
+// than individual inboxes. Still overridable via APPLICATION_RECIPIENTS.
 export const APPLICATION_RECIPIENTS = recipientList(process.env.APPLICATION_RECIPIENTS, [
-  "adella@prlsitesolutions.co.uk",
-  "helen@prlsitesolutions.co.uk",
+  "admin@prlsitesolutions.co.uk",
 ]);
 
 export const NEW_STARTER_RECIPIENTS = recipientList(process.env.NEW_STARTER_RECIPIENTS, [

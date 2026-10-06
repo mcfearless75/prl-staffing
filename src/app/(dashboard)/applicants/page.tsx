@@ -7,6 +7,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
+import { isPlaceholderEmail } from "@/lib/placeholder-email";
+import { ApplicantInviteButton } from "./applicant-invite-button";
+
+// dd/mm/yyyy in UK time, so a late-evening send doesn't show tomorrow's date.
+function inviteDate(d: Date): string {
+  return d.toLocaleDateString("en-GB", { timeZone: "Europe/London" });
+}
 
 async function approveApplicant(id: string) {
   "use server";
@@ -129,6 +136,8 @@ export default async function ApplicantsPage({
                 const approve = approveApplicant.bind(null, a.id);
                 const reject = rejectApplicant.bind(null, a.id);
                 const markLooking = setLooking.bind(null, a.id);
+                const inviteSentLabel = a.inviteSentAt ? inviteDate(a.inviteSentAt) : null;
+                const hasEmail = Boolean(a.email?.trim()) && !isPlaceholderEmail(a.email);
                 return (
                   <tr
                     key={a.id}
@@ -147,9 +156,16 @@ export default async function ApplicantsPage({
                         >
                           {getInitials(a.firstName, a.lastName)}
                         </div>
-                        <span className="text-sm font-medium text-gray-900">
-                          {a.firstName} {a.lastName}
-                        </span>
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {a.firstName} {a.lastName}
+                          </span>
+                          {inviteSentLabel && (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                              Invite sent {inviteSentLabel}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{a.email}</td>
@@ -179,6 +195,12 @@ export default async function ApplicantsPage({
                         >
                           View
                         </Link>
+                        <ApplicantInviteButton
+                          contractorId={a.id}
+                          name={`${a.firstName} ${a.lastName}`.trim()}
+                          sentLabel={inviteSentLabel}
+                          disabledReason={hasEmail ? undefined : "No email address on file"}
+                        />
                         <form action={approve}>
                           <button
                             type="submit"

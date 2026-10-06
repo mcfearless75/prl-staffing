@@ -11,8 +11,10 @@ import { escapeHtml } from "@/lib/utils";
  * One email per person per QUIET_MINUTES: a worker sending front and back of
  * a card, then their passport, gets one email, which says to open the profile
  * for everything waiting rather than listing one file.
+ *
+ * PRL, 2026-10-06: staff notifications now go to the shared admin@ mailbox.
  */
-export const UPLOAD_ALERT_TO = "prism@prlsitesolutions.co.uk";
+export const UPLOAD_ALERT_TO = "admin@prlsitesolutions.co.uk";
 export const QUIET_MINUTES = 30;
 const ACTION = "Staff told of upload";
 
