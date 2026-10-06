@@ -59,7 +59,11 @@ export default auth((req) => {
   if (req.nextUrl.pathname.startsWith("/survey")) return;
   if (req.nextUrl.pathname.startsWith("/supplier-questionnaire")) return;
   if (req.nextUrl.pathname.startsWith("/apply")) return;
-  if (req.nextUrl.pathname.startsWith("/new-starter")) return;
+  // Exact match only: a prefix match also let anonymous visitors into the
+  // staff /new-starters pages (HMRC checklists and the new-starter pipeline).
+  if (req.nextUrl.pathname === "/new-starter") return;
+  // A worker signing their agreement from the emailed link (token-guarded).
+  if (req.nextUrl.pathname.startsWith("/agreement/")) return;
 
   if (req.nextUrl.pathname.startsWith("/payment-query")) return;
   // Exact match only — the public form is /grievance (singular); the
