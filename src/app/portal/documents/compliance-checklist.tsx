@@ -5,6 +5,8 @@ import { ComplianceUploader } from "../compliance/compliance-uploader";
 import { loadChecklistTypes } from "@/lib/compliance-gaps";
 import { categoryForType } from "@/lib/compliance-types";
 import { bestRecordFor, recordMeetsSpec, requirementLabel, type RequirementSpec } from "@/lib/requirement-match";
+import { RTW_SATISFIED_STATUSES, normaliseShareCode, parseRtwRoute, rtwProgress } from "@/lib/rtw-route";
+import { documentsScore, rtwItemState, type ItemState } from "@/lib/portal-score";
 
 // Moved to compliance-gaps so the staff reminder can use the same checklist.
 export { loadChecklistTypes };
@@ -35,7 +37,7 @@ const CATEGORY_ICONS: Record<string, string> = {
  * Form, part C) so there is one place to send workers.
  */
 export async function ComplianceChecklist({ contractorId }: { contractorId: string }) {
-  const [records, documents, checklistTypes] = await Promise.all([
+  const [records, documents, checklistTypes, rtw] = await Promise.all([
     prisma.complianceRecord.findMany({
       where: { contractorId },
       orderBy: [{ status: "asc" }, { expiryDate: "asc" }],
@@ -45,6 +47,10 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
       orderBy: { version: "desc" },
     }),
     loadChecklistTypes(contractorId),
+    prisma.contractor.findUnique({
+      where: { id: contractorId },
+      select: { rtwRoute: true, shareCode: true },
+    }),
   ]);
 
   // Right to Work has its own section above (passport / share code / birth
@@ -67,16 +73,38 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
     if (!docByType[d.type]) docByType[d.type] = d;
   }
 
-  // Count verified among the REQUIRED types only. Counting every verified
-  // record the contractor holds meant unrelated extras could push the bar to
-  // 100% while a required document was still missing.
-  const total = requiredTypes.length;
   // Category-aware: a "CSCS" requirement is met by "CSCS (Blue) — …" (requirement-match.ts).
   const recordFor = (spec: RequirementSpec) => bestRecordFor(spec, records);
-  const verified = requiredTypes.filter((t) => recordFor(t)?.status === "Verified").length;
-  const score = total > 0 ? Math.round((verified / total) * 100) : 0;
+  const cardState = (spec: RequirementSpec): ItemState => {
+    const status = recordFor(spec)?.status;
+    return status === "Verified" ? "verified" : status ? "submitted" : "missing";
+  };
 
-  const completedCount = requiredTypes.filter((t) => recordFor(t)).length;
+  // Right to Work always counts, as one item, judged by the RTW section's own
+  // check — so the percentage can't say 100% while it is missing.
+  const route = parseRtwRoute(rtw?.rtwRoute);
+  const hasShareCode = !!normaliseShareCode(rtw?.shareCode);
+  const typesWith = (statuses: readonly string[]) =>
+    new Set(records.filter((r) => statuses.includes(r.status)).map((r) => r.type));
+  // No route chosen (e.g. the office uploaded it for them): any Right to Work
+  // record on file counts, so staff-added RTW isn't reported as missing.
+  const anyRtw = (statuses: readonly string[]) =>
+    records.some((r) => categoryForType(r.type) === "Right to Work" && statuses.includes(r.status));
+  const rtwState = route
+    ? rtwItemState(
+        rtwProgress(route, typesWith(RTW_SATISFIED_STATUSES), hasShareCode).complete,
+        rtwProgress(route, typesWith(["Verified"]), hasShareCode).complete
+      )
+    : rtwItemState(anyRtw(RTW_SATISFIED_STATUSES), anyRtw(["Verified"]));
+
+  // Only REQUIRED types count. Counting every verified record the contractor
+  // holds meant unrelated extras could push the bar to 100% while a required
+  // document was still missing.
+  const { total, submitted: completedCount, verified, score } = documentsScore({
+    rtw: rtwState,
+    cards: requiredTypes.map(cardState),
+  });
+
   const otherRecords = records.filter(
     (r) => categoryForType(r.type) !== "Right to Work" && !requiredTypes.some((t) => recordMeetsSpec(t, r.type))
   );
@@ -92,8 +120,14 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
             {score}%
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {verified} of {total} records verified
+            {verified} of {total} documents verified (Right to Work and your cards)
           </p>
+          {rtwState === "missing" && (
+            <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+              Your Right to Work is still needed — add it in the Right to Work section on{" "}
+              <a href="/portal/documents" className="underline">My Documents</a>.
+            </p>
+          )}
         </div>
 
         {/* Progress bar */}
