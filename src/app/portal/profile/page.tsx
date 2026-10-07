@@ -4,10 +4,7 @@ import { effectiveKnownAs } from "@/lib/contractor-name";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { formatDate } from "@/lib/utils";
-import { ProfileForm } from "./profile-form";
-import { DeclarationsForm } from "./declarations-form";
-import { WaiverForm } from "./waiver-form";
-import { ReferencesForm } from "./references-form";
+import { ProfileFlow } from "./profile-flow";
 
 export default async function PortalProfilePage() {
   const session = await auth();
@@ -51,7 +48,7 @@ export default async function PortalProfilePage() {
       {/* App Invite Form — see docs/superpowers/specs/2026-09-26-app-invite-form-design.md.
           Work Details, Assignment History and Next of Kin were removed from the
           worker's view per PRL; the data is kept and staff still see it. */}
-      <ProfileForm
+      <ProfileFlow
         contractorId={contractorId}
         submitted={!!contractor.profileSubmittedAt}
         initial={{
@@ -73,15 +70,9 @@ export default async function PortalProfilePage() {
         }}
       />
 
-      {/* Medical, drugs & alcohol, criminal record — encrypted, admins only.
-          Hides itself if the encryption key isn't configured. */}
-      <DeclarationsForm />
-
-      {/* 48 Hour Waiver and References — moved here from the public /apply form (2026-10-06). */}
-      <WaiverForm />
-      <ReferencesForm />
-
-      {/* Compliance Summary */}
+      {/* Compliance Summary — after first submit only, so nothing sits below
+          the Submit button that looks like more to fill in. */}
+      {contractor.profileSubmittedAt && (
       <div className="rounded-xl border border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-gray-900">Compliance Summary</h2>
@@ -111,6 +102,7 @@ export default async function PortalProfilePage() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
