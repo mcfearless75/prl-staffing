@@ -96,8 +96,6 @@ export default async function PortalDocumentsPage({
       .map((type) => ({ type, label: type, icon: "📎", required: false })),
   ];
 
-  const uploadedCount = Object.keys(latestByType).length;
-  const totalSize = documents.reduce((sum, d) => sum + d.fileSize, 0);
   // Same test as the RTW section's "Done" badge and the home-page banner, so
   // the message never asks for a Right to Work the section says is finished.
   const rtwDone = rtwProgress(
@@ -134,28 +132,6 @@ export default async function PortalDocumentsPage({
       />
 
       <ComplianceChecklist contractorId={contractorId} />
-
-      {/* Storage Summary */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div>
-            <p className="text-2xl font-bold text-blue-600">{documents.length}</p>
-            <p className="text-[10px] text-gray-500">Total Files</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-emerald-600">{uploadedCount}</p>
-            <p className="text-[10px] text-gray-500">Document Types</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-600">
-              {totalSize > 1048576
-                ? `${(totalSize / 1048576).toFixed(1)}MB`
-                : `${(totalSize / 1024).toFixed(0)}KB`}
-            </p>
-            <p className="text-[10px] text-gray-500">Storage Used</p>
-          </div>
-        </div>
-      </div>
 
       {/* Upload Section */}
       <DocumentUploader contractorId={contractorId} />

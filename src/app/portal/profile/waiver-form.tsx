@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useImperativeHandle, useState, type Ref } from "react";
 import { Clock } from "lucide-react";
 import { WAIVER_DECISIONS, WAIVER_LABELS, type WaiverDecision } from "@/lib/working-time-waiver";
+import type { WaiverState } from "@/lib/profile-flow";
+import type { SectionHandle } from "./section-handle";
 
 type Saved = { decision: string; signature: string; signedAt: string | null };
 
@@ -15,13 +17,11 @@ function fmt(iso: string) {
  * from the old public /apply form (removed 2026-10-06). The worker can change
  * their choice at any time by signing again.
  */
-export function WaiverForm() {
+export function WaiverForm({ ref }: { ref?: Ref<SectionHandle<WaiverState>> }) {
   const [state, setState] = useState<"loading" | "ready" | "unavailable">("loading");
   const [saved, setSaved] = useState<Saved | null>(null);
   const [decision, setDecision] = useState<WaiverDecision | "">("");
   const [signature, setSignature] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -41,34 +41,33 @@ export function WaiverForm() {
     };
   }, []);
 
-  async function sign() {
-    setBusy(true);
-    setError("");
-    setDone(false);
-    try {
-      const res = await fetch("/api/portal/waiver", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision, signature }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error || "Could not save. Please try again.");
-      } else {
+  const signedBefore = !!saved?.signedAt && !!saved.decision;
+
+  useImperativeHandle(ref, () => ({
+    values: () => (state === "unavailable" ? null : { signedBefore, decision, signature }),
+    // Only a newly typed signature is a change: re-saving would re-sign.
+    dirty: () => !!signature.trim(),
+    async save() {
+      if (state !== "ready" || !decision || !signature.trim()) return { ok: true };
+      try {
+        const res = await fetch("/api/portal/waiver", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision, signature }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { ok: false, error: data.error || "Could not save your 48 Hour Waiver." };
         setSaved({ decision, signature: signature.trim(), signedAt: data.signedAt });
         setSignature("");
         setDone(true);
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "Could not save your 48 Hour Waiver. Check your connection and try again." };
       }
-    } catch {
-      setError("Could not save. Check your connection and try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
+    },
+  }), [state, signedBefore, decision, signature]);
 
   if (state === "unavailable") return null;
-
-  const signedBefore = !!saved?.signedAt && !!saved.decision;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white">
@@ -128,7 +127,7 @@ export function WaiverForm() {
           </div>
 
           <label className="block text-sm text-gray-700">
-            Type your full name to sign <span className="text-red-500">*</span>
+            Type your full name to sign {!signedBefore && <span className="text-red-500">*</span>}
             <input
               type="text"
               value={signature}
@@ -139,21 +138,11 @@ export function WaiverForm() {
             />
           </label>
 
-          {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           {done && (
             <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
               Signed. Thank you.
             </p>
           )}
-
-          <button
-            type="button"
-            onClick={sign}
-            disabled={busy || !decision || !signature.trim()}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {busy ? "Saving..." : signedBefore ? "Sign updated choice" : "Sign waiver"}
-          </button>
         </div>
       )}
     </div>

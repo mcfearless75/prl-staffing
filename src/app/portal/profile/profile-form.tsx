@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useImperativeHandle, useState, type Ref } from "react";
 import { Mail, Phone, MapPin, AlertTriangle, Calendar, Shield, User } from "lucide-react";
 import { NATIONALITY_OPTIONS, PRONOUN_OPTIONS, TITLE_OPTIONS } from "@/lib/profile-options";
+import type { SectionHandle } from "./section-handle";
 
 export type ProfileFormValues = {
   title: string;
@@ -24,66 +24,47 @@ export type ProfileFormValues = {
 };
 
 /**
- * The App Invite Form. "Save and finish later" keeps whatever is filled in;
- * "Submit" needs every required field and then moves the worker on to their
- * documents. After submitting they can still update details here.
+ * The App Invite Form — personal, contact and emergency-contact details. Saved
+ * by the single button at the bottom of the page (profile-flow.tsx): "finish
+ * later" keeps whatever is filled in; "submit" needs every required field.
  */
 export function ProfileForm({
   contractorId,
   initial,
-  submitted,
+  ref,
 }: {
   contractorId: string;
   initial: ProfileFormValues;
-  submitted: boolean;
+  ref?: Ref<SectionHandle<ProfileFormValues>>;
 }) {
-  const router = useRouter();
   const [values, setValues] = useState<ProfileFormValues>(initial);
-  const [busy, setBusy] = useState<"save" | "submit" | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-  const [missing, setMissing] = useState<string[]>([]);
+  const [baseline, setBaseline] = useState<ProfileFormValues>(initial);
 
   const set = (key: keyof ProfileFormValues) => (e: { target: { value: string } }) =>
     setValues((v) => ({ ...v, [key]: e.target.value }));
 
-  const hasChanges = (Object.keys(values) as (keyof ProfileFormValues)[]).some((k) => values[k] !== initial[k]);
-
-  async function send(mode: "save" | "submit") {
-    setSaved(false);
-    setMissing([]);
-    // There is no <form> around these inputs, so the required attribute never
-    // fires on its own — this is what actually blocks the empty submit.
-    if (!values.email.trim()) {
-      setError("Email address is required — it is how you sign in to the portal.");
-      return;
-    }
-    setBusy(mode);
-    setError("");
-    try {
-      const res = await fetch("/api/portal/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contractorId, mode, ...values }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        if (Array.isArray(data.missing)) setMissing(data.missing);
-        throw new Error(data.error || "Failed to save");
+  useImperativeHandle(ref, () => ({
+    values: () => values,
+    dirty: () => (Object.keys(values) as (keyof ProfileFormValues)[]).some((k) => values[k] !== baseline[k]),
+    async save(final) {
+      if (!values.email.trim()) {
+        return { ok: false, error: "Email address is required — it is how you sign in to the portal." };
       }
-      if (mode === "submit" && !submitted) {
-        router.push("/portal/documents?submitted=1");
-        return;
+      try {
+        const res = await fetch("/api/portal/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contractorId, mode: final ? "submit" : "save", ...values }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { ok: false, error: data.error || "Could not save your details." };
+        setBaseline(values);
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "Could not save your details. Check your connection and try again." };
       }
-      setSaved(true);
-      router.refresh();
-      setTimeout(() => setSaved(false), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
-    } finally {
-      setBusy(null);
-    }
-  }
+    },
+  }), [values, baseline, contractorId]);
 
   const inputClass =
     "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -92,13 +73,6 @@ export function ProfileForm({
 
   return (
     <>
-      {!submitted && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800">
-          Fill in every question marked <span className="text-red-500">*</span>, then press <strong>Submit</strong>.
-          Can&apos;t finish now? Press <strong>Save and finish later</strong> — nothing is lost.
-        </div>
-      )}
-
       {/* About you */}
       <div className="rounded-xl border border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-4 py-3">
@@ -231,56 +205,6 @@ export function ProfileForm({
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">
-          {missing.length > 0 ? (
-            <>
-              <p className="font-medium">Still needed before you can submit:</p>
-              <ul className="mt-1 list-disc pl-5">
-                {missing.map((m) => <li key={m}>{m}</li>)}
-              </ul>
-            </>
-          ) : (
-            error
-          )}
-        </div>
-      )}
-      {saved && (
-        <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-2 text-sm text-emerald-700">
-          {submitted ? "Profile updated" : "Saved — you can come back and finish later"}
-        </div>
-      )}
-
-      {submitted ? (
-        hasChanges && (
-          // "submit", not "save": once submitted, an edit must still pass the
-          // required-field check, or a worker could blank a mandatory answer.
-          <button
-            onClick={() => send("submit")}
-            disabled={!!busy}
-            className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 active:bg-blue-800 transition-colors"
-          >
-            {busy ? "Saving..." : "Save changes"}
-          </button>
-        )
-      ) : (
-        <div className="grid grid-cols-2 gap-3 pb-2">
-          <button
-            onClick={() => send("save")}
-            disabled={!!busy}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            {busy === "save" ? "Saving..." : "Save and finish later"}
-          </button>
-          <button
-            onClick={() => send("submit")}
-            disabled={!!busy}
-            className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 active:bg-blue-800"
-          >
-            {busy === "submit" ? "Submitting..." : "Submit"}
-          </button>
-        </div>
-      )}
     </>
   );
 }

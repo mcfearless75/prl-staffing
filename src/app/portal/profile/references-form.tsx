@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useImperativeHandle, useState, type Ref } from "react";
 import { Users, Plus, Trash2 } from "lucide-react";
 import { EMPTY_REFERENCE, MAX_REFERENCES, type ReferenceInput } from "@/lib/contractor-references";
+import type { SectionHandle } from "./section-handle";
 
 const inputCls =
   "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -21,9 +22,10 @@ const FIELDS: { key: keyof ReferenceInput; label: string; type: string; autoComp
  * References (optional) — up to 3 previous employers. Every field is optional;
  * an entry left completely blank is simply not saved.
  */
-export function ReferencesForm() {
+export function ReferencesForm({ ref }: { ref?: Ref<SectionHandle<ReferenceInput[]>> }) {
   const [state, setState] = useState<"loading" | "ready" | "unavailable">("loading");
   const [refs, setRefs] = useState<ReferenceInput[]>([]);
+  const [baseline, setBaseline] = useState<ReferenceInput[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
@@ -36,6 +38,7 @@ export function ReferencesForm() {
         if (!res.ok) return setState("unavailable");
         const data = (await res.json()) as { references: ReferenceInput[] };
         setRefs(data.references);
+        setBaseline(data.references);
         setState("ready");
       })
       .catch(() => !cancelled && setState("unavailable"));
@@ -64,6 +67,7 @@ export function ReferencesForm() {
         setError(data.error || "Could not save. Please try again.");
       } else {
         setRefs(data.references);
+        setBaseline(data.references);
         setDone(true);
       }
     } catch {
@@ -72,6 +76,28 @@ export function ReferencesForm() {
       setBusy(false);
     }
   }
+
+  useImperativeHandle(ref, () => ({
+    values: () => (state === "unavailable" ? null : refs),
+    dirty: () => JSON.stringify(refs) !== JSON.stringify(baseline),
+    async save() {
+      if (state !== "ready" || JSON.stringify(refs) === JSON.stringify(baseline)) return { ok: true };
+      try {
+        const res = await fetch("/api/portal/references", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ references: refs }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { ok: false, error: data.error || "Could not save your references." };
+        setRefs(data.references);
+        setBaseline(data.references);
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "Could not save your references. Check your connection and try again." };
+      }
+    },
+  }), [state, refs, baseline]);
 
   function remove(i: number) {
     const target = refs[i];
@@ -155,16 +181,6 @@ export function ReferencesForm() {
             <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>
           )}
 
-          {refs.length > 0 && (
-            <button
-              type="button"
-              onClick={() => save()}
-              disabled={busy}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {busy ? "Saving..." : "Save references"}
-            </button>
-          )}
         </div>
       )}
     </div>

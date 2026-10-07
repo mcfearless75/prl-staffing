@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useImperativeHandle, useState, type Ref } from "react";
 import { HeartPulse } from "lucide-react";
+import { missingDeclarations, normaliseDeclarations } from "@/lib/declarations";
+import type { SectionHandle } from "./section-handle";
 
 type Answers = {
   hasMedicalCondition: string;
@@ -47,12 +49,13 @@ function YesNo({ name, value, onChange }: { name: string; value: string; onChang
  * Health & declarations — medical, drugs & alcohol and criminal record. Saved
  * separately from the profile, encrypted, and seen only by PRL admins.
  */
-export function DeclarationsForm() {
+export type DeclarationAnswers = Answers;
+
+export function DeclarationsForm({ ref }: { ref?: Ref<SectionHandle<Answers>> }) {
   const [a, setA] = useState<Answers>(EMPTY);
+  const [baseline, setBaseline] = useState<Answers>(EMPTY);
   const [state, setState] = useState<"loading" | "ready" | "unavailable">("loading");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [result, setResult] = useState<{ complete: boolean; daBlocked: boolean } | null>(null);
+  const [daBlocked, setDaBlocked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +63,9 @@ export function DeclarationsForm() {
       .then(async (res) => {
         if (cancelled) return;
         if (!res.ok) return setState("unavailable");
-        setA({ ...EMPTY, ...(await res.json()) });
+        const loaded = { ...EMPTY, ...(await res.json()) };
+        setA(loaded);
+        setBaseline(loaded);
         setState("ready");
       })
       .catch(() => !cancelled && setState("unavailable"));
@@ -71,27 +76,34 @@ export function DeclarationsForm() {
 
   const set = <K extends keyof Answers>(k: K) => (v: Answers[K]) => {
     setA((prev) => ({ ...prev, [k]: v }));
-    setResult(null);
+    setDaBlocked(false);
   };
 
-  async function save() {
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch("/api/portal/declarations", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(a),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) setError(data.error || "Could not save. Please try again.");
-      else setResult({ complete: data.complete, daBlocked: data.daBlocked });
-    } catch {
-      setError("Could not save. Check your connection and try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  useImperativeHandle(ref, () => ({
+    values: () => (state === "unavailable" ? null : a),
+    dirty: () => JSON.stringify(a) !== JSON.stringify(baseline),
+    async save(final) {
+      if (state !== "ready") return { ok: true };
+      // The API only accepts a complete set of answers. "Finish later" with
+      // half an answer can't be stored yet, so it is skipped rather than failed.
+      const incomplete = missingDeclarations(normaliseDeclarations(a)).length > 0;
+      if (incomplete && !final) return { ok: true };
+      try {
+        const res = await fetch("/api/portal/declarations", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(a),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { ok: false, error: data.error || "Could not save your health & declarations." };
+        setBaseline(a);
+        setDaBlocked(!!data.daBlocked);
+        return { ok: true, daBlocked: !!data.daBlocked };
+      } catch {
+        return { ok: false, error: "Could not save your health & declarations. Check your connection and try again." };
+      }
+    },
+  }), [a, baseline, state]);
 
   if (state === "unavailable") return null;
 
@@ -178,26 +190,12 @@ export function DeclarationsForm() {
             </span>
           </label>
 
-          {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-
-          {result?.daBlocked && (
+          {daBlocked && (
             <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               Thanks for being honest. Everyone on our sites needs to be able to take a drugs and alcohol test, so
               please call us on <strong>0800 772 3959</strong> before going any further.
             </p>
           )}
-          {result?.complete && (
-            <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved. Thank you.</p>
-          )}
-
-          <button
-            type="button"
-            onClick={save}
-            disabled={busy}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {busy ? "Saving..." : "Save health & declarations"}
-          </button>
         </div>
       )}
     </div>
