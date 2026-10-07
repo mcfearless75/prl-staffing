@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic";
-import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/page-header";
 import { listActiveJobRoles } from "@/lib/job-roles";
 import { StarterChecklists } from "./starter-checklists";
 import { PipelineBoard } from "./pipeline-board";
 import { AddNewStarterButton } from "./add-new-starter-modal";
+import { OnboardingTabs } from "@/components/onboarding-tabs";
 
 /**
  * /new-starters has two tabs:
@@ -33,31 +33,19 @@ export default async function NewStartersPage({
         ])
       : [[], []];
 
-  const tabCls = (active: boolean) =>
-    `rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-      active ? "bg-[#005f8c] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-    }`;
-
   return (
     <div className="space-y-6">
       <PageHeader
-        title="New Starters"
+        title="Onboarding"
         description={
           tab === "pipeline"
-            ? "People with a job agreed, from app invite to ready to start"
+            ? "New starters: people placed with a job agreed, from app invite to ready to start"
             : "HMRC starter declarations from the public new-starter form"
         }
         action={tab === "pipeline" ? <AddNewStarterButton companies={companies} roles={roles.map((r) => r.name)} /> : undefined}
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href="/new-starters" className={tabCls(tab === "pipeline")}>
-          Pipeline
-        </Link>
-        <Link href="/new-starters?tab=checklists" className={tabCls(tab === "checklists")}>
-          Starter checklists
-        </Link>
-      </div>
+      <OnboardingTabs active={tab === "pipeline" ? "new-starters" : "checklists"} />
 
       {tab === "pipeline" ? <PipelineBoard /> : <StarterChecklists statusFilter={params?.status || ""} />}
     </div>

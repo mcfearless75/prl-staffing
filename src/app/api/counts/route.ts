@@ -83,8 +83,10 @@ export async function GET() {
       unreadMessages,
       pendingStaff,
       unreadNotifications,
+      // Sidebar Onboarding badge: agreements to review + new starters in the pipeline.
+      onboardingTotal: pendingOnboarding + newStarters,
     });
   } catch {
-    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0, pendingStaff: 0, unreadNotifications: 0 });
+    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0, pendingStaff: 0, unreadNotifications: 0, onboardingTotal: 0 });
   }
 }

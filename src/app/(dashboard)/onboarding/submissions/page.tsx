@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
+import { OnboardingTabs } from "@/components/onboarding-tabs";
 import Link from "next/link";
 import { formatDate, getInitials } from "@/lib/utils";
 import { Badge } from "@/components/badge";
@@ -60,7 +61,7 @@ export default async function OnboardingSubmissionsPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Onboarding Submissions"
+        title="Onboarding"
         action={
           <div className="flex items-center gap-3">
             <MetlenInductionButton />
@@ -76,6 +77,8 @@ export default async function OnboardingSubmissionsPage({
           </div>
         }
       />
+
+      <OnboardingTabs active="agreements" />
 
       {/* Ready for an agreement (Erica, 2026-10-01): documents verified, no agreement yet. */}
       {ready.length > 0 && (
