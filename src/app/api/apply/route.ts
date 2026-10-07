@@ -50,6 +50,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // A job role is required: ticked from the list, or "not listed" plus typed.
+    // positionsSought is the merged text the form sends (ticked names + typed
+    // role), so it is non-empty whenever either route was completed.
+    const hasRoleIds = Array.isArray(body.jobRoleIds) && body.jobRoleIds.some((id: unknown) => typeof id === "string" && id);
+    const hasRoleText = typeof body.positionsSought === "string" && body.positionsSought.trim() !== "";
+    if (!hasRoleIds && !hasRoleText) {
+      return NextResponse.json(
+        { error: "Please tick at least one job role, or tick “My job is not listed” and type your job." },
+        { status: 400 }
+      );
+    }
+
     /**
      * The form is deliberately short (PRL, 2026-10): name, contact details,
      * work preferences and the declaration. Date of birth, address, right to

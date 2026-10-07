@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RolePicker } from "@/components/role-picker";
+import { applicantRoleError } from "@/lib/apply-roles";
 import { PublicFormShell } from "@/components/public-form-shell";
 import { AlreadyRegistered } from "@/components/already-registered";
 
@@ -104,6 +105,9 @@ export default function ApplyPage() {
   const [jobRoles, setJobRoles] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
   const [rolesError, setRolesError] = useState(false);
+  const [roleNotListed, setRoleNotListed] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
+  const rolesSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,12 +144,28 @@ export default function ApplyPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitting(true);
     setError("");
+
+    const missingRole = applicantRoleError({
+      selectedCount: selectedRoleIds.length,
+      notListed: roleNotListed,
+      otherRole: form.positionsSoughtOther,
+      freeTextMode: rolesError,
+      freeText: form.positionsSought,
+    });
+    setRoleError(missingRole);
+    if (missingRole) {
+      rolesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    setSubmitting(true);
 
     try {
       const payload = {
         ...form,
+        positionsSoughtOther: roleNotListed ? form.positionsSoughtOther : "",
+        roleNotListed,
         hoursPreferred: form.hoursPreferred.join(", "),
         daysPreferred: form.daysPreferred.join(", "),
         // Canonical ids, so the roles can be linked properly rather than
@@ -157,7 +177,7 @@ export default function ApplyPage() {
         positionsSought:
           [
             ...jobRoles.filter((r) => selectedRoleIds.includes(r.id)).map((r) => r.name),
-            form.positionsSoughtOther.trim(),
+            roleNotListed ? form.positionsSoughtOther.trim() : "",
           ]
             .filter(Boolean)
             .join(", ") || form.positionsSought,
@@ -311,13 +331,18 @@ export default function ApplyPage() {
                 deactivated. This was previously a free-text box, which is how
                 the same trade ended up recorded as "360 Operator", "360
                 Excavator Operator" and so on. */}
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Positions Sought</label>
+            <div className="sm:col-span-2" ref={rolesSectionRef}>
+              <label className={labelCls}>
+                Positions Sought <span className="text-red-600">*</span>
+              </label>
               {rolesError ? (
                 <input
                   type="text"
                   value={form.positionsSought}
-                  onChange={(e) => set("positionsSought", e.target.value)}
+                  onChange={(e) => {
+                    set("positionsSought", e.target.value);
+                    setRoleError(null);
+                  }}
                   placeholder="Type the role(s) you are applying for"
                   className={inputCls}
                 />
@@ -328,7 +353,10 @@ export default function ApplyPage() {
                   options={jobRoles}
                   selectedIds={selectedRoleIds}
                   name="jobRoleIds"
-                  onSelectionChange={setSelectedRoleIds}
+                  onSelectionChange={(ids) => {
+                    setSelectedRoleIds(ids);
+                    setRoleError(null);
+                  }}
                 />
               )}
               {rolesError && (
@@ -337,18 +365,45 @@ export default function ApplyPage() {
                 </p>
               )}
             </div>
-            <div className="sm:col-span-2">
-              <label className={labelCls}>
-                Other role (if it is not in the list above)
-              </label>
-              <input
-                type="text"
-                value={form.positionsSoughtOther}
-                onChange={(e) => set("positionsSoughtOther", e.target.value)}
-                placeholder="e.g. Scaffolder — tell us and we will add it"
-                className={inputCls}
-              />
-            </div>
+            {!rolesError && (
+              <div className="sm:col-span-2">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={roleNotListed}
+                    onChange={(e) => {
+                      setRoleNotListed(e.target.checked);
+                      setRoleError(null);
+                    }}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  My job is not listed
+                </label>
+                {roleNotListed && (
+                  <div className="mt-2">
+                    <label className={labelCls}>
+                      Your job <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.positionsSoughtOther}
+                      onChange={(e) => {
+                        set("positionsSoughtOther", e.target.value);
+                        setRoleError(null);
+                      }}
+                      placeholder="e.g. Scaffolder — tell us and we will add it"
+                      className={inputCls}
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            {roleError && (
+              <p className="sm:col-span-2 -mt-2 text-sm font-medium text-red-600" role="alert">
+                {roleError}
+              </p>
+            )}
             <div>
               <label className={labelCls}>Salary/Rate Required</label>
               <input
