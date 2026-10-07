@@ -53,8 +53,8 @@ const navigationSections = [
     items: [
       { name: "Campaign", href: "/campaign", icon: Send, badgeKey: null },
       { name: "Applicants", href: "/applicants", icon: UserCheck, badgeKey: "pendingApplicants" as const },
-      { name: "New Starters", href: "/new-starters", icon: UserPlus, badgeKey: "newStarters" as const },
-      { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
+      // New Starters lives inside Onboarding (Erica, 2026-10-07); one badge for both.
+      { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "onboardingTotal" as const, also: ["/new-starters"] },
     ],
   },
   {
@@ -121,6 +121,7 @@ type Counts = {
   newCallEnquiries: number;
   unreadMessages: number;
   unreadNotifications: number;
+  onboardingTotal: number;
   pendingStaff: number;
 };
 
@@ -130,7 +131,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
-  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0, pendingStaff: 0, unreadNotifications: 0 });
+  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0, pendingStaff: 0, unreadNotifications: 0, onboardingTotal: 0 });
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   // Restore collapsed sections from localStorage on mount
@@ -235,7 +236,8 @@ export function Sidebar() {
               {section.items.map((item) => {
                 const isActive =
                   pathname === item.href ||
-                  (item.href !== "/" && pathname.startsWith(item.href));
+                  (item.href !== "/" && pathname.startsWith(item.href)) ||
+                  ("also" in item && (item.also as string[]).some((p) => pathname.startsWith(p)));
                 const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0;
                 return (
                   <Link
