@@ -11,6 +11,7 @@ import {
   sessionStatus,
   startOfUkDay,
   reconstructSessions,
+  collapseDuplicateSessions,
   TRACKING_STARTED_AT,
   type SessionStatus,
 } from "@/lib/session-monitor";
@@ -148,7 +149,7 @@ export default async function SessionsPage({
     }))
     .filter((e) => !type || e.userType === type);
 
-  const sessions = [...rows.map((r) => ({ ...r, actions: 0 })), ...estimatedRows]
+  const sessions = [...collapseDuplicateSessions(rows).map((r) => ({ ...r, actions: 0 })), ...estimatedRows]
     .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
     .map((r) => ({
       ...r,

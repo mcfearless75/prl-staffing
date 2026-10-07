@@ -11,6 +11,7 @@ import {
   sessionStatus,
   startOfUkDay,
   reconstructSessions,
+  collapseDuplicateSessions,
 } from "@/lib/session-monitor";
 
 /**
@@ -148,5 +149,37 @@ describe("reconstructSessions", () => {
       ev("a@x.com", "09:01", "Contractor Login Blocked — Account Locked"),
     ]);
     assert.equal(s.length, 0);
+  });
+});
+
+describe("collapseDuplicateSessions", () => {
+  const t = (hhmmss: string) => new Date(`2026-10-07T${hhmmss}Z`);
+  const row = (tokenId: string, start: string, last: string) =>
+    ({ tokenId, startedAt: t(start), lastSeenAt: t(last), endedAt: null });
+
+  test("drops the stranded twin of a racing sign-in, keeps the one still being extended", () => {
+    // Jenni on 7 Oct: both rows started 10:58, only one kept getting beats
+    const stranded = row("sid-j", "10:58:01", "10:58:01");
+    const live = row("sid-j", "10:58:01", "11:02:30");
+    assert.deepEqual(collapseDuplicateSessions([stranded, live]), [live]);
+    assert.deepEqual(collapseDuplicateSessions([live, stranded]), [live]);
+  });
+
+  test("keeps separate sessions of one sign-in (went idle, came back)", () => {
+    const morning = row("sid-e", "08:54:00", "09:30:00");
+    const later = row("sid-e", "10:15:00", "10:42:00");
+    assert.equal(collapseDuplicateSessions([morning, later]).length, 2);
+  });
+
+  test("never merges different sign-ins, even on the same IP at the same moment", () => {
+    const a = row("sid-1", "10:34:00", "10:34:00");
+    const b = row("sid-2", "10:34:00", "11:03:00");
+    assert.equal(collapseDuplicateSessions([a, b]).length, 2);
+  });
+
+  test("identical twins collapse to exactly one", () => {
+    const a = row("sid-x", "10:00:00", "10:00:00");
+    const b = row("sid-x", "10:00:00", "10:00:00");
+    assert.equal(collapseDuplicateSessions([a, b]).length, 1);
   });
 });

@@ -154,3 +154,36 @@ export function reconstructSessions(events: ActivityEvent[], gapMs = IDLE_GAP_MS
   }
   return out;
 }
+
+/** Two rows of one sign-in that started this close together are the same session. */
+export const DUPLICATE_START_MS = 60_000;
+
+/**
+ * Drops rows stranded by the heartbeat race (fixed in the route with an
+ * advisory lock, but rows written before then remain): two beats for the same
+ * sign-in arrived together and each created a row. Only one was extended after
+ * that, so the other sat on /sessions as a short "Away" twin. Of rows sharing a
+ * tokenId and starting within DUPLICATE_START_MS, keep the one seen last.
+ */
+export function collapseDuplicateSessions<T extends SessionTimes & { tokenId: string }>(rows: T[]): T[] {
+  const byToken = new Map<string, T[]>();
+  for (const r of rows) {
+    const list = byToken.get(r.tokenId);
+    if (list) list.push(r);
+    else byToken.set(r.tokenId, [r]);
+  }
+  const drop = new Set<T>();
+  for (const list of byToken.values()) {
+    for (const a of list) {
+      for (const b of list) {
+        if (a === b || drop.has(b)) continue;
+        const close = Math.abs(a.startedAt.getTime() - b.startedAt.getTime()) < DUPLICATE_START_MS;
+        if (close && b.lastSeenAt.getTime() >= a.lastSeenAt.getTime()) {
+          drop.add(a);
+          break;
+        }
+      }
+    }
+  }
+  return rows.filter((r) => !drop.has(r));
+}
