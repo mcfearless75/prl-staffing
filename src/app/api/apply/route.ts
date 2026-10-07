@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendEmail, APPLICATION_RECIPIENTS } from "@/lib/email";
+import { applicantThankYouEmail } from "@/lib/applicant-thank-you";
 import { Prisma } from "@prisma/client";
 import { checkPublicFormRateLimit } from "@/lib/rate-limit";
 import { emailMatches } from "@/lib/contractor-email";
@@ -366,6 +367,22 @@ export async function POST(request: Request) {
           `Failed to send application notification email for ${email} (contractor ${contractorId}):`,
           emailResult.error
         );
+      }
+
+      // Thank the applicant (Erica, 07-10-26 #5). Not for re-applications:
+      // they get the "you already have an account" answer below instead.
+      if (!isReapplication) {
+        const thanks = applicantThankYouEmail(firstName);
+        const thanksResult = await sendEmail({
+          to: email,
+          subject: thanks.subject,
+          html: thanks.html,
+          text: thanks.text,
+          template: "applicant-thank-you",
+        });
+        if (!thanksResult.success) {
+          console.error(`Failed to send applicant thank-you email to ${email}:`, thanksResult.error);
+        }
       }
 
     /**
