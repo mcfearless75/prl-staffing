@@ -15,7 +15,7 @@ type LoginInfo = {
 
 function fmt(d: string | null) {
   if (!d) return "—";
-  return new Date(d).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(d).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
 }
 
 export function ContractorPortalStatus({ contractorId }: { contractorId: string }) {

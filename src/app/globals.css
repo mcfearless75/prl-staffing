@@ -65,6 +65,16 @@ body {
   }
 }
 
+/* Installed iPhone app: the status bar is translucent (layout.tsx) and the
+   page runs under it (viewport-fit=cover), so bars must pad themselves clear
+   of the clock/battery and the home indicator. 0 on devices without them. */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Smoother touch scrolling */
 * {
   -webkit-tap-highlight-color: transparent;

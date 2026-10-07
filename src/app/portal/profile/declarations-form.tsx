@@ -132,6 +132,10 @@ export function DeclarationsForm({ ref }: { ref?: Ref<SectionHandle<Answers>> })
             <p className="text-xs text-gray-500">Please disclose any current or past medical conditions.</p>
             <p className="mt-2 text-sm text-gray-700">Do you currently have any medical conditions?</p>
             <YesNo name="Medical conditions" value={a.hasMedicalCondition} onChange={set("hasMedicalCondition")} />
+            <p className="mt-2 text-xs text-gray-500">
+              If your medical conditions change or you develop a new health issue that affects your employment, you
+              must inform PRL Site Solutions and your Site Manager.
+            </p>
             {a.hasMedicalCondition === "Yes" && (
               <label className="mt-3 block text-sm text-gray-700">
                 Please list the condition(s) <span className="text-red-500">*</span>

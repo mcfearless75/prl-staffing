@@ -117,6 +117,7 @@ export default async function ComplianceReportPage() {
   const noRecords = noRecordContractors.length;
 
   const generatedAt = new Date().toLocaleString("en-GB", {
+    timeZone: "Europe/London",
     day: "2-digit",
     month: "long",
     year: "numeric",

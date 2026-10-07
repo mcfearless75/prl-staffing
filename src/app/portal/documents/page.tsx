@@ -8,7 +8,9 @@ import { DocumentUploader } from "./document-uploader";
 import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { DownloadButton } from "./download-button";
-import { COMPLIANCE_TYPES } from "@/lib/compliance-types";
+import { ViewDocumentButton } from "./view-document-button";
+import { COMPLIANCE_TYPES, categoryForType } from "@/lib/compliance-types";
+import { recordMatchesRequirement } from "@/lib/requirement-match";
 import { RtwSection } from "./rtw-section";
 import { ComplianceChecklist } from "./compliance-checklist";
 import { RTW_SATISFIED_STATUSES, maskShareCode, normaliseShareCode, parseRtwRoute, rtwProgress } from "@/lib/rtw-route";
@@ -86,16 +88,6 @@ export default async function PortalDocumentsPage({
     allByType[doc.type].push(doc);
   }
 
-  // Anything uploaded outside the prompted set still gets a row, so no document
-  // the contractor has sent in is hidden from them.
-  const vaultRows = [
-    ...PROMPTED_ROWS,
-    ...Object.keys(allByType)
-      .filter((type) => !(type in PROMPTED_TYPES))
-      .sort()
-      .map((type) => ({ type, label: type, icon: "📎", required: false })),
-  ];
-
   // Same test as the RTW section's "Done" badge and the home-page banner, so
   // the message never asks for a Right to Work the section says is finished.
   const rtwDone = rtwProgress(
@@ -103,6 +95,23 @@ export default async function PortalDocumentsPage({
     new Set(satisfiedRecords.map((r) => r.type)),
     !!normaliseShareCode(rtw?.shareCode)
   ).complete;
+
+  // Document Vault (Erica, 2026-10-07): what they HAVE uploaded comes first,
+  // newest first. Below it, only the prompted types nothing uploaded covers —
+  // category-aware, so "Passport — UK or Ireland" covers the Passport and
+  // Right to Work rows, and a "CSCS (Blue)" covers CSCS. Once the Right to Work
+  // section is done, no Right to Work row is shown as missing. Rows here are
+  // never marked "Required": what's required is the checklist above.
+  const uploadedTypes = Object.keys(latestByType);
+  const uploadedRows = uploadedTypes
+    .sort((a, b) => latestByType[b].createdAt.getTime() - latestByType[a].createdAt.getTime())
+    .map((type) => ({ type, label: PROMPTED_TYPES[type]?.label ?? type, icon: PROMPTED_TYPES[type]?.icon ?? "📎" }));
+  const notUploadedRows = PROMPTED_ROWS.filter(
+    (row) =>
+      !uploadedTypes.some((t) => recordMatchesRequirement(row.type, t)) &&
+      !(rtwDone && categoryForType(row.type) === "Right to Work")
+  );
+  const vaultRows = [...uploadedRows, ...notUploadedRows];
 
   return (
     <div className="space-y-5">
@@ -176,21 +185,12 @@ export default async function PortalDocumentsPage({
                 <div className="flex items-center gap-2 shrink-0">
                   {doc ? (
                     <>
-                      <a
-                        href={`/api/documents/download?id=${doc.id}&view=true`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-100 transition-colors"
-                      >
-                        View
-                      </a>
+                      <ViewDocumentButton documentId={doc.id} fileName={doc.fileName} mimeType={doc.mimeType} />
                       <DownloadButton documentId={doc.id} fileName={doc.fileName} />
                     </>
                   ) : (
-                    <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
-                      docType.required ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-500"
-                    }`}>
-                      {docType.required ? "Required" : "Missing"}
+                    <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-medium text-gray-500">
+                      Not uploaded
                     </span>
                   )}
                 </div>

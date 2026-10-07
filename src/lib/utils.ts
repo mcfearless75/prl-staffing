@@ -58,7 +58,10 @@ export function formatCurrency(amount: number): string {
 }
 
 export function formatDate(date: Date | string): string {
+  // UK time: the server runs in UTC, so a late-evening BST timestamp would
+  // otherwise show as the next day... or an hour behind where times are shown.
   return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
     day: "numeric",
     month: "short",
     year: "numeric",

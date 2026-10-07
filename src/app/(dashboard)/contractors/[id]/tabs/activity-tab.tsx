@@ -37,7 +37,7 @@ export function ActivityTab({ activityLogs }: { activityLogs: FeedRow[] }) {
             // else (including older plain-text entries) parses to null.
             const sentEmail = parseSentEmailRecord(log.details);
             const details = sentEmail ? null : readableDetails(log.details);
-            const when = `${new Date(log.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} ${new Date(log.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+            const when = `${new Date(log.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London" })} ${new Date(log.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" })}`;
             return (
               <li key={log.id} className="ml-4">
                 <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-gray-300" />
