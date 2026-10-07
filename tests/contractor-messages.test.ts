@@ -15,6 +15,9 @@ import {
   summariseConversations,
   validateMessageBody,
   workerNotificationEmail,
+  messagePreview,
+  MESSAGE_TEMPLATES,
+  fillMessageTemplate,
 } from "@/lib/contractor-messages";
 
 const at = (iso: string) => new Date(iso);
@@ -110,15 +113,43 @@ test("check-in text names the person and site, with a fallback for no site", () 
   assert.match(checkInMessageBody("Joe", "  "), /at your site today/);
 });
 
-test("notification emails never carry the message, and escape what they do carry", () => {
+test("the worker email carries only an escaped preview, and points to the app", () => {
   const worker = workerNotificationEmail("https://example.test/portal/messages");
   assert.match(worker.html, /log in to the PRISM app to read it/i);
   assert.match(worker.html, /https:\/\/example\.test\/portal\/messages/);
 
+  const long = `<b>Hi</b> Joe, ${"please upload your passport ".repeat(20)}`;
+  const withBody = workerNotificationEmail("https://example.test/portal/messages", long);
+  assert.ok(!withBody.html.includes("<b>Hi</b>"), "message text is escaped");
+  assert.match(withBody.html, /&lt;b&gt;Hi&lt;\/b&gt; Joe, please upload/);
+  assert.ok(!withBody.html.includes(long.trim()), "only a preview, never the whole message");
+  assert.match(withBody.html, /read it in full and reply/);
+});
+
+test("messagePreview keeps short messages whole and cuts long ones at a word", () => {
+  assert.equal(messagePreview("  Hi Joe,\n\nsee you   Monday "), "Hi Joe, see you Monday");
+  const cut = messagePreview("word ".repeat(100), 20);
+  assert.ok(cut.endsWith("…"));
+  assert.ok(cut.length <= 21);
+  assert.ok(!cut.includes("wor…"), "cut at a word boundary");
+});
+
+test("the office reply alert never carries the message, and escapes what it does carry", () => {
   const alert = replyAlertEmail(`<script>alert(1)</script> O'Neil`, "https://example.test/contractors/1?tab=Messages&x=1");
   assert.equal(alert.subject, `<script>alert(1)</script> O'Neil replied in PRISM`);
   assert.ok(!alert.html.includes("<script>"));
   assert.match(alert.html, /&lt;script&gt;/);
   assert.match(alert.html, /O&#39;Neil/);
   assert.match(alert.html, /tab=Messages&amp;x=1/);
+});
+
+test("message templates fill the name, fit the limit, and include a blank one", () => {
+  assert.ok(MESSAGE_TEMPLATES.some((t) => t.id === "blank"));
+  for (const t of MESSAGE_TEMPLATES) {
+    const filled = fillMessageTemplate(t.body, "Joe");
+    assert.ok(!filled.includes("{name}"), t.id);
+    assert.ok(filled.startsWith("Hi Joe"), t.id);
+    assert.ok(filled.length <= MESSAGE_MAX_LENGTH, t.id);
+  }
+  assert.ok(fillMessageTemplate("Hi {name},", "  ").startsWith("Hi there"));
 });

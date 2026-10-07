@@ -11,6 +11,7 @@ import { describeProfileChanges } from "@/lib/profile-changes";
 import { sendEmail } from "@/lib/email";
 import { escapeHtml } from "@/lib/utils";
 import { UPLOAD_ALERT_TO } from "@/lib/upload-notification";
+import { notifyAllStaff } from "@/lib/staff-notify";
 
 function text(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
@@ -157,6 +158,11 @@ export async function PUT(request: Request) {
         // Once submitted, any later change (new address, married name…) is
         // emailed to the office so it's not only discoverable in Activity.
         if (existing.profileSubmittedAt) {
+          await notifyAllStaff({
+            title: `${firstName} ${lastName} changed their details`,
+            body: changes,
+            url: `/contractors/${contractorId}`,
+          });
           const appUrl = process.env.NEXTAUTH_URL || "https://www.prismworkforce.online";
           await sendEmail({
             to: UPLOAD_ALERT_TO,

@@ -1,18 +1,42 @@
 "use client";
 
-import { useActionState } from "react";
-import { MESSAGE_MAX_LENGTH } from "@/lib/contractor-messages";
+import { useActionState, useRef } from "react";
+import { MESSAGE_MAX_LENGTH, MESSAGE_TEMPLATES, fillMessageTemplate } from "@/lib/contractor-messages";
 import { sendStaffMessage } from "./message-actions";
 
 // Uncontrolled on purpose: React resets the form after the action, which is
 // what clears the box once a message has gone (same as the Notes thread).
-export function MessageComposer({ contractorId }: { contractorId: string }) {
+// A template only pre-fills the box; it's still edited and sent as normal.
+export function MessageComposer({ contractorId, firstName }: { contractorId: string; firstName?: string | null }) {
   const action = sendStaffMessage.bind(null, contractorId);
   const [state, formAction, pending] = useActionState(action, null);
+  const boxRef = useRef<HTMLTextAreaElement>(null);
+
+  function applyTemplate(id: string) {
+    const t = MESSAGE_TEMPLATES.find((x) => x.id === id);
+    if (!t || !boxRef.current) return;
+    if (boxRef.current.value.trim() && !confirm("Replace what you've written with this template?")) return;
+    boxRef.current.value = fillMessageTemplate(t.body, firstName);
+    boxRef.current.focus();
+  }
 
   return (
     <form action={formAction} className="space-y-2">
+      <div className="flex items-center justify-end">
+        <select
+          value=""
+          onChange={(e) => applyTemplate(e.target.value)}
+          aria-label="Start from a template"
+          className="rounded-lg border border-gray-300 px-2 py-1 text-xs text-gray-700"
+        >
+          <option value="">Start from a template…</option>
+          {MESSAGE_TEMPLATES.map((t) => (
+            <option key={t.id} value={t.id}>{t.label}</option>
+          ))}
+        </select>
+      </div>
       <textarea
+        ref={boxRef}
         name="body"
         rows={3}
         required

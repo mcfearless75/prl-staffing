@@ -422,7 +422,12 @@ export default async function ContractorDetailPage({
         <NotesTab contractorId={contractor.id} notes={contractor.noteEntries} />
       )}
       {activeTab === "Messages" && thread && (
-        <MessagesTab contractorId={contractor.id} messages={thread} hasAppLogin={hasPortalAccount} />
+        <MessagesTab
+          contractorId={contractor.id}
+          messages={thread}
+          hasAppLogin={hasPortalAccount}
+          firstName={contractor.knownAs?.trim() || contractor.firstName}
+        />
       )}
     </div>
   );

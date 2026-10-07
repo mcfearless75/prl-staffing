@@ -120,7 +120,7 @@ export function NotificationBell() {
           <ul className="flex-1 overflow-y-auto divide-y divide-gray-100">
             {items.length === 0 && (
               <li className="px-4 py-6 text-center text-sm text-gray-500">
-                Nothing yet. When someone @mentions you in a note it will show here.
+                Nothing yet. Worker replies, uploads to verify, profile changes and @mentions show here.
               </li>
             )}
             {items.map((item) => (
@@ -141,6 +141,16 @@ export function NotificationBell() {
               </li>
             ))}
           </ul>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              router.push("/notifications");
+            }}
+            className="border-t border-gray-200 px-4 py-2 text-center text-xs font-medium text-blue-600 hover:bg-gray-50"
+          >
+            See all notifications
+          </button>
         </div>
       )}
     </>

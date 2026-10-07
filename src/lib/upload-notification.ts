@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { escapeHtml } from "@/lib/utils";
+import { notifyAllStaff } from "@/lib/staff-notify";
 
 /**
  * Jenni, 2026-10-01: "When someone uploads a document on their app can it
@@ -33,6 +34,11 @@ export async function notifyStaffOfUpload(contractorId: string, docType: string)
     if (!c) return;
 
     const name = `${c.firstName} ${c.lastName}`;
+    await notifyAllStaff({
+      title: `${name} uploaded a document to verify`,
+      body: docType,
+      url: `/contractors/${contractorId}?tab=${encodeURIComponent("Comps & Certs")}`,
+    });
     const appUrl = process.env.NEXTAUTH_URL || "https://www.prismworkforce.online";
     const link = `${appUrl}/contractors/${contractorId}?tab=${encodeURIComponent("Comps & Certs")}`;
 
