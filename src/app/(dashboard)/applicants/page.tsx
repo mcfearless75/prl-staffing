@@ -119,7 +119,7 @@ export default async function ApplicantsPage({
       </div>
 
       {activeList.length > 0 ? (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -204,8 +204,8 @@ export default async function ApplicantsPage({
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                       {view === "looking" ? formatDate(a.updatedAt) : formatDate(a.createdAt)}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
                         <Link
                           href={`/contractors/${a.id}`}
                           className="text-xs font-medium text-blue-600 hover:text-blue-800"
@@ -221,7 +221,7 @@ export default async function ApplicantsPage({
                         <form action={approve}>
                           <button
                             type="submit"
-                            className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                            className="whitespace-nowrap rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
                           >
                             Verify &amp; move to Subcontractors
                           </button>
@@ -230,7 +230,7 @@ export default async function ApplicantsPage({
                           <form action={markLooking}>
                             <button
                               type="submit"
-                              className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                              className="whitespace-nowrap rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
                             >
                               Looking
                             </button>
@@ -239,7 +239,7 @@ export default async function ApplicantsPage({
                         <form action={reject}>
                           <button
                             type="submit"
-                            className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
+                            className="whitespace-nowrap rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
                           >
                             Reject
                           </button>
