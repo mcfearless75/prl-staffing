@@ -83,7 +83,7 @@ export function NotificationBell() {
         onClick={() => setOpen((o) => !o)}
         aria-label={label ? `Notifications, ${label} unread` : "Notifications"}
         title="Notifications"
-        className="fixed bottom-20 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-700 shadow-lg ring-1 ring-gray-200 hover:bg-gray-50 hover:scale-105 transition-all"
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-700 shadow-lg ring-1 ring-gray-200 hover:bg-gray-50 hover:scale-105 transition-all"
       >
         <Bell className="h-5 w-5" />
         {label && (
@@ -94,7 +94,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="fixed bottom-36 right-5 z-50 flex max-h-[60vh] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-gray-200">
+        <div className="fixed bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] right-5 z-50 flex max-h-[60vh] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-gray-200">
           <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
             <h2 className="text-sm font-semibold text-gray-900">Notifications</h2>
             <div className="flex items-center gap-2">

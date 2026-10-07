@@ -27,7 +27,7 @@ export function HelpButton() {
         className="fixed inset-0 z-50 bg-black/30"
         onClick={() => setOpen(false)}
       />
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-white shadow-2xl">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col safe-area-top safe-area-bottom bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <div className="flex items-center gap-2">
             <HelpCircle className="h-5 w-5 text-blue-600" />
@@ -87,7 +87,7 @@ export function HelpButton() {
       <button
         onClick={() => setOpen(true)}
         title="Help"
-        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 hover:scale-105 transition-all"
+        className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 hover:scale-105 transition-all"
       >
         <HelpCircle className="h-6 w-6" />
       </button>
