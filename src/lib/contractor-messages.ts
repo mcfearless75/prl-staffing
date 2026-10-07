@@ -6,9 +6,11 @@
  * The rules live here as pure functions so they can be tested without
  * Postgres; the database side is in contractor-messages-server.ts.
  *
- * Privacy rule: the message BODY never leaves PRISM. Emails and push
- * notifications only say there is a message and link to it — a worker's
- * personal email or a shared office inbox is not where the conversation lives.
+ * Privacy rule: the conversation lives in PRISM. The worker's email carries
+ * only a short preview of a PRL message (Erica, 2026-10-07: "can it give a
+ * preview of the message in the email"), so they know what it's about, and
+ * links to the app to read it in full and reply. The office alert for a
+ * worker's reply still carries no message text; staff see it on the bell.
  */
 import { isPlaceholderEmail } from "@/lib/placeholder-email";
 import { escapeHtml } from "@/lib/utils";
@@ -129,13 +131,31 @@ export function checkInMessageBody(firstName: string, site: string): string {
 const BUTTON =
   "display:inline-block;background:#1F4E79;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;";
 
-/** Email to the worker. Deliberately does NOT contain the message. */
-export function workerNotificationEmail(messagesUrl: string): { subject: string; html: string } {
+/** Characters of a message shown in a preview (email, staff bell). */
+export const MESSAGE_PREVIEW_LENGTH = 160;
+
+/** First line-ish of a message, whitespace collapsed, cut at a word with "…". */
+export function messagePreview(body: string, max: number = MESSAGE_PREVIEW_LENGTH): string {
+  const flat = body.replace(/\s+/g, " ").trim();
+  if (flat.length <= max) return flat;
+  const cut = flat.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
+/** Email to the worker: a short preview only; the full message is in the app. */
+export function workerNotificationEmail(messagesUrl: string, body?: string): { subject: string; html: string } {
+  const preview = body ? messagePreview(body) : "";
   return {
     subject: "You have a new message from PRL Site Solutions",
     html: `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937;line-height:1.6;">
-  <p>You have a new message from <strong>PRL Site Solutions</strong>.</p>
-  <p>Log in to the PRISM app to read it.</p>
+  <p>You have a new message from <strong>PRL Site Solutions</strong>.</p>${
+    preview
+      ? `
+  <blockquote style="margin:12px 0;padding:10px 14px;border-left:4px solid #1F4E79;background:#f3f4f6;color:#374151;">${escapeHtml(preview)}</blockquote>`
+      : ""
+  }
+  <p>Log in to the PRISM app to read it${preview ? " in full and reply" : ""}.</p>
   <p><a href="${escapeHtml(messagesUrl)}" style="${BUTTON}">Read your message</a></p>
   <p style="color:#6b7280;font-size:12px;">Any problems call PRL on ${PRL_OFFICE_PHONE}.</p>
 </div>`,
@@ -152,4 +172,44 @@ export function replyAlertEmail(workerName: string, profileUrl: string): { subje
   <p style="color:#6b7280;font-size:12px;">If they send more in the next ${REPLY_ALERT_QUIET_MINUTES} minutes you won't get another email — everything is in their Messages tab.</p>
 </div>`,
   };
+}
+
+/**
+ * Starting points for a staff message (Erica, 2026-10-07: "messaging templates
+ * similar to the emails, as well as a blank message"). {name} becomes the
+ * worker's first name (or known-as); the text stays editable before sending.
+ */
+export const MESSAGE_TEMPLATES: { id: string; label: string; body: string }[] = [
+  { id: "blank", label: "Blank message", body: "Hi {name},\n\n" },
+  {
+    id: "rtw",
+    label: "Right to Work needed",
+    body: "Hi {name}, we still need your Right to Work before we can place you. Please open Documents in the app and complete the Right to Work section. Thanks, PRL",
+  },
+  {
+    id: "cards",
+    label: "Cards / certificates needed",
+    body: "Hi {name}, please upload a photo of each of your cards (front and back) in Documents, with the expiry date clearly visible. Thanks, PRL",
+  },
+  {
+    id: "profile",
+    label: "Finish your profile",
+    body: "Hi {name}, your profile isn't finished yet. Please open Profile in the app, answer every question marked *, then press Submit and continue. Thanks, PRL",
+  },
+  {
+    id: "call",
+    label: "Please call us",
+    body: `Hi {name}, could you give us a call on ${PRL_OFFICE_PHONE} when you get a minute? Thanks, PRL`,
+  },
+  {
+    id: "timesheet",
+    label: "Timesheet reminder",
+    body: "Hi {name}, just a reminder that timesheets are due by 12pm on Tuesday. Thanks, PRL",
+  },
+];
+
+/** A template's text with {name} filled in. Blank name → "there". */
+export function fillMessageTemplate(body: string, firstName: string | null | undefined): string {
+  const name = firstName?.trim() || "there";
+  return body.replaceAll("{name}", name);
 }

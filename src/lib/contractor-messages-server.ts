@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { sendPushToContractor } from "@/lib/push";
+import { notifyAllStaff } from "@/lib/staff-notify";
 import {
   MESSAGE_FROM_WORKER,
   MESSAGE_TO_WORKER,
+  messagePreview,
   REPLY_ALERT_TO,
   replyAlertEmail,
   resolveWorkerEmail,
@@ -120,7 +122,7 @@ export async function sendMessageToWorker(input: {
   const to = resolveWorkerEmail(contractor.contractorLogin?.email, contractor.email);
   let emailedTo: string | null = null;
   if (to) {
-    const { subject, html } = workerNotificationEmail(messagesUrl);
+    const { subject, html } = workerNotificationEmail(messagesUrl, input.body);
     const result = await sendEmail({ to, subject, html, template: "worker-message-notification" });
     if (result.success) emailedTo = to;
   }
@@ -154,6 +156,13 @@ export async function recordWorkerReply(contractorId: string, body: string): Pro
 
   await prisma.contractorMessage.create({
     data: { contractorId, direction: MESSAGE_FROM_WORKER, body, senderUserId: null, senderName: name },
+  });
+
+  // Every reply goes on the staff bell / Notifications page (not throttled like the email).
+  await notifyAllStaff({
+    title: `${name} replied`,
+    body: messagePreview(body),
+    url: `/contractors/${contractorId}?tab=Messages`,
   });
 
   try {

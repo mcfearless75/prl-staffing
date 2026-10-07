@@ -5,6 +5,7 @@ import { syncComplianceStatuses } from "@/lib/compliance-sync";
 import { NextResponse } from "next/server";
 import { countUnreadWorkerReplies } from "@/lib/contractor-messages-server";
 import { STAFF_ROLE_PENDING } from "@/lib/staff-access";
+import { ownNotificationsWhere } from "@/lib/staff-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,14 @@ export async function GET() {
     // The New Starters page has both tabs: the pipeline and HMRC checklists.
     const newStarters = newStarterChecklists + openPlacements;
 
+    // The caller's own unread alerts (Notifications page badge), found by
+    // session email like /api/notifications — SSO sessions carry no User.id.
+    const email = guard.session.user.email;
+    const me = email ? await prisma.user.findUnique({ where: { email }, select: { id: true } }) : null;
+    const unreadNotifications = me
+      ? await prisma.notification.count({ where: ownNotificationsWhere(me.id, { unreadOnly: true }) })
+      : 0;
+
     return NextResponse.json({
       pendingTimesheets,
       complianceAlerts,
@@ -73,8 +82,9 @@ export async function GET() {
       newCallEnquiries,
       unreadMessages,
       pendingStaff,
+      unreadNotifications,
     });
   } catch {
-    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0, pendingStaff: 0 });
+    return NextResponse.json({ pendingTimesheets: 0, complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0, pendingStaff: 0, unreadNotifications: 0 });
   }
 }

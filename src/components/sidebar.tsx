@@ -33,6 +33,7 @@ import {
   Inbox,
   UserCog,
   KeyRound,
+  Bell,
 } from "lucide-react";
 import { canViewSessions } from "@/lib/session-monitor";
 
@@ -43,6 +44,7 @@ const navigationSections = [
     title: "Overview",
     items: [
       { name: "Dashboard", href: "/", icon: LayoutDashboard, badgeKey: null },
+      { name: "Notifications", href: "/notifications", icon: Bell, badgeKey: "unreadNotifications" as const },
       { name: "Intelligence", href: "/intelligence", icon: Brain, badgeKey: null },
     ],
   },
@@ -118,6 +120,7 @@ type Counts = {
   newStarters: number;
   newCallEnquiries: number;
   unreadMessages: number;
+  unreadNotifications: number;
   pendingStaff: number;
 };
 
@@ -127,7 +130,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
-  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0, pendingStaff: 0 });
+  const [counts, setCounts] = useState<Counts>({ complianceAlerts: 0, draftInvoices: 0, pendingOnboarding: 0, pendingApplicants: 0, openQueries: 0, openGrievances: 0, newStarters: 0, newCallEnquiries: 0, unreadMessages: 0, pendingStaff: 0, unreadNotifications: 0 });
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   // Restore collapsed sections from localStorage on mount

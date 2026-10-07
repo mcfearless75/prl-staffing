@@ -13,16 +13,18 @@ export function MessagesTab({
   contractorId,
   messages,
   hasAppLogin,
+  firstName,
 }: {
   contractorId: string;
   messages: ThreadMessage[];
   hasAppLogin: boolean;
+  firstName?: string | null;
 }) {
   return (
     <div className="rounded-xl border bg-white p-6">
       <h2 className="mb-1 text-lg font-semibold text-gray-900">Messages</h2>
       <p className="mb-4 text-xs text-gray-500">
-        They get an email (and a phone notification if switched on) saying there&apos;s a new message — the message itself is only in the app.
+        They get an email (and a phone notification if switched on) with a short preview — they read it in full and reply in the app. Each message shows when they read it.
       </p>
       {!hasAppLogin && (
         <p className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -70,7 +72,7 @@ export function MessagesTab({
         </ul>
       )}
 
-      <MessageComposer contractorId={contractorId} />
+      <MessageComposer contractorId={contractorId} firstName={firstName} />
     </div>
   );
 }
