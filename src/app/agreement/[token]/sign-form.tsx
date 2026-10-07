@@ -45,7 +45,7 @@ export function AgreementSignForm({ token, personName }: { token: string; person
   }
 
   if (signedAt) {
-    const when = new Date(signedAt).toLocaleString("en-GB", { dateStyle: "long", timeStyle: "short" });
+    const when = new Date(signedAt).toLocaleString("en-GB", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/London" });
     return (
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
         <h2 className="text-lg font-semibold text-emerald-800">Thank you — your agreement is signed</h2>

@@ -31,7 +31,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
         ) : null}
         {categoryLabel(enquiry.category as CallEnquiryCategory)}
       </h1>
-      <p className="text-gray-500 mb-6">{enquiry.receivedAt.toLocaleString("en-GB")}</p>
+      <p className="text-gray-500 mb-6">{enquiry.receivedAt.toLocaleString("en-GB", { timeZone: "Europe/London" })}</p>
 
       <dl className="grid grid-cols-[140px_1fr] gap-y-2 mb-6 text-sm">
         <dt className="text-gray-500">Caller</dt>

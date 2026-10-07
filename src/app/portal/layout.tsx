@@ -10,13 +10,14 @@ import { portalFeatureEnabled, type PortalFeature } from "@/lib/portal-features"
 import { SessionHeartbeat } from "@/components/session-heartbeat";
 
 const allPortalNav: Array<{ name: string; href: string; icon: typeof LayoutDashboard; feature?: PortalFeature }> = [
+  // Order (Erica, 2026-10-07): Home, Profile, Documents, then Pay Query (added below).
   { name: "Home", href: "/portal", icon: LayoutDashboard },
+  { name: "Profile", href: "/portal/profile", icon: User },
+  // Compliance was folded into Documents (App Invite Form); /portal/compliance redirects there.
+  { name: "Documents", href: "/portal/documents", icon: FileUp },
   { name: "Timesheets", href: "/portal/timesheets", icon: Clock, feature: "timesheets" },
   { name: "Expenses", href: "/portal/expenses", icon: Receipt, feature: "expenses" },
   { name: "Holiday", href: "/portal/holiday", icon: CalendarDays, feature: "holiday" },
-  { name: "Documents", href: "/portal/documents", icon: FileUp },
-  // Compliance was folded into Documents (App Invite Form); /portal/compliance redirects there.
-  { name: "Profile", href: "/portal/profile", icon: User },
 ];
 // Hidden features (see portal-features.ts) drop out of the bar entirely.
 const portalNav = allPortalNav.filter((item) => !item.feature || portalFeatureEnabled(item.feature));
@@ -40,7 +41,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     <div className="min-h-screen bg-prism-canvas">
       <SessionHeartbeat />
       {/* Mobile-first top nav */}
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-prism-ink">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-prism-ink safe-area-top">
         <div className="mx-auto max-w-3xl px-4">
           <div className="flex h-14 items-center justify-between">
             <div className="flex items-center gap-3">

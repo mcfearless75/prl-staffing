@@ -162,9 +162,12 @@ export default async function ApplicantsPage({
                           {getInitials(a.firstName, a.lastName)}
                         </div>
                         <div>
-                          <span className="text-sm font-medium text-gray-900">
+                          <Link
+                            href={`/contractors/${a.id}`}
+                            className="text-sm font-medium text-gray-900 hover:text-blue-700 hover:underline"
+                          >
                             {a.firstName} {a.lastName}
-                          </span>
+                          </Link>
                           {a._count.compliances > 0 && (
                             <Link
                               href="/compliance/review"

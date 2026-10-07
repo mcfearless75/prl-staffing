@@ -7,6 +7,10 @@ import { missingProfileFields, nameChange } from "@/lib/profile-completion";
 import { NATIONALITY_OPTIONS, PRONOUN_OPTIONS, TITLE_OPTIONS, pickOption } from "@/lib/profile-options";
 import { postcodeGeoReset, refreshGeocode } from "@/lib/geo-refresh";
 import { logActivity } from "@/lib/activity-log";
+import { describeProfileChanges } from "@/lib/profile-changes";
+import { sendEmail } from "@/lib/email";
+import { escapeHtml } from "@/lib/utils";
+import { UPLOAD_ALERT_TO } from "@/lib/upload-notification";
 
 function text(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
@@ -35,7 +39,27 @@ export async function PUT(request: Request) {
 
     const existing = await prisma.contractor.findUnique({
       where: { id: contractorId },
-      select: { firstName: true, lastName: true, nameChangedAt: true, nameChangedFrom: true, profileSubmittedAt: true, postcode: true },
+      select: {
+        nameChangedAt: true,
+        nameChangedFrom: true,
+        profileSubmittedAt: true,
+        // Every field the worker can edit, so the Activity tab can say what changed.
+        title: true,
+        firstName: true,
+        lastName: true,
+        knownAs: true,
+        pronouns: true,
+        nationality: true,
+        email: true,
+        phone: true,
+        address: true,
+        postcode: true,
+        dateOfBirth: true,
+        niNumber: true,
+        emergencyContactName: true,
+        emergencyContactPhone: true,
+        emergencyContactRelation: true,
+      },
     });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -119,21 +143,39 @@ export async function PUT(request: Request) {
     }
     await refreshGeocode("contractor", contractorId);
 
-    // Log the activity
+    // Log the activity, naming the fields that changed (Erica, 2026-10-07).
+    // Field names, not values — same rule as staff edits (profile-changes.ts):
+    // the Activity tab is seen by all staff and these include NI and DOB.
     try {
-      const entries: string[] = [
-        submitting && !existing.profileSubmittedAt
-          ? "Contractor submitted their profile via portal"
-          : "Contractor updated their own profile via portal",
-      ];
-      if (change.changed) entries.push(`Name changed by worker: ${change.from} → ${firstName} ${lastName}`);
-      for (const details of entries) {
-        // logActivity takes the worker's name and login email from the session;
-        // the direct create it replaced left the name blank on the Activity tab.
-        await logActivity("Profile updated by worker", "Contractor", contractorId, details);
+      const firstSubmit = submitting && !existing.profileSubmittedAt;
+      const changes = describeProfileChanges(existing, data);
+      if (firstSubmit) {
+        await logActivity("Profile updated by worker", "Contractor", contractorId, "Contractor submitted their profile via portal");
+      } else if (changes) {
+        // logActivity takes the worker's name and login email from the session.
+        await logActivity("Profile updated by worker", "Contractor", contractorId, `Changed: ${changes}`);
+        // Once submitted, any later change (new address, married name…) is
+        // emailed to the office so it's not only discoverable in Activity.
+        if (existing.profileSubmittedAt) {
+          const appUrl = process.env.NEXTAUTH_URL || "https://www.prismworkforce.online";
+          await sendEmail({
+            to: UPLOAD_ALERT_TO,
+            subject: `${firstName} ${lastName} changed their details in the app`,
+            template: "profile-change-alert",
+            html: `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937;line-height:1.6;">
+  <p><strong>${escapeHtml(`${firstName} ${lastName}`)}</strong> has changed their details in the PRISM app:</p>
+  <p><strong>${escapeHtml(changes)}</strong></p>
+  <p>Open their profile to see the new details.</p>
+  <p><a href="${appUrl}/contractors/${contractorId}" style="display:inline-block;background:#1F4E79;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;">Open their profile</a></p>
+</div>`,
+          });
+        }
+      }
+      if (change.changed) {
+        await logActivity("Profile updated by worker", "Contractor", contractorId, `Name changed by worker: ${change.from} → ${firstName} ${lastName}`);
       }
     } catch {
-      // Don't fail the update if logging fails
+      // Don't fail the update if logging or the office email fails
     }
 
     return NextResponse.json({ success: true, submitted: submitting });

@@ -109,7 +109,7 @@ export default async function CallsPage({
             <tr key={e.id} className="border-b hover:bg-gray-50">
               <td className="py-2">
                 <Link href={`/calls/${e.id}`} className="block">
-                  {e.receivedAt.toLocaleString("en-GB")}
+                  {e.receivedAt.toLocaleString("en-GB", { timeZone: "Europe/London" })}
                 </Link>
               </td>
               <td>
