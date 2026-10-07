@@ -333,8 +333,9 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile top bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b border-white/10 bg-prism-ink px-4 lg:hidden">
+      {/* Mobile top bar. box-content keeps the 3.5rem row and adds the iPhone
+          status-bar inset on top; (dashboard)/layout.tsx offsets by the same. */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex box-content h-14 safe-area-top items-center justify-between border-b border-white/10 bg-prism-ink px-4 lg:hidden">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileOpen(true)}
@@ -376,7 +377,7 @@ export function Sidebar() {
       {/* Sidebar - mobile: slide-out drawer, desktop: fixed */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 flex h-screen w-72 lg:w-64 flex-col border-r border-white/10 bg-prism-ink transition-transform duration-200 ease-in-out",
+          "fixed top-0 left-0 z-50 flex h-screen w-72 lg:w-64 flex-col safe-area-top safe-area-bottom border-r border-white/10 bg-prism-ink transition-transform duration-200 ease-in-out",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >

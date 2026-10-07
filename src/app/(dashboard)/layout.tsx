@@ -17,7 +17,7 @@ export default function DashboardLayout({
       <HelpButton />
       <NotificationBell />
       <SessionHeartbeat />
-      <main className="relative min-h-screen pt-14 lg:pt-0 lg:ml-64 bg-prism-canvas">
+      <main className="relative min-h-screen pt-[calc(3.5rem+env(safe-area-inset-top,0px))] lg:pt-0 lg:ml-64 bg-prism-canvas">
         {/* Full-screen watermark */}
         <div className="pointer-events-none fixed inset-0 lg:ml-64 flex items-center justify-center opacity-[0.03] z-0">
           <img
