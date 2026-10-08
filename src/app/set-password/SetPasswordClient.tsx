@@ -10,6 +10,8 @@ export default function SetPasswordClient() {
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  // Jenni, 08-10-26: let people see both so they can tell which one is mistyped.
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -106,7 +108,7 @@ export default function SetPasswordClient() {
           </label>
           <input
             id="password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             required
             minLength={10}
             value={password}
@@ -130,7 +132,7 @@ export default function SetPasswordClient() {
           </label>
           <input
             id="confirm"
-            type="password"
+            type={showPassword ? "text" : "password"}
             required
             minLength={10}
             value={confirm}
@@ -140,6 +142,16 @@ export default function SetPasswordClient() {
             autoComplete="new-password"
           />
         </div>
+
+        <label className="flex items-center gap-2 text-sm text-gray-700 select-none">
+          <input
+            type="checkbox"
+            checked={showPassword}
+            onChange={(e) => setShowPassword(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          Show passwords
+        </label>
 
         <button
           type="submit"
