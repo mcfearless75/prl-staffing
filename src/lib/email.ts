@@ -19,6 +19,14 @@ export function getEmailFrom() {
   return process.env.EMAIL_FROM || DEFAULT_EMAIL_FROM;
 }
 
+/**
+ * The sender for mail that must go through Resend: the address the app
+ * invite has always used, on the domain Resend is verified for.
+ */
+export function getResendFrom() {
+  return process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
+}
+
 // Staff notification groups. Each falls back to the address the route previously
 // hardcoded, so behaviour is unchanged with no env vars set — the env var exists
 // so a leaver's mailbox can be swapped without a code deploy.
@@ -138,6 +146,13 @@ export async function sendEmail(opts: {
   /** Copied in; placeholder addresses are dropped as for `to`. */
   cc?: string | string[];
   attachments?: EmailAttachment[];
+  /**
+   * "resend" skips Microsoft 365 and sends through Resend, as the app invite
+   * does. Erica, 2026-10-08: two website welcome emails were accepted by
+   * Microsoft 365 and never reached Gmail, while the app invite to the same
+   * inbox (Resend) arrived. Falls back to the usual route if Resend isn't set up.
+   */
+  via?: "resend";
 }): Promise<SendEmailResult> {
   const requested = Array.isArray(opts.to) ? opts.to : [opts.to];
   // Invented import addresses can never be delivered; sending to them only
@@ -154,7 +169,8 @@ export async function sendEmail(opts: {
   );
   const attachments = opts.attachments ?? [];
 
-  const graphConfig = getGraphConfig();
+  const forceResend = opts.via === "resend" && !!process.env.RESEND_API_KEY;
+  const graphConfig = forceResend ? null : getGraphConfig();
   if (graphConfig) {
     const result = await sendViaGraph(graphConfig, {
       to: recipients,
@@ -199,7 +215,7 @@ export async function sendEmail(opts: {
   try {
     const resend = new Resend(apiKey);
     const { data, error } = await resend.emails.send({
-      from: getEmailFrom(),
+      from: forceResend ? getResendFrom() : getEmailFrom(),
       to: recipients,
       subject: opts.subject,
       html: opts.html,
