@@ -183,10 +183,11 @@ export default async function PortalDashboard() {
             <p className="text-[10px] text-gray-500">View your details</p>
           </div>
         </Link>
-        <a
-          href={`mailto:admin@prlsitesolutions.co.uk?subject=${encodeURIComponent(
-            `Pay Query — ${contractor.firstName} ${contractor.lastName}`
-          )}`}
+        {/* The in-app form, like the Pay Query tab: it emails Jenni (PAY_QUERY_RECIPIENTS)
+            and records the query. This tile used to open the worker's own
+            email app addressed to the general mailbox (Jenni, 08-10-26). */}
+        <Link
+          href="/portal/pay-query"
           className={`${showTimesheets ? "col-span-2 " : ""}flex items-center gap-3 rounded-xl border-2 border-amber-200 bg-amber-50 p-4 hover:bg-amber-100 transition-colors`}
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white">
@@ -194,9 +195,9 @@ export default async function PortalDashboard() {
           </div>
           <div>
             <p className="text-sm font-semibold text-amber-900">Pay Query</p>
-            <p className="text-[10px] text-amber-600">Email payroll about your pay</p>
+            <p className="text-[10px] text-amber-600">Ask payroll about your pay</p>
           </div>
-        </a>
+        </Link>
       </div>
 
       {/* Quick Stats */}

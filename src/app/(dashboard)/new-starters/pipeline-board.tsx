@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { agreementDate } from "@/lib/supply-agreement-html";
-import { PIPELINE_STAGE_LABELS, type PipelineStage } from "@/lib/new-starter-pipeline";
+import { PIPELINE_STAGE_LABELS, docsVerifiedBlocked, type PipelineStage } from "@/lib/new-starter-pipeline";
 import { loadPipelineRows } from "@/lib/new-starter-pipeline-server";
 import { PipelineRowActions } from "./pipeline-row-actions";
 
@@ -138,6 +138,7 @@ export async function PipelineBoard({
                           <PipelineRowActions
                             placementId={p.id}
                             contractorId={p.contractor.id}
+                            docsBlockedReason={docsVerifiedBlocked({ pendingDocCount: p.contractor._count.compliances })}
                             name={name}
                             actions={actions}
                             agreementPrefill={{

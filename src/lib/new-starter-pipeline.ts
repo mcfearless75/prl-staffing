@@ -89,6 +89,17 @@ export function pipelineActions(p: PlacementSnapshot): PipelineAction[] {
   return p.inductionRequired ? ["induction-done", "no-induction", "cancel"] : ["complete", "cancel"];
 }
 
+/**
+ * Why "Documents verified → Onboarding" can't be pressed yet, or null if it
+ * can (Jenni, 2026-10-08): not while any uploaded document is still waiting
+ * to be approved or rejected.
+ */
+export function docsVerifiedBlocked(p: Pick<PlacementSnapshot, "pendingDocCount">): string | null {
+  if (p.pendingDocCount <= 0) return null;
+  const n = p.pendingDocCount;
+  return `${n} document${n === 1 ? " is" : "s are"} still waiting to be verified. Approve or reject ${n === 1 ? "it" : "them"} first.`;
+}
+
 /** How a placement is completed. Only valid once the agreement is signed. */
 export type CompletionMode = "induction-done" | "no-induction" | "complete";
 

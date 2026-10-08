@@ -13,6 +13,7 @@ import { notifyReadyToStart } from "@/lib/new-starter-notify";
 import { agreementDate } from "@/lib/supply-agreement-html";
 import {
   canComplete,
+  docsVerifiedBlocked,
   parseNewStarterInput,
   type CompletionMode,
   type PlacementSnapshot,
@@ -191,6 +192,14 @@ export async function markNewStarterDocsVerified(placementId: string): Promise<P
   if (!actor) return { error: "Only PRL staff can do this." };
   const placement = await loadActivePlacement(placementId);
   if (!placement) return { error: "This placement is no longer open." };
+
+  // Not while anything they uploaded is still waiting (Jenni, 08-10-26).
+  // Checked here too, so a page opened before the upload can't skip it.
+  const pendingDocCount = await prisma.complianceRecord.count({
+    where: { contractorId: placement.contractorId, status: "Pending" },
+  });
+  const blocked = docsVerifiedBlocked({ pendingDocCount });
+  if (blocked) return { error: blocked };
 
   // Conditional on the status, so a double click or a stale page can't
   // demote someone who has already moved on.
