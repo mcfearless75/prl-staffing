@@ -98,8 +98,8 @@ export function DocumentUploader({ contractorId }: { contractorId: string }) {
       setMessage({
         type: "success",
         text: fileCount > 1
-          ? `${selectedType} uploaded (${fileCount} files — front & back)`
-          : `${selectedType} uploaded successfully`,
+          ? `${selectedType} uploaded (${fileCount} files — front & back). Add anything else, then press Submit at the bottom.`
+          : `${selectedType} uploaded. Add anything else, then press Submit at the bottom.`,
       });
       setFiles([]);
       setSelectedType("");
