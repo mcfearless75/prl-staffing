@@ -6,16 +6,30 @@ export function ReviewActions({ recordId }: { recordId: string }) {
   const [loading, setLoading] = useState(false);
 
   async function updateStatus(status: "Verified" | "Non-Compliant") {
+    // Rejecting messages the worker (Jenni, 08-10-26), so say why. Cancel
+    // here cancels the reject; an empty reason still rejects.
+    let reason = "";
+    if (status === "Non-Compliant") {
+      const answer = prompt(
+        "Why is this document being rejected? The worker will see this and be asked to upload it again.\n\n(e.g. photo is blurry, card has expired)"
+      );
+      if (answer === null) return;
+      reason = answer;
+    }
     setLoading(true);
     try {
       const res = await fetch(`/api/compliance/${recordId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, reason }),
       });
       if (!res.ok) {
         alert("Action failed. Please try again.");
         return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data.workerTold === false) {
+        alert("Rejected, but the worker couldn't be messaged. Please contact them directly.");
       }
       window.location.reload();
     } catch {

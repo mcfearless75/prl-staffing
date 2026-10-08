@@ -7,6 +7,7 @@ import { categoryForType } from "@/lib/compliance-types";
 import { bestRecordFor, recordMeetsSpec, requirementLabel, type RequirementSpec } from "@/lib/requirement-match";
 import { RTW_SATISFIED_STATUSES, normaliseShareCode, parseRtwRoute, rtwProgress } from "@/lib/rtw-route";
 import { documentsScore, rtwItemState, type ItemState } from "@/lib/portal-score";
+import { REJECTED_STATUS, reasonFromNote } from "@/lib/document-rejection";
 
 // Moved to compliance-gaps so the staff reminder can use the same checklist.
 export { loadChecklistTypes };
@@ -109,9 +110,39 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
     (r) => categoryForType(r.type) !== "Right to Work" && !requiredTypes.some((t) => recordMeetsSpec(t, r.type))
   );
 
+  // Shown whatever the score says: an accepted alternative (NPORS for CSCS)
+  // could otherwise hide a rejected card entirely (Jenni, 08-10-26).
+  const rejected = records.filter((r) => r.status === REJECTED_STATUS);
+
   return (
     <div className="space-y-4">
       <h2 className="text-base font-bold text-gray-900">Your cards and certificates</h2>
+
+      {rejected.length > 0 && (
+        <div className="space-y-3 rounded-xl border-2 border-red-300 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-800">
+            ❌ {rejected.length === 1 ? "A document needs" : `${rejected.length} documents need`} uploading again
+          </p>
+          {rejected.map((r) => {
+            const reason = reasonFromNote(r.notes);
+            return (
+              <div key={r.id} className="rounded-lg border border-red-200 bg-white p-3">
+                <p className="text-sm font-medium text-gray-900">{r.type} was not accepted</p>
+                {reason && <p className="mt-0.5 text-xs text-red-700">Reason: {reason}</p>}
+                <div className="mt-2">
+                  <ComplianceUploader
+                    contractorId={contractorId}
+                    docType={r.type}
+                    label={r.type}
+                    isResubmit
+                    complianceRecordId={r.id}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Score */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">

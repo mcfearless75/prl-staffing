@@ -10,11 +10,14 @@ export function ComplianceUploader({
   docType,
   label,
   isResubmit,
+  complianceRecordId,
 }: {
   contractorId: string;
   docType: string;
   label: string;
   isResubmit: boolean;
+  /** Re-upload against this record (e.g. a rejected one), not the first of its type. */
+  complianceRecordId?: string;
 }) {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -39,6 +42,7 @@ export function ComplianceUploader({
       formData.append("file", file);
       formData.append("type", docType);
       formData.append("contractorId", contractorId);
+      if (complianceRecordId) formData.append("complianceRecordId", complianceRecordId);
       appendExpiry(formData, expiry);
 
       const res = await fetch("/api/documents", {
