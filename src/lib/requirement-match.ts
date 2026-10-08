@@ -64,7 +64,8 @@ export function recordMatchesRequirement(requirementType: string, recordType: st
  */
 export type RequirementSpec = string | { type: string; alternatives?: readonly string[] | null };
 
-function specTypes(spec: RequirementSpec): string[] {
+/** Every document type that meets the requirement: its own type, then the alternatives. */
+export function specTypes(spec: RequirementSpec): string[] {
   return typeof spec === "string" ? [spec] : [spec.type, ...(spec.alternatives ?? [])];
 }
 
