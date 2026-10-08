@@ -4,7 +4,7 @@ import { formatDate } from "@/lib/utils";
 import { ComplianceUploader } from "../compliance/compliance-uploader";
 import { loadChecklistTypes } from "@/lib/compliance-gaps";
 import { categoryForType } from "@/lib/compliance-types";
-import { bestRecordFor, recordMeetsSpec, requirementLabel, type RequirementSpec } from "@/lib/requirement-match";
+import { bestRecordFor, recordMeetsSpec, requirementLabel, specTypes, type RequirementSpec } from "@/lib/requirement-match";
 import { RTW_SATISFIED_STATUSES, normaliseShareCode, parseRtwRoute, rtwProgress } from "@/lib/rtw-route";
 import { documentsScore, rtwItemState, type ItemState } from "@/lib/portal-score";
 import { REJECTED_STATUS, reasonFromNote } from "@/lib/document-rejection";
@@ -249,6 +249,7 @@ export async function ComplianceChecklist({ contractorId }: { contractorId: stri
                     docType={reqType.type}
                     label={reqType.label}
                     isResubmit={!!record}
+                    choices={specTypes(reqType)}
                   />
                 </div>
               )}

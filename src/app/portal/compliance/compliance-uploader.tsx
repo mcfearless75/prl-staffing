@@ -11,11 +11,18 @@ export function ComplianceUploader({
   label,
   isResubmit,
   complianceRecordId,
+  choices,
 }: {
   contractorId: string;
   docType: string;
   label: string;
   isResubmit: boolean;
+  /**
+   * An either/or requirement ("CSCS or CCNSG"): the worker says which card
+   * they're uploading, so it's saved and verified as that card. Everything
+   * used to be saved as the first option (Jenni, 2026-10-08).
+   */
+  choices?: string[];
   /** Re-upload against this record (e.g. a rejected one), not the first of its type. */
   complianceRecordId?: string;
 }) {
@@ -23,13 +30,21 @@ export function ComplianceUploader({
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [reference, setReference] = useState("");
   const [expiry, setExpiry] = useState<ExpiryValue>(EMPTY_EXPIRY);
-  const ready = expiryReady(docType, expiry);
+  const hasChoice = (choices?.length ?? 0) > 1;
+  const [chosen, setChosen] = useState("");
+  // The type actually uploaded: the worker's pick for an either/or requirement.
+  const uploadType = hasChoice ? chosen : docType;
+  const ready = !!uploadType && expiryReady(uploadType, expiry);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   async function handleFile(file: File) {
     if (!file) return;
+    if (!uploadType) {
+      setMessage({ type: "error", text: "Choose which card you're uploading first." });
+      return;
+    }
     if (!ready) {
       setMessage({ type: "error", text: "Enter the expiry date first, or tick 'This document has no expiry date'." });
       return;
@@ -40,7 +55,7 @@ export function ComplianceUploader({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("type", docType);
+      formData.append("type", uploadType);
       formData.append("contractorId", contractorId);
       if (complianceRecordId) formData.append("complianceRecordId", complianceRecordId);
       appendExpiry(formData, expiry);
@@ -63,7 +78,7 @@ export function ComplianceUploader({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contractorId,
-            type: docType,
+            type: uploadType,
             reference,
           }),
         });
@@ -95,7 +110,25 @@ export function ComplianceUploader({
         {isResubmit ? "Upload updated document:" : "Upload to complete this requirement:"}
       </p>
 
-      <ExpiryFields type={docType} value={expiry} onChange={setExpiry} compact />
+      {hasChoice && (
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Which card are you uploading?</span>
+          <select
+            value={chosen}
+            onChange={(e) => setChosen(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">Choose…</option>
+            {choices!.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {uploadType && <ExpiryFields type={uploadType} value={expiry} onChange={setExpiry} compact />}
       <input
         type="text"
         placeholder="Reference / card number (optional)"
