@@ -6,6 +6,7 @@ import { sendEmail, ONBOARDING_REPLY_TO } from "@/lib/email";
 import { formatGbpRate } from "@/lib/rate-format";
 import { isValidUnpaidBreak } from "@/lib/unpaid-break";
 import { logActivity } from "@/lib/activity-log";
+import { UPLOAD_ALERT_TO } from "@/lib/upload-notification";
 import { buildAgreementEmailHtml } from "@/lib/supply-agreement-html";
 import { SIGN_LINK_TTL_DAYS } from "@/lib/new-starter-pipeline";
 
@@ -242,9 +243,10 @@ export async function POST(request: Request) {
 
     await logActivity("Subcontractor agreement sent", "Contractor", contractor.id, `${companyName} — to ${loginEmail}`);
 
-    // Records copy for the team. Not to whoever sent it as well (Jenni,
-    // 08-10-26: an extra copy in her own inbox for every agreement she sends).
-    const staffCopyTo = ["helen@prlsitesolutions.co.uk"];
+    // Records copy to the shared admin@ mailbox only (Erica/Jenni, 08-10-26).
+    // It used to go to helen@ AND whoever pressed Send, so the same copy
+    // landed in several personal inboxes.
+    const staffCopyTo = [UPLOAD_ALERT_TO];
     const copyResult = await sendEmail({
       to: staffCopyTo,
       subject: `[Copy] ${subject}`,
