@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendEmail, APPLICATION_RECIPIENTS } from "@/lib/email";
-import { applicantThankYouEmail } from "@/lib/applicant-thank-you";
+import { applicantThankYouEmail, PRL_CONTACT } from "@/lib/applicant-thank-you";
 import { Prisma } from "@prisma/client";
 import { checkPublicFormRateLimit } from "@/lib/rate-limit";
 import { emailMatches } from "@/lib/contractor-email";
@@ -379,6 +379,10 @@ export async function POST(request: Request) {
           html: thanks.html,
           text: thanks.text,
           template: "applicant-thank-you",
+          // Through Resend like the app invite, which does reach Gmail; sent
+          // from a no-reply address, so replies go to the office.
+          via: "resend",
+          replyTo: PRL_CONTACT.email,
         });
         if (!thanksResult.success) {
           console.error(`Failed to send applicant thank-you email to ${email}:`, thanksResult.error);

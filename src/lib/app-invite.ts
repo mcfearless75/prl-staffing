@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { Resend } from "resend";
+import { getResendFrom } from "@/lib/email";
 import { portalFeatureEnabled } from "@/lib/portal-features";
 import { greetingName } from "@/lib/contractor-name";
 import { escapeHtml } from "@/lib/utils";
@@ -40,7 +41,7 @@ export async function sendAppInvite(contractorId: string, actor: InviteActor): P
   const loginUrl = `${appUrl}/login`;
 
   const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.EMAIL_FROM || "PRL Site Solutions <noreply@prlsitesolutions.online>";
+  const fromEmail = getResendFrom();
   if (!apiKey) return { ok: false, status: 500, error: "Email service not configured" };
 
   const resend = new Resend(apiKey);
