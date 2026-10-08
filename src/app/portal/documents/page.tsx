@@ -204,7 +204,12 @@ export default async function PortalDocumentsPage({
         })}
       </div>
 
-      <SubmitDocuments pendingCount={pendingCount} lastSubmittedAt={submittedAt?.toISOString() ?? null} />
+      {/* Keyed so a new upload after a Submit brings the button back. */}
+      <SubmitDocuments
+        key={pendingCount}
+        pendingCount={pendingCount}
+        lastSubmittedAt={submittedAt?.toISOString() ?? null}
+      />
 
       <p className="text-[10px] text-gray-400 text-center pb-4">
         Documents are securely stored and only accessible by you and PRL Site Solutions staff.
