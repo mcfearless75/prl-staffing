@@ -88,7 +88,7 @@ export async function sendAppInvite(contractorId: string, actor: InviteActor): P
           <ol style="color: #374151; font-size: 13px; padding-left: 20px; margin: 0; line-height: 1.8;">
             <li>Open <strong>Chrome</strong></li>
             <li>Go to <strong><a href="${loginUrl}" style="color: #005f8c;">www.prismworkforce.online</a></strong></li>
-            <li>Tap the <strong>three dots ⋮</strong> menu (top right)</li>
+            <li>Tap the <strong>three dots ⋮</strong> menu (top right, or bottom right if your address bar is at the bottom)</li>
             <li>Tap <strong>"Install app"</strong> (on some phones it says <strong>"Add to Home screen"</strong>)</li>
           </ol>
         </div>

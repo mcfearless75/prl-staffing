@@ -46,9 +46,7 @@ export function AddNewStarterButton({ companies, roles }: { companies: CompanyOp
     e.preventDefault();
     setError("");
     const name = `${form.firstName.trim()} ${form.lastName.trim()}`;
-    if (!confirm(`Add ${name} as a new starter and send the app invite to ${form.email.trim()}?
-
-The invite email goes as soon as you press OK.`)) return;
+    if (!confirm(`Add ${name} as a new starter and send the app invite to ${form.email.trim()}?\n\nThe invite email goes as soon as you press OK.`)) return;
     setSaving(true);
     try {
       let res = await addNewStarter(form);
