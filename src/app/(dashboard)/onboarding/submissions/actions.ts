@@ -223,11 +223,11 @@ async function sendRejectionEmail(email: string, name: string, companyName: stri
         </p>
         <p style="font-size:13px;color:#666;margin-top:20px;">
           Call us on <strong>0800 772 3959</strong> or email
-          <a href="mailto:info@prlsitesolutions.co.uk" style="color:#005f8c;">info@prlsitesolutions.co.uk</a>.
+          <a href="mailto:admin@prlsitesolutions.co.uk" style="color:#005f8c;">admin@prlsitesolutions.co.uk</a>.
         </p>
       </div>
       <p style="text-align:center;font-size:11px;color:#999;margin-top:16px;">
-        PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk
+        PRL Site Solutions | 0800 772 3959 | admin@prlsitesolutions.co.uk
       </p>
     </div>
   `;

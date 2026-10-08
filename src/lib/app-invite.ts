@@ -125,7 +125,7 @@ export async function sendAppInvite(contractorId: string, actor: InviteActor): P
         <!-- Support -->
         <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
           <p style="color: #6b7280; font-size: 12px; margin: 0;">
-            Need help? Contact PRL Site Solutions at <a href="mailto:info@prlsitesolutions.co.uk" style="color: #005f8c;">info@prlsitesolutions.co.uk</a> or call <strong>0800 772 3959</strong>.
+            Need help? Contact PRL Site Solutions at <a href="mailto:admin@prlsitesolutions.co.uk" style="color: #005f8c;">admin@prlsitesolutions.co.uk</a> or call <strong>0800 772 3959</strong>.
           </p>
         </div>
       </div>

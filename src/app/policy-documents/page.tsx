@@ -113,7 +113,7 @@ export default async function PolicyDocumentsPage() {
         )}
 
         <div className="mt-10 text-center text-xs text-gray-400 pb-8">
-          <p>PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk</p>
+          <p>PRL Site Solutions | 0800 772 3959 | admin@prlsitesolutions.co.uk</p>
           <p className="mt-1">259 Wallasey Village, Wallasey, Wirral, Merseyside CH45 3LR</p>
         </div>
       </div>

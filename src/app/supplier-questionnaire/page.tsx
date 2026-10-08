@@ -124,7 +124,7 @@ export default function SupplierQuestionnairePage() {
               Thank you, {mainContactName}. Your supplier questionnaire has been submitted to PRL Site Solutions for review.
             </p>
             <p className="text-xs text-gray-500">
-              We&apos;ll be in touch shortly. If you have any questions, call us on <strong>0800 772 3959</strong> or email <strong>info@prlsitesolutions.co.uk</strong>.
+              We&apos;ll be in touch shortly. If you have any questions, call us on <strong>0800 772 3959</strong> or email <strong>admin@prlsitesolutions.co.uk</strong>.
             </p>
           </div>
         </div>
@@ -462,7 +462,7 @@ export default function SupplierQuestionnairePage() {
         </form>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk
+          PRL Site Solutions | 0800 772 3959 | admin@prlsitesolutions.co.uk
         </p>
       </div>
     </div>

@@ -124,7 +124,7 @@ export default function OnboardingPage() {
               Thank you, {contactName}. Your subcontractor agreement has been submitted to PRL Site Solutions for review.
             </p>
             <p className="text-xs text-gray-500">
-              We&apos;ll be in touch shortly. If you have any questions, call us on <strong>0800 772 3959</strong> or email <strong>info@prlsitesolutions.co.uk</strong>.
+              We&apos;ll be in touch shortly. If you have any questions, call us on <strong>0800 772 3959</strong> or email <strong>admin@prlsitesolutions.co.uk</strong>.
             </p>
           </div>
         </div>
@@ -139,7 +139,7 @@ export default function OnboardingPage() {
         <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
           <p className="text-sm text-blue-900">
             This agreement is issued in conjunction with our Terms of Business. Please complete all sections below.
-            Contact us on <strong>0800 772 3959</strong> or <strong>info@prlsitesolutions.co.uk</strong> with any queries.
+            Contact us on <strong>0800 772 3959</strong> or <strong>admin@prlsitesolutions.co.uk</strong> with any queries.
           </p>
         </div>
 
@@ -324,7 +324,7 @@ export default function OnboardingPage() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-xs text-prism-ink-muted pb-8">
-          <p>PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk</p>
+          <p>PRL Site Solutions | 0800 772 3959 | admin@prlsitesolutions.co.uk</p>
           <p className="mt-1">259 Wallasey Village, Wallasey, Wirral, Merseyside CH45 3LR | Company Reg: 14358717</p>
         </div>
       </div>

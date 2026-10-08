@@ -8,7 +8,7 @@ import { escapeHtml } from "@/lib/utils";
 export const PRL_CONTACT = {
   phone: "0800 772 3959",
   phoneHref: "tel:08007723959",
-  email: "info@prlsitesolutions.co.uk",
+  email: "admin@prlsitesolutions.co.uk",
   website: "https://www.prlsitesolutions.co.uk",
   linkedin: "https://www.linkedin.com/company/prl-site-solutions/",
   instagram: "https://www.instagram.com/prlsitesolutionsltd/",

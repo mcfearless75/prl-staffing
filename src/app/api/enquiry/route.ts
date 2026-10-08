@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
   if (!sent.success) {
     return NextResponse.json(
-      { error: "Sorry, your enquiry didn't go through. Please call 0800 772 3959 or email info@prlsitesolutions.co.uk." },
+      { error: "Sorry, your enquiry didn't go through. Please call 0800 772 3959 or email admin@prlsitesolutions.co.uk." },
       { status: 502, headers }
     );
   }

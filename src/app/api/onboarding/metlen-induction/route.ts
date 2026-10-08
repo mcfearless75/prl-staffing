@@ -208,9 +208,9 @@ function buildEmailHtml(data: MetlenInductionBody): string {
             <td style="background-color:#f0f4f7;padding:16px 32px;border-top:1px solid #dde3e8;">
               <p style="margin:0;font-size:12px;color:#888888;text-align:center;">
                 PRL Site Solutions &nbsp;|&nbsp; 0800 772 3959 &nbsp;|&nbsp;
-                <a href="mailto:info@prlsitesolutions.co.uk"
+                <a href="mailto:admin@prlsitesolutions.co.uk"
                    style="color:#005f8c;text-decoration:none;">
-                  info@prlsitesolutions.co.uk
+                  admin@prlsitesolutions.co.uk
                 </a>
               </p>
             </td>

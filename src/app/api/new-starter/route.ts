@@ -144,7 +144,7 @@ export async function POST(request: Request) {
             </div>
           </div>
           <p style="text-align:center;font-size:11px;color:#999;margin-top:16px;">
-            PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk
+            PRL Site Solutions | 0800 772 3959 | admin@prlsitesolutions.co.uk
           </p>
         </div>
       `;

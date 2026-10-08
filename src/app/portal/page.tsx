@@ -184,7 +184,7 @@ export default async function PortalDashboard() {
           </div>
         </Link>
         <a
-          href={`mailto:info@prlsitesolutions.co.uk?subject=${encodeURIComponent(
+          href={`mailto:admin@prlsitesolutions.co.uk?subject=${encodeURIComponent(
             `Pay Query — ${contractor.firstName} ${contractor.lastName}`
           )}`}
           className={`${showTimesheets ? "col-span-2 " : ""}flex items-center gap-3 rounded-xl border-2 border-amber-200 bg-amber-50 p-4 hover:bg-amber-100 transition-colors`}
