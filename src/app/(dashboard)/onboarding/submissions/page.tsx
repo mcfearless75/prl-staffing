@@ -1,11 +1,9 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db";
-import { OnboardingTabs } from "@/components/onboarding-tabs";
 import Link from "next/link";
 import { formatDate, getInitials } from "@/lib/utils";
 import { Badge } from "@/components/badge";
 import { PageHeader } from "@/components/page-header";
-import { ExternalLink } from "lucide-react";
 import { MetlenInductionButton } from "./metlen-induction-button";
 import { NewSupplierButton } from "./new-supplier-button";
 import { SendAgreementButton } from "./send-agreement-button";
@@ -26,6 +24,8 @@ export default async function OnboardingSubmissionsPage({
   // decision. Approved ones have become subcontractors and rejected ones are
   // done, so both drop out of it — still reachable via their tiles, or "All".
   const filterStatus = params?.status || "Open";
+  // The old agreement list is only shown when asked for (?status=...).
+  const showList = !!params?.status;
   // When viewing Approved, default sort is by last approved (updatedAt desc)
   const sortByApproved = filterStatus === "Approved" || params?.sort === "approved";
 
@@ -68,19 +68,13 @@ export default async function OnboardingSubmissionsPage({
           <div className="flex items-center gap-3">
             <MetlenInductionButton />
             <NewSupplierButton />
-            <a
-              href="/onboarding"
-              target="_blank"
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Preview Form
-            </a>
           </div>
         }
       />
 
-      <OnboardingTabs active="agreements" />
+      {/* Jenni, 2026-10-08 tidy-up: no tab bar, and the old agreement list
+          (status tiles, table, public form link) only on request — every
+          agreement now goes through the pipeline and is approved there. */}
 
       {/* New starters whose documents are verified (Jenni, 2026-10-08): from
           here they're Onboarding's job — agreement, then induction. They left
@@ -120,6 +114,26 @@ export default async function OnboardingSubmissionsPage({
         </div>
       )}
 
+      {!showList && (
+        <div className="space-y-1 text-sm">
+          {/* Pending only, the same as the Onboarding badge. */}
+          {counts.pending > 0 && (
+            <p>
+              <Link href="/onboarding/submissions?status=Pending" className="font-medium text-amber-700 hover:underline">
+                {counts.pending} agreement{counts.pending === 1 ? "" : "s"} from the old onboarding form still to review →
+              </Link>
+            </p>
+          )}
+          <p>
+            <Link href="/onboarding/submissions?status=All" className="text-xs text-gray-500 hover:underline">
+              View all past agreements
+            </Link>
+          </p>
+        </div>
+      )}
+
+      {showList && (
+      <>
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Link href="/onboarding/submissions?status=Pending" className={`rounded-xl border p-4 text-center transition-all hover:shadow-md ${filterStatus === "Pending" ? "border-amber-400 bg-amber-50" : "border-gray-200 bg-white"}`}>
@@ -266,6 +280,8 @@ export default async function OnboardingSubmissionsPage({
           {process.env.NEXTAUTH_URL || "https://prl-staffing-production.up.railway.app"}/onboarding
         </code>
       </div>
+      </>
+      )}
     </div>
   );
 }

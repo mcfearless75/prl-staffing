@@ -5,7 +5,7 @@ import { listActiveJobRoles } from "@/lib/job-roles";
 import { StarterChecklists } from "./starter-checklists";
 import { PipelineBoard } from "./pipeline-board";
 import { AddNewStarterButton } from "./add-new-starter-modal";
-import { OnboardingTabs } from "@/components/onboarding-tabs";
+import Link from "next/link";
 import { NEW_STARTER_STAGES, ONBOARDING_STAGES } from "@/lib/new-starter-pipeline";
 
 /**
@@ -22,6 +22,10 @@ export default async function NewStartersPage({
 }) {
   const params = searchParams ? await searchParams : {};
   const tab = params?.tab === "checklists" ? "checklists" : "pipeline";
+
+  // Starter checklists (HMRC forms from the website) no longer have a tab
+  // (Jenni, 2026-10-08 tidy-up). Only a link, and only when one is waiting.
+  const newChecklists = tab === "pipeline" ? await prisma.newStarterSubmission.count({ where: { status: "New" } }) : 0;
 
   const [companies, roles] =
     tab === "pipeline"
@@ -47,7 +51,16 @@ export default async function NewStartersPage({
         action={tab === "pipeline" ? <AddNewStarterButton companies={companies} roles={roles.map((r) => r.name)} /> : undefined}
       />
 
-      <OnboardingTabs active={tab === "pipeline" ? "new-starters" : "checklists"} />
+      {tab === "checklists" && (
+        <Link href="/new-starters" className="text-sm font-medium text-blue-600 hover:underline">
+          ← Back to New Starters
+        </Link>
+      )}
+      {newChecklists > 0 && (
+        <Link href="/new-starters?tab=checklists" className="block text-sm font-medium text-amber-700 hover:underline">
+          {newChecklists} new starter checklist{newChecklists === 1 ? "" : "s"} from the website form to process →
+        </Link>
+      )}
 
       {tab === "pipeline" ? (
         <PipelineBoard
