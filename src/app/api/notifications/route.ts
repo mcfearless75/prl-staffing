@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
-import { BELL_LIST_LIMIT, markReadWhere, ownNotificationsWhere } from "@/lib/staff-notifications";
+import { BELL_LIST_LIMIT, deleteReadWhere, markReadWhere, ownNotificationsWhere } from "@/lib/staff-notifications";
 
 /**
  * The staff bell: the caller's own in-app alerts (src/lib/staff-notifications.ts).
@@ -42,4 +42,16 @@ export async function POST(request: Request) {
 
   const { count } = await prisma.notification.updateMany({ where, data: { isRead: true } });
   return NextResponse.json({ marked: count });
+}
+
+/** Delete the caller's own READ alerts: `{ all: true }` or `{ ids: [...] }`. */
+export async function DELETE(request: Request) {
+  const userId = await currentUserId();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const where = deleteReadWhere(userId, await request.json().catch(() => null));
+  if (!where) return NextResponse.json({ error: "Send { all: true } or { ids: [...] }" }, { status: 400 });
+
+  const { count } = await prisma.notification.deleteMany({ where });
+  return NextResponse.json({ deleted: count });
 }
