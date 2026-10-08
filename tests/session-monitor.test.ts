@@ -12,6 +12,7 @@ import {
   startOfUkDay,
   reconstructSessions,
   collapseDuplicateSessions,
+  personTimeInPeriodMs,
 } from "@/lib/session-monitor";
 
 /**
@@ -181,5 +182,38 @@ describe("collapseDuplicateSessions", () => {
     const a = row("sid-x", "10:00:00", "10:00:00");
     const b = row("sid-x", "10:00:00", "10:00:00");
     assert.equal(collapseDuplicateSessions([a, b]).length, 1);
+  });
+});
+
+describe("personTimeInPeriodMs", () => {
+  const since = new Date("2026-10-07T23:00:00Z"); // midnight UK, 8 Oct (BST)
+  const until = new Date("2026-10-08T09:00:00Z"); // 10:00 UK
+  const s = (start: string, last: string) => ({ startedAt: new Date(start), lastSeenAt: new Date(last), endedAt: null });
+  const H = 3_600_000;
+
+  test("a session that began yesterday counts only its hours today", () => {
+    // Started 7 Oct 08:00 UTC, still going at 09:00 UTC on 8 Oct: 25h long, 10h of it today
+    assert.equal(personTimeInPeriodMs([s("2026-10-07T08:00:00Z", "2026-10-08T09:00:00Z")], since, until), 10 * H);
+  });
+  test("overlapping sign-ins are merged, not added", () => {
+    // Two windows: 08:00–09:00 and 08:30–09:00 → one hour, not 1h30
+    assert.equal(
+      personTimeInPeriodMs([s("2026-10-08T08:00:00Z", "2026-10-08T09:00:00Z"), s("2026-10-08T08:30:00Z", "2026-10-08T09:00:00Z")], since, until),
+      1 * H,
+    );
+  });
+  test("separate sessions add up; ones wholly outside the period count nothing", () => {
+    assert.equal(
+      personTimeInPeriodMs([
+        s("2026-10-08T01:00:00Z", "2026-10-08T02:00:00Z"),
+        s("2026-10-08T05:00:00Z", "2026-10-08T05:30:00Z"),
+        s("2026-10-06T10:00:00Z", "2026-10-06T12:00:00Z"),
+      ], since, until),
+      1.5 * H,
+    );
+  });
+  test("never more than the length of the period", () => {
+    const rows = [s("2026-10-01T00:00:00Z", "2026-10-09T00:00:00Z"), s("2026-10-02T00:00:00Z", "2026-10-09T00:00:00Z")];
+    assert.equal(personTimeInPeriodMs(rows, since, until), until.getTime() - since.getTime());
   });
 });

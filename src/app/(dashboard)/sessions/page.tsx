@@ -12,6 +12,7 @@ import {
   startOfUkDay,
   reconstructSessions,
   collapseDuplicateSessions,
+  personTimeInPeriodMs,
   TRACKING_STARTED_AT,
   type SessionStatus,
 } from "@/lib/session-monitor";
@@ -157,28 +158,43 @@ export default async function SessionsPage({
       durationMs: sessionDurationMs(r),
     }));
 
-  const onlineNow = sessions.filter((s) => s.status !== "ended");
+  // One row per person: someone signed in twice (a second window) has two open
+  // sessions, but is one person on PRISM. Show the most recently active one.
+  const openByPerson = new Map<string, (typeof sessions)[number] & { openCount: number }>();
+  for (const s of sessions) {
+    if (s.status === "ended") continue;
+    const cur = openByPerson.get(s.email);
+    if (!cur) openByPerson.set(s.email, { ...s, openCount: 1 });
+    else {
+      const openCount = cur.openCount + 1;
+      openByPerson.set(s.email, s.lastSeenAt > cur.lastSeenAt ? { ...s, openCount } : { ...cur, openCount });
+    }
+  }
+  const onlineNow = [...openByPerson.values()].sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
 
   const people = new Map<
     string,
-    { email: string; name: string | null; userType: string; count: number; totalMs: number; lastSeen: Date; status: SessionStatus }
+    { email: string; name: string | null; userType: string; count: number; lastSeen: Date; status: SessionStatus; rows: typeof sessions }
   >();
   for (const s of sessions) {
     const p = people.get(s.email);
     if (!p) {
       people.set(s.email, {
         email: s.email, name: s.name, userType: s.userType, count: 1,
-        totalMs: s.durationMs, lastSeen: s.lastSeenAt, status: s.status,
+        lastSeen: s.lastSeenAt, status: s.status, rows: [s],
       });
     } else {
       p.count += 1;
-      p.totalMs += s.durationMs;
+      p.rows.push(s);
       if (s.lastSeenAt > p.lastSeen) p.lastSeen = s.lastSeenAt;
       if (s.status === "online" || (s.status === "away" && p.status === "ended")) p.status = s.status;
     }
   }
-  const peopleList = [...people.values()].sort((a, b) => b.lastSeen.getTime() - a.lastSeen.getTime());
-  const totalMs = sessions.reduce((sum, s) => sum + s.durationMs, 0);
+  // Time is counted inside the period only, with overlapping sessions merged
+  const peopleList = [...people.values()]
+    .map(({ rows: personRows, ...p }) => ({ ...p, totalMs: personTimeInPeriodMs(personRows, since, until) }))
+    .sort((a, b) => b.lastSeen.getTime() - a.lastSeen.getTime());
+  const totalMs = peopleList.reduce((sum, p) => sum + p.totalMs, 0);
   const periodLabel = PERIODS.find((p) => p.value === days)!.label.toLowerCase();
   const periodPhrase = PERIOD_PHRASE[days];
 
@@ -256,6 +272,7 @@ export default async function SessionsPage({
                     <td className="px-4 py-2">
                       <div className="font-medium text-gray-900">{s.name || s.email}</div>
                       <div className="flex items-center gap-1.5 text-[11px] text-gray-400"><TypePill type={s.userType} />{s.email}</div>
+                      {s.openCount > 1 && <div className="text-[11px] text-gray-400">Signed in {s.openCount} times — {s.openCount - 1} other window{s.openCount > 2 ? "s" : ""} open</div>}
                     </td>
                     <td className="px-4 py-2"><StatusPill status={s.status} /></td>
                     <td className="px-4 py-2 whitespace-nowrap text-gray-700">{fmt(s.startedAt, false)}</td>

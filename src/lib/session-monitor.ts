@@ -55,6 +55,37 @@ export function sessionDurationMs(s: SessionTimes): number {
   return Math.max(0, end.getTime() - s.startedAt.getTime());
 }
 
+/**
+ * Time one person spent in PRISM inside [since, until). Each session is first
+ * clipped to the period, so one that began before midnight counts only its
+ * hours today. Overlapping sessions (two sign-ins open at once, e.g. a second
+ * window) are merged, not added, so nobody is credited with more time than
+ * the clock allows.
+ */
+export function personTimeInPeriodMs(sessions: SessionTimes[], since: Date, until: Date): number {
+  const spans = sessions
+    .map((s) => [
+      Math.max(s.startedAt.getTime(), since.getTime()),
+      Math.min((s.endedAt ?? s.lastSeenAt).getTime(), until.getTime()),
+    ])
+    .filter(([a, b]) => b > a)
+    .sort((x, y) => x[0] - y[0]);
+  let total = 0;
+  let curStart = -Infinity;
+  let curEnd = -Infinity;
+  for (const [a, b] of spans) {
+    if (a > curEnd) {
+      if (curEnd > curStart) total += curEnd - curStart;
+      curStart = a;
+      curEnd = b;
+    } else if (b > curEnd) {
+      curEnd = b;
+    }
+  }
+  if (curEnd > curStart) total += curEnd - curStart;
+  return total;
+}
+
 /** 45s → "<1m", 5m, 1h 05m, 26h 00m */
 export function formatDuration(ms: number): string {
   const totalMinutes = Math.floor(ms / 60_000);
