@@ -314,7 +314,7 @@ export default async function ContractorDetailPage({
               Edit
             </Link>
             <PortalLinkButton portalUrl={portalUrl} hasPortalAccount={hasPortalAccount} />
-            <SendAppInviteButton contractorId={contractor.id} />
+            <SendAppInviteButton contractorId={contractor.id} name={`${contractor.firstName} ${contractor.lastName}`} email={contractor.email} />
             {reminder && (
               <ComplianceReminderButton
                 contractorId={contractor.id}
