@@ -274,6 +274,10 @@ model Site {
   address     String?
   city        String?
   postcode    String?
+  // Site contact (Jenni, 2026-10-08): filled into agreements for this site.
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
   latitude    Float? // geocoded from postcode, for coverage map
   longitude   Float?
   geocodedAt  DateTime?

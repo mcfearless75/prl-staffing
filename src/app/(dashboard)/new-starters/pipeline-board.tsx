@@ -3,6 +3,7 @@ import { formatCurrency } from "@/lib/utils";
 import { agreementDate } from "@/lib/supply-agreement-html";
 import { PIPELINE_STAGE_LABELS, docsVerifiedBlocked, type PipelineStage } from "@/lib/new-starter-pipeline";
 import { loadPipelineRows } from "@/lib/new-starter-pipeline-server";
+import { siteAddressLine } from "@/lib/site-contact";
 import { PipelineRowActions } from "./pipeline-row-actions";
 
 const STAGE_STYLE: Record<PipelineStage, string> = {
@@ -152,6 +153,10 @@ export async function PipelineBoard({
                               rateBasis: p.rateBasis,
                               contractorId: p.contractor.id,
                               placementId: p.id,
+                              siteAddress: p.site ? siteAddressLine(p.site) || null : null,
+                              siteContactName: p.site?.contactName ?? null,
+                              siteContactPhone: p.site?.contactPhone ?? null,
+                              siteContactEmail: p.site?.contactEmail ?? null,
                             }}
                           />
                         </td>

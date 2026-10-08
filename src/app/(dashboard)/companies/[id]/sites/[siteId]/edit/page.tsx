@@ -94,6 +94,52 @@ export default async function EditSitePage({
             </div>
           </div>
 
+          <div className="border-t border-gray-200 pt-6">
+            <h2 className="text-sm font-semibold text-gray-900">Site contact</h2>
+            <p className="mt-0.5 text-xs text-gray-500">Filled in automatically on agreements for this site.</p>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label htmlFor="contactName" className="block text-sm font-medium text-gray-700">
+                Name
+              </label>
+              <input
+                type="text"
+                id="contactName"
+                name="contactName"
+                defaultValue={site.contactName || ""}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="e.g. John Smith"
+              />
+            </div>
+            <div>
+              <label htmlFor="contactPhone" className="block text-sm font-medium text-gray-700">
+                Phone
+              </label>
+              <input
+                type="tel"
+                id="contactPhone"
+                name="contactPhone"
+                defaultValue={site.contactPhone || ""}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="e.g. 07700 900123"
+              />
+            </div>
+            <div>
+              <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-700">
+                Email
+              </label>
+              <input
+                type="email"
+                id="contactEmail"
+                name="contactEmail"
+                defaultValue={site.contactEmail || ""}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="e.g. john@client.co.uk"
+              />
+            </div>
+            </div>
+          </div>
+
           <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-6">
             <Link
               href={`/companies/${companyId}/sites/${siteId}`}

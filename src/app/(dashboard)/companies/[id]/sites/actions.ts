@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { postcodeGeoReset, refreshGeocode } from "@/lib/geo-refresh";
+import { parseSiteContact } from "@/lib/site-contact";
 // This file writes assignments directly, so it owns both halves of the
 // contractor working-status rule. It previously did neither: assigning someone
 // here left an Inactive contractor Inactive while they were on site, and ending
@@ -27,6 +28,8 @@ export async function createSite(companyId: string, formData: FormData) {
   const postcode = formData.get("postcode") as string | null;
 
   if (!name?.trim()) throw new Error("Site name is required");
+  const parsedContact = parseSiteContact((f) => formData.get(f));
+  if ("error" in parsedContact) throw new Error(parsedContact.error);
 
   const site = await prisma.site.create({
     data: {
@@ -34,6 +37,7 @@ export async function createSite(companyId: string, formData: FormData) {
       address: address?.trim() || null,
       city: city?.trim() || null,
       postcode: postcode?.trim() || null,
+      ...parsedContact.contact,
       companyId,
     },
   });
@@ -202,6 +206,8 @@ export async function updateSite(siteId: string, companyId: string, formData: Fo
   const postcode = formData.get("postcode") as string;
 
   if (!name?.trim()) throw new Error("Site name is required");
+  const parsedContact = parseSiteContact((f) => formData.get(f));
+  if ("error" in parsedContact) throw new Error(parsedContact.error);
 
   const existing = await prisma.site.findUnique({ where: { id: siteId }, select: { postcode: true } });
   const newPostcode = postcode?.trim() || null;
@@ -212,6 +218,7 @@ export async function updateSite(siteId: string, companyId: string, formData: Fo
       address: address?.trim() || null,
       city: city?.trim() || null,
       postcode: newPostcode,
+      ...parsedContact.contact,
       ...postcodeGeoReset(existing?.postcode, newPostcode),
     },
   });

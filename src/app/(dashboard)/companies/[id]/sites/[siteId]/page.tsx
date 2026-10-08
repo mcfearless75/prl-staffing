@@ -69,6 +69,18 @@ export default async function SiteDetailPage({
             <dt className="text-sm font-medium text-gray-500">Postcode</dt>
             <dd className="mt-1 text-sm text-gray-900">{site.postcode || "—"}</dd>
           </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Site contact</dt>
+            <dd className="mt-1 text-sm text-gray-900">{site.contactName || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Contact phone</dt>
+            <dd className="mt-1 text-sm text-gray-900">{site.contactPhone || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Contact email</dt>
+            <dd className="mt-1 text-sm text-gray-900">{site.contactEmail || "—"}</dd>
+          </div>
         </dl>
       </div>
 

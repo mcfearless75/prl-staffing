@@ -35,6 +35,11 @@ export interface AgreementPrefill {
   rateBasis?: string | null;
   contractorId?: string;
   placementId?: string;
+  /** From the chosen site (Clients → site): its address and contact person. */
+  siteAddress?: string | null;
+  siteContactName?: string | null;
+  siteContactPhone?: string | null;
+  siteContactEmail?: string | null;
 }
 
 function prefilledRates(prefill?: AgreementPrefill) {
@@ -94,10 +99,12 @@ export default function NewSupplierModal({ open, onClose, onSuccess, prefill }: 
       setBreakdown("");
       setAdditionalInfo("");
       setCompanyName(prefill?.companyName ?? "");
-      setCompanyAddress("");
-      setContactName("");
-      setContactEmail("");
-      setContactPhone("");
+      // Jenni, 08-10-26: the site's address and contact come from the site
+      // record, so they aren't retyped for every agreement. Still editable.
+      setCompanyAddress(prefill?.siteAddress ?? "");
+      setContactName(prefill?.siteContactName ?? "");
+      setContactEmail(prefill?.siteContactEmail ?? "");
+      setContactPhone(prefill?.siteContactPhone ?? "");
       setSendToEmail(prefill?.sendToEmail ?? "");
     }
     // Only on open: re-running on a new prefill object would wipe what staff typed.
