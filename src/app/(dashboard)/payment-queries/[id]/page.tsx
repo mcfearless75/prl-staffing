@@ -17,7 +17,10 @@ export default async function PaymentQueryDetailPage({ params }: { params: Promi
   } catch {
     hours = [];
   }
-  const assignJenni = assignQuery.bind(null, id, "Jenni Connors");
+  // Pay queries are Jenni's and Sian's job: either can take one, and it can
+  // be handed to the other once assigned (Jenni, 08-10-26).
+  const PAYROLL_STAFF = ["Jenni Connors", "Sian Connors"];
+  const assignTo = (name: string) => assignQuery.bind(null, id, name);
   const close = closeQuery.bind(null, id);
 
   return (
@@ -89,9 +92,22 @@ export default async function PaymentQueryDetailPage({ params }: { params: Promi
 
       {/* Actions */}
       <div className="flex items-center gap-3">
-        {query.status === "Open" && (
-          <form action={assignJenni}><button type="submit" className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600">Assign to Jenni</button></form>
-        )}
+        {query.status === "Open" &&
+          PAYROLL_STAFF.map((name) => (
+            <form key={name} action={assignTo(name)}>
+              <button type="submit" className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600">
+                Assign to {name.split(" ")[0]}
+              </button>
+            </form>
+          ))}
+        {query.status === "Assigned" &&
+          PAYROLL_STAFF.filter((name) => name !== query.assignedTo).map((name) => (
+            <form key={name} action={assignTo(name)}>
+              <button type="submit" className="rounded-lg border border-amber-400 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50">
+                Move to {name.split(" ")[0]}
+              </button>
+            </form>
+          ))}
         {query.status === "Assigned" && (
           <form action={async (formData: FormData) => { "use server"; await resolveQuery(id, formData.get("notes") as string || "Resolved"); }} className="flex items-center gap-2">
             <input name="notes" placeholder="Resolution notes..." className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
