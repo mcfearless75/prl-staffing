@@ -36,6 +36,10 @@ export function SubmitDocuments({
     }
   }
 
+  // `justSent` bridges the moment between pressing Submit and the refresh. The
+  // page keys this component on pendingCount, so it resets as soon as anything
+  // new is uploaded (Jenni, 08-10-26: it used to stay on "submitted" and hide
+  // the button for a card added straight afterwards).
   if (justSent || (pendingCount === 0 && lastSubmittedAt)) {
     return (
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
