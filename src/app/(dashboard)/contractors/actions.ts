@@ -68,9 +68,26 @@ export async function quickAssignContractorFromProfile(
       revalidatePath(`/contractors/${contractorId}`);
       return { type: "moved", message: "Assignment updated with new site/department." };
     }
+    // Only rates given: update them on the existing assignment rather than
+    // refusing (Jenni, 08-10-26: adding a charge rate / pay rise after
+    // onboarding just said "already assigned"). Its status is left alone —
+    // the Status box defaults to Active and would otherwise flip a Placed job.
+    if (chargeRate != null || payRate != null) {
+      await prisma.assignment.update({
+        where: { id: existing.id },
+        data: {
+          chargeRate: chargeRate ?? existing.chargeRate,
+          payRate: payRate ?? existing.payRate,
+          rateBasis: rateBasis || existing.rateBasis,
+        },
+      });
+      await logAssignmentActivity("Assignment rates updated", contractorId, companyId, existing.status);
+      revalidatePath(`/contractors/${contractorId}`);
+      return { type: "moved", message: "Rates updated on their existing assignment with this company." };
+    }
     return {
       type: "duplicate",
-      message: "This contractor is already assigned to that company.",
+      message: "This contractor is already assigned to that company. Use Edit on the assignment below to change it.",
     };
   }
 
