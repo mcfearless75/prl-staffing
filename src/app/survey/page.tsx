@@ -123,7 +123,7 @@ export default function SurveyPage() {
               Your response has been submitted to PRL Site Solutions. We value your feedback and use it to continually improve our service.
             </p>
             <p className="text-xs text-gray-500">
-              If you have any further questions, call us on <strong>0800 772 3959</strong> or email <strong>info@prlsitesolutions.co.uk</strong>.
+              If you have any further questions, call us on <strong>0800 772 3959</strong> or email <strong>admin@prlsitesolutions.co.uk</strong>.
             </p>
           </div>
         </div>
@@ -284,7 +284,7 @@ export default function SurveyPage() {
         </form>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk
+          PRL Site Solutions | 0800 772 3959 | admin@prlsitesolutions.co.uk
         </p>
       </div>
     </div>

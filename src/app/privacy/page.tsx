@@ -110,7 +110,7 @@ export default function PrivacyPolicyPage() {
                 <li><strong>Data Portability</strong> — receive your data in a structured format</li>
                 <li><strong>Object</strong> — object to processing based on legitimate interests</li>
               </ul>
-              <p className="mt-2">To exercise these rights, contact us at <strong>info@prlsitesolutions.co.uk</strong> or call <strong>0800 772 3959</strong>. We will respond within one calendar month.</p>
+              <p className="mt-2">To exercise these rights, contact us at <strong>admin@prlsitesolutions.co.uk</strong> or call <strong>0800 772 3959</strong>. We will respond within one calendar month.</p>
             </section>
 
             <section>
@@ -120,7 +120,7 @@ export default function PrivacyPolicyPage() {
 
             <section>
               <h2 className="text-lg font-semibold text-gray-900">10. Contact & Complaints</h2>
-              <p>Data Protection Contact: <strong>info@prlsitesolutions.co.uk</strong> | <strong>0800 772 3959</strong></p>
+              <p>Data Protection Contact: <strong>admin@prlsitesolutions.co.uk</strong> | <strong>0800 772 3959</strong></p>
               <p>If unsatisfied, you may lodge a complaint with the ICO: <strong>www.ico.org.uk</strong> | <strong>0303 123 1113</strong></p>
             </section>
 

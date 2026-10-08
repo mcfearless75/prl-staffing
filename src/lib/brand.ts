@@ -10,7 +10,7 @@
  * BRAND_LOGO_URL      - Path to logo image (default: "/prl-logo.png")
  * BRAND_PRIMARY_COLOR - Hex colour without # (default: "1b2430" — PRISM ink;
  *                        env can still override this per client)
- * BRAND_EMAIL         - Contact email (default: "info@prlsitesolutions.co.uk")
+ * BRAND_EMAIL         - Contact email (default: "admin@prlsitesolutions.co.uk")
  * BRAND_PHONE         - Contact phone (default: "0800 772 3959")
  * BRAND_WEBSITE       - Website URL (default: "prlsitesolutions.co.uk")
  */
@@ -34,7 +34,7 @@ export function getBrandConfig(): BrandConfig {
     product: process.env.BRAND_PRODUCT || "PRISM",
     logoUrl: process.env.BRAND_LOGO_URL || "/prl-logo.png",
     primaryColor: process.env.BRAND_PRIMARY_COLOR || "1b2430",
-    email: process.env.BRAND_EMAIL || "info@prlsitesolutions.co.uk",
+    email: process.env.BRAND_EMAIL || "admin@prlsitesolutions.co.uk",
     phone: process.env.BRAND_PHONE || "0800 772 3959",
     website: process.env.BRAND_WEBSITE || "prlsitesolutions.co.uk",
   };
@@ -47,7 +47,7 @@ export const defaultBrand: BrandConfig = {
   product: "PRISM",
   logoUrl: "/prl-logo.png",
   primaryColor: "1b2430",
-  email: "info@prlsitesolutions.co.uk",
+  email: "admin@prlsitesolutions.co.uk",
   phone: "0800 772 3959",
   website: "prlsitesolutions.co.uk",
 };

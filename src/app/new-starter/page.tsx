@@ -111,7 +111,7 @@ export default function NewStarterPage() {
               Thank you, {firstName}. Your new starter checklist has been submitted to PRL Site Solutions.
             </p>
             <p className="text-xs text-gray-500">
-              We&apos;ll be in touch shortly. If you have any questions, call us on <strong>0800 772 3959</strong> or email <strong>info@prlsitesolutions.co.uk</strong>.
+              We&apos;ll be in touch shortly. If you have any questions, call us on <strong>0800 772 3959</strong> or email <strong>admin@prlsitesolutions.co.uk</strong>.
             </p>
           </div>
         </div>
@@ -327,7 +327,7 @@ export default function NewStarterPage() {
         </form>
 
         <p className="text-center text-xs text-prism-ink-muted mt-6 pb-8">
-          PRL Site Solutions | 0800 772 3959 | info@prlsitesolutions.co.uk
+          PRL Site Solutions | 0800 772 3959 | admin@prlsitesolutions.co.uk
         </p>
       </div>
     </PublicFormShell>

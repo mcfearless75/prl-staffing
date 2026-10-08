@@ -179,7 +179,7 @@ export default async function ComplianceUploadPage({ searchParams }: PageProps) 
         )}
 
         <p className="text-center text-xs text-gray-400">
-          Having trouble? Contact PRL Site Solutions at info@prlsitesolutions.co.uk
+          Having trouble? Contact PRL Site Solutions at admin@prlsitesolutions.co.uk
         </p>
       </div>
     </div>

@@ -246,7 +246,7 @@ export async function GET(request: NextRequest) {
     y -= 12;
     page.drawText("Generated in compliance with UK GDPR Article 15 — Right of Access.", { x: margin, y, size: 8, font, color: gray });
     y -= 12;
-    page.drawText("PRL Site Solutions Ltd | info@prlsitesolutions.co.uk | 0800 772 3959", { x: margin, y, size: 8, font, color: gray });
+    page.drawText("PRL Site Solutions Ltd | admin@prlsitesolutions.co.uk | 0800 772 3959", { x: margin, y, size: 8, font, color: gray });
 
     // Serialize
     const pdfBytes = await pdf.save();
