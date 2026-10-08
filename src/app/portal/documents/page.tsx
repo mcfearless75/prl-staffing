@@ -9,22 +9,18 @@ import { Badge } from "@/components/badge";
 import { formatDate } from "@/lib/utils";
 import { DownloadButton } from "./download-button";
 import { ViewDocumentButton } from "./view-document-button";
-import { COMPLIANCE_TYPES, categoryForType } from "@/lib/compliance-types";
-import { recordMatchesRequirement } from "@/lib/requirement-match";
 import { RtwSection } from "./rtw-section";
 import { ComplianceChecklist } from "./compliance-checklist";
 import { RTW_SATISFIED_STATUSES, maskShareCode, normaliseShareCode, parseRtwRoute, rtwProgress } from "@/lib/rtw-route";
 
-// Prompted vault rows. Keys must be canonical compliance types — anything not in
-// COMPLIANCE_TYPES is filtered out below rather than sitting here as a row that
-// can never be satisfied, because the upload API rejects non-canonical types.
-// Required = must-have for compliance. Optional = nice-to-have.
-const PROMPTED_TYPES: Record<string, { label: string; icon: string; required?: boolean }> = {
+// Friendlier labels and icons for uploaded documents in the vault. A type not
+// listed here shows under its own name with a 📎.
+const DOC_TYPE_DISPLAY: Record<string, { label: string; icon: string }> = {
   "Right to Work": { label: "Right to Work", icon: "✅" },
-  Passport: { label: "Passport", icon: "🪪", required: true },
+  Passport: { label: "Passport", icon: "🪪" },
   "Share Code": { label: "Share Code (Right to Work)", icon: "✅" },
-  CSCS: { label: "CSCS Card", icon: "🏗️", required: true },
-  CCNSG: { label: "CCNSG Safety Passport", icon: "🦺", required: true },
+  CSCS: { label: "CSCS Card", icon: "🏗️" },
+  CCNSG: { label: "CCNSG Safety Passport", icon: "🦺" },
   NPORS: { label: "NPORS (Plant Operator)", icon: "🚜" },
   "IPAF (3a / 3b)": { label: "IPAF (Powered Access)", icon: "🏗️" },
   PASMA: { label: "PASMA (Scaffolding)", icon: "🪜" },
@@ -43,14 +39,9 @@ const PROMPTED_TYPES: Record<string, { label: string; icon: string; required?: b
   DBS: { label: "DBS Check", icon: "🔍" },
   Insurance: { label: "Insurance", icon: "🛡️" },
   "IR35 Assessment": { label: "IR35 Assessment", icon: "📝" },
-  CV: { label: "CV / Resume", icon: "📄", required: true },
+  CV: { label: "CV / Resume", icon: "📄" },
   Other: { label: "Other", icon: "📎" },
 };
-
-const PROMPTED_ROWS = COMPLIANCE_TYPES.filter((type) => type in PROMPTED_TYPES).map((type) => ({
-  type,
-  ...PROMPTED_TYPES[type],
-}));
 
 export default async function PortalDocumentsPage({
   searchParams,
@@ -96,22 +87,17 @@ export default async function PortalDocumentsPage({
     !!normaliseShareCode(rtw?.shareCode)
   ).complete;
 
-  // Document Vault (Erica, 2026-10-07): what they HAVE uploaded comes first,
-  // newest first. Below it, only the prompted types nothing uploaded covers —
-  // category-aware, so "Passport — UK or Ireland" covers the Passport and
-  // Right to Work rows, and a "CSCS (Blue)" covers CSCS. Once the Right to Work
-  // section is done, no Right to Work row is shown as missing. Rows here are
-  // never marked "Required": what's required is the checklist above.
-  const uploadedTypes = Object.keys(latestByType);
-  const uploadedRows = uploadedTypes
+  // Document Vault: only what they HAVE uploaded, newest first (Jenni,
+  // 2026-10-08). A row for every type they hadn't uploaded made the vault look
+  // like a long to-do list, when most types don't apply to most workers. What
+  // IS required is the checklist above; the upload drop-down lists every type.
+  const vaultRows = Object.keys(latestByType)
     .sort((a, b) => latestByType[b].createdAt.getTime() - latestByType[a].createdAt.getTime())
-    .map((type) => ({ type, label: PROMPTED_TYPES[type]?.label ?? type, icon: PROMPTED_TYPES[type]?.icon ?? "📎" }));
-  const notUploadedRows = PROMPTED_ROWS.filter(
-    (row) =>
-      !uploadedTypes.some((t) => recordMatchesRequirement(row.type, t)) &&
-      !(rtwDone && categoryForType(row.type) === "Right to Work")
-  );
-  const vaultRows = [...uploadedRows, ...notUploadedRows];
+    .map((type) => ({
+      type,
+      label: DOC_TYPE_DISPLAY[type]?.label ?? type,
+      icon: DOC_TYPE_DISPLAY[type]?.icon ?? "📎",
+    }));
 
   return (
     <div className="space-y-5">
@@ -154,45 +140,37 @@ export default async function PortalDocumentsPage({
           All your uploaded documents are stored securely. Download anytime.
         </p>
 
+        {vaultRows.length === 0 && (
+          <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-6 text-center text-sm text-gray-500">
+            No documents uploaded yet. Use the upload box above to add your first one.
+          </div>
+        )}
+
         {vaultRows.map((docType) => {
           const doc = latestByType[docType.type];
           const versions = allByType[docType.type] || [];
           return (
             <div
               key={docType.type}
-              className={`rounded-xl border bg-white overflow-hidden ${
-                doc ? "border-emerald-200" : "border-gray-200"
-              }`}
+              className="rounded-xl border border-emerald-200 bg-white overflow-hidden"
             >
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-lg shrink-0">{docType.icon}</span>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-900">{docType.label}</p>
-                    {doc ? (
-                      <p className="text-[10px] text-gray-500 truncate">
-                        {doc.fileName} · v{doc.version} · {formatDate(doc.createdAt)}
-                        {doc.fileSize > 1048576
-                          ? ` · ${(doc.fileSize / 1048576).toFixed(1)}MB`
-                          : ` · ${(doc.fileSize / 1024).toFixed(0)}KB`}
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-gray-400">Not uploaded</p>
-                    )}
+                    <p className="text-[10px] text-gray-500 truncate">
+                      {doc.fileName} · v{doc.version} · {formatDate(doc.createdAt)}
+                      {doc.fileSize > 1048576
+                        ? ` · ${(doc.fileSize / 1048576).toFixed(1)}MB`
+                        : ` · ${(doc.fileSize / 1024).toFixed(0)}KB`}
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {doc ? (
-                    <>
-                      <ViewDocumentButton documentId={doc.id} fileName={doc.fileName} mimeType={doc.mimeType} />
-                      <DownloadButton documentId={doc.id} fileName={doc.fileName} />
-                    </>
-                  ) : (
-                    <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-medium text-gray-500">
-                      Not uploaded
-                    </span>
-                  )}
+                  <ViewDocumentButton documentId={doc.id} fileName={doc.fileName} mimeType={doc.mimeType} />
+                  <DownloadButton documentId={doc.id} fileName={doc.fileName} />
                 </div>
               </div>
 
