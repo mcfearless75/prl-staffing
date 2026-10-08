@@ -11,6 +11,8 @@ import { NewSupplierButton } from "./new-supplier-button";
 import { SendAgreementButton } from "./send-agreement-button";
 import { AgreementNotNeededButton } from "./agreement-not-needed-button";
 import { readyForAgreement, READY_WINDOW_DAYS } from "@/lib/agreement-readiness";
+import { PipelineBoard } from "../../new-starters/pipeline-board";
+import { ONBOARDING_STAGES } from "@/lib/new-starter-pipeline";
 
 const OPEN_STATUSES = ["Pending", "Reviewed"];
 
@@ -79,6 +81,11 @@ export default async function OnboardingSubmissionsPage({
       />
 
       <OnboardingTabs active="agreements" />
+
+      {/* New starters whose documents are verified (Jenni, 2026-10-08): from
+          here they're Onboarding's job — agreement, then induction. They left
+          the New Starters page when their documents were verified. */}
+      <PipelineBoard stages={ONBOARDING_STAGES} />
 
       {/* Ready for an agreement (Erica, 2026-10-01): documents verified, no agreement yet. */}
       {ready.length > 0 && (

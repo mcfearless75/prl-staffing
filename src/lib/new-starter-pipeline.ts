@@ -16,6 +16,15 @@ import { isPlaceholderEmail } from "@/lib/placeholder-email";
 export const PIPELINE_STAGES = ["invited", "docs", "onboarding", "induction"] as const;
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
+/**
+ * Who works each stage (Jenni, 2026-10-08). Once documents are verified the
+ * person is someone else's job: they leave New Starters and appear, and count,
+ * under Onboarding, so the person sending agreements sees a number to action.
+ * Together these must cover every stage exactly once.
+ */
+export const NEW_STARTER_STAGES: readonly PipelineStage[] = ["invited", "docs"];
+export const ONBOARDING_STAGES: readonly PipelineStage[] = ["onboarding", "induction"];
+
 export const PIPELINE_STAGE_LABELS: Record<PipelineStage, string> = {
   invited: "Invited — waiting for documents",
   docs: "Documents uploaded — waiting verification",

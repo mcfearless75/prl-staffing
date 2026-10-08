@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   PIPELINE_STAGES,
+  NEW_STARTER_STAGES,
+  ONBOARDING_STAGES,
   derivePipelineStage,
   pipelineActions,
   canComplete,
@@ -233,5 +235,25 @@ describe("parseSignature", () => {
     assert.equal(parseSignature({ name: "Sam", agree: true }).ok, false);
     assert.equal(parseSignature({ name: "Sam Jones", agree: false }).ok, false);
     assert.equal(parseSignature({ name: "Sam Jones", agree: "true" }).ok, false);
+  });
+});
+
+/**
+ * Jenni, 08-10-26: once documents are verified the person moves from New
+ * Starters to Onboarding. Every stage must be shown, and counted, in exactly
+ * one of the two places, or someone falls through the gap or is chased twice.
+ */
+describe("New Starters / Onboarding split", () => {
+  test("every stage belongs to exactly one area", () => {
+    for (const stage of PIPELINE_STAGES) {
+      const homes = [NEW_STARTER_STAGES.includes(stage), ONBOARDING_STAGES.includes(stage)].filter(Boolean).length;
+      assert.equal(homes, 1, `${stage} is in ${homes} areas`);
+    }
+    assert.equal(NEW_STARTER_STAGES.length + ONBOARDING_STAGES.length, PIPELINE_STAGES.length);
+  });
+
+  test("verified documents move a person to Onboarding", () => {
+    assert.ok(ONBOARDING_STAGES.includes("onboarding"));
+    assert.ok(NEW_STARTER_STAGES.includes("docs"));
   });
 });

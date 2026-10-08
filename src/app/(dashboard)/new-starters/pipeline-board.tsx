@@ -1,15 +1,8 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 import { agreementDate } from "@/lib/supply-agreement-html";
-import {
-  PIPELINE_STAGES,
-  PIPELINE_STAGE_LABELS,
-  agreementState,
-  derivePipelineStage,
-  pipelineActions,
-  type PipelineStage,
-} from "@/lib/new-starter-pipeline";
+import { PIPELINE_STAGE_LABELS, type PipelineStage } from "@/lib/new-starter-pipeline";
+import { loadPipelineRows } from "@/lib/new-starter-pipeline-server";
 import { PipelineRowActions } from "./pipeline-row-actions";
 
 const STAGE_STYLE: Record<PipelineStage, string> = {
@@ -23,55 +16,50 @@ function ukDay(d: Date): string {
   return d.toLocaleDateString("en-GB", { timeZone: "Europe/London" });
 }
 
-/** "Pipeline" tab: open placements (not completed, not cancelled), grouped by stage. */
-export async function PipelineBoard() {
-  const placements = await prisma.newStarterPlacement.findMany({
-    where: { completedAt: null, cancelledAt: null },
-    orderBy: { startDate: "asc" },
-    include: {
-      company: { select: { name: true } },
-      site: { select: { name: true } },
-      contractor: {
-        select: {
-          id: true, firstName: true, lastName: true, email: true, phone: true, status: true, inviteSentAt: true,
-          _count: { select: { compliances: { where: { status: "Pending" } } } },
-        },
-      },
-    },
-  });
-
-  const agreementIds = placements.map((p) => p.supplyAgreementId).filter((id): id is string => Boolean(id));
-  const agreements = agreementIds.length
-    ? await prisma.supplyAgreement.findMany({
-        where: { id: { in: agreementIds } },
-        select: { id: true, createdAt: true, signedAt: true, signedName: true },
-      })
-    : [];
-  const agreementById = new Map(agreements.map((a) => [a.id, a]));
-
-  const rows = placements.map((p) => {
-    const agreement = p.supplyAgreementId ? agreementById.get(p.supplyAgreementId) ?? null : null;
-    const snapshot = {
-      contractorStatus: p.contractor.status,
-      pendingDocCount: p.contractor._count.compliances,
-      agreement,
-      inductionRequired: p.inductionRequired,
-    };
-    return { p, agreement, stage: derivePipelineStage(snapshot), actions: pipelineActions(snapshot), agreementState: agreementState(agreement) };
-  });
+/**
+ * Open placements (not completed, not cancelled), grouped by stage. Shows only
+ * `stages`: New Starters shows invited/docs, Onboarding shows the agreement and
+ * induction stages (Jenni, 2026-10-08). `elsewhere` links to the other half.
+ */
+export async function PipelineBoard({
+  stages,
+  emptyText,
+  elsewhere,
+}: {
+  stages: readonly PipelineStage[];
+  /** Shown when nobody is in these stages; leave out to show nothing at all. */
+  emptyText?: string;
+  elsewhere?: { stages: readonly PipelineStage[]; label: string; href: string };
+}) {
+  const all = await loadPipelineRows();
+  const rows = all.filter((r) => stages.includes(r.stage));
+  const elsewhereCount = elsewhere ? all.filter((r) => elsewhere.stages.includes(r.stage)).length : 0;
+  const elsewhereLink =
+    elsewhere && elsewhereCount > 0 ? (
+      <p className="text-sm text-gray-600">
+        {elsewhereCount} more {elsewhereCount === 1 ? "person is" : "people are"} further on, in{" "}
+        <Link href={elsewhere.href} className="font-medium text-blue-600 hover:underline">
+          {elsewhere.label} →
+        </Link>
+      </p>
+    ) : null;
 
   if (rows.length === 0) {
+    if (!emptyText) return elsewhereLink;
     return (
-      <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center">
-        <p className="text-sm text-gray-500">No new starters in the pipeline. Use “+ Add new starter” to add one.</p>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center">
+          <p className="text-sm text-gray-500">{emptyText}</p>
+        </div>
+        {elsewhereLink}
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {PIPELINE_STAGES.map((stage) => (
+      <div className={`grid grid-cols-2 gap-3 ${stages.length > 2 ? "lg:grid-cols-4" : ""}`}>
+        {stages.map((stage) => (
           <a key={stage} href={`#stage-${stage}`} className={`rounded-xl border p-4 text-center ${STAGE_STYLE[stage]}`}>
             <p className="text-2xl font-bold">{rows.filter((r) => r.stage === stage).length}</p>
             <p className="text-xs font-medium">{PIPELINE_STAGE_LABELS[stage]}</p>
@@ -79,7 +67,7 @@ export async function PipelineBoard() {
         ))}
       </div>
 
-      {PIPELINE_STAGES.map((stage) => {
+      {stages.map((stage) => {
         const inStage = rows.filter((r) => r.stage === stage);
         if (inStage.length === 0) return null;
         return (
@@ -170,6 +158,8 @@ export async function PipelineBoard() {
           </section>
         );
       })}
+
+      {elsewhereLink}
     </div>
   );
 }
