@@ -19,6 +19,10 @@ const EMPTY = {
  * "+ Add new starter": a person with a job already agreed. Saving creates (or
  * reuses, by email) the contractor as a New Starter, records the placement and
  * sends the app invite — which says nothing about the job or pay.
+ *
+ * Saving asks first (OK / Cancel) because the invite email goes as soon as it
+ * saves (Jenni, 08-10-26). It used to send, then say so in an OK-only pop-up,
+ * too late to cancel. The outcome now shows next to the button.
  */
 export function AddNewStarterButton({ companies, roles }: { companies: CompanyOption[]; roles: string[] }) {
   const router = useRouter();
@@ -26,6 +30,7 @@ export function AddNewStarterButton({ companies, roles }: { companies: CompanyOp
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const sites = companies.find((c) => c.id === form.companyId)?.sites ?? [];
   const set = (field: keyof typeof EMPTY, value: string | boolean) => setForm((f) => ({ ...f, [field]: value }));
@@ -33,12 +38,17 @@ export function AddNewStarterButton({ companies, roles }: { companies: CompanyOp
   function openModal() {
     setForm(EMPTY);
     setError("");
+    setNotice(null);
     setOpen(true);
   }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    const name = `${form.firstName.trim()} ${form.lastName.trim()}`;
+    if (!confirm(`Add ${name} as a new starter and send the app invite to ${form.email.trim()}?
+
+The invite email goes as soon as you press OK.`)) return;
     setSaving(true);
     try {
       let res = await addNewStarter(form);
@@ -51,7 +61,7 @@ export function AddNewStarterButton({ companies, roles }: { companies: CompanyOp
         return;
       }
       setOpen(false);
-      if (res.ok) alert(res.ok);
+      if (res.ok) setNotice(res.ok);
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -69,6 +79,7 @@ export function AddNewStarterButton({ companies, roles }: { companies: CompanyOp
       >
         + Add new starter
       </button>
+      {notice && <span className="ml-3 text-sm font-medium text-emerald-700">✓ {notice}</span>}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
