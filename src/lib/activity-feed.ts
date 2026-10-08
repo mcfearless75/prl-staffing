@@ -28,6 +28,7 @@ const WORKFLOW_LABELS: Record<string, string> = {
   "welcome-agent": "Welcome email sent",
   "leaving-date": "Made Inactive — leaving date passed",
   "stale-applicant": "Office alerted: application waiting",
+  "unsubmitted-uploads": "Office alerted: uploads not submitted",
   "bounce-check": "Email bounce detected",
   "declaration-retention": "Health & declarations erased (retention)",
 };

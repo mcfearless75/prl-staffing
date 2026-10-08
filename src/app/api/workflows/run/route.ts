@@ -5,6 +5,7 @@ import { complianceChaseAgent } from "@/lib/workflows/compliance-chase";
 import { complianceDigestAgent } from "@/lib/workflows/compliance-digest";
 import { welcomeAgent } from "@/lib/workflows/welcome-agent";
 import { staleApplicantAgent } from "@/lib/workflows/stale-applicant";
+import { unsubmittedUploadsAgent } from "@/lib/workflows/unsubmitted-uploads";
 import { placedToActiveAgent } from "@/lib/workflows/placed-to-active";
 import { bounceCheckAgent } from "@/lib/workflows/bounce-check";
 import { leavingDateAgent } from "@/lib/workflows/leaving-date";
@@ -29,6 +30,8 @@ const agents = [
   complianceDigestAgent,
   welcomeAgent,
   staleApplicantAgent,
+  // Workers who uploaded but never pressed Submit on My Documents.
+  unsubmittedUploadsAgent,
 ];
 
 /**

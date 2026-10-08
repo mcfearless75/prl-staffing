@@ -11,6 +11,9 @@ import { DownloadButton } from "./download-button";
 import { ViewDocumentButton } from "./view-document-button";
 import { RtwSection } from "./rtw-section";
 import { ComplianceChecklist } from "./compliance-checklist";
+import { SubmitDocuments } from "./submit-documents";
+import { submissionEvents } from "@/lib/upload-notification";
+import { pendingUploads, lastSubmittedAt } from "@/lib/document-submission";
 import { RTW_SATISFIED_STATUSES, maskShareCode, normaliseShareCode, parseRtwRoute, rtwProgress } from "@/lib/rtw-route";
 
 // Friendlier labels and icons for uploaded documents in the vault. A type not
@@ -53,7 +56,7 @@ export default async function PortalDocumentsPage({
   if (!contractorId) redirect("/login");
   const justSubmitted = (await searchParams)?.submitted === "1";
 
-  const [documents, rtw, satisfiedRecords] = await Promise.all([
+  const [documents, rtw, satisfiedRecords, events] = await Promise.all([
     prisma.document.findMany({
       where: { contractorId },
       orderBy: [{ type: "asc" }, { version: "desc" }],
@@ -66,7 +69,10 @@ export default async function PortalDocumentsPage({
       where: { contractorId, status: { in: [...RTW_SATISFIED_STATUSES] } },
       select: { type: true },
     }),
+    submissionEvents(contractorId),
   ]);
+  const pendingCount = pendingUploads(events).length;
+  const submittedAt = lastSubmittedAt(events);
 
   // Group by type, show latest version
   const latestByType: Record<string, typeof documents[0]> = {};
@@ -197,6 +203,8 @@ export default async function PortalDocumentsPage({
           );
         })}
       </div>
+
+      <SubmitDocuments pendingCount={pendingCount} lastSubmittedAt={submittedAt?.toISOString() ?? null} />
 
       <p className="text-[10px] text-gray-400 text-center pb-4">
         Documents are securely stored and only accessible by you and PRL Site Solutions staff.

@@ -25,6 +25,12 @@ const WORKFLOWS = [
     description: "Alerts staff when applicants have been waiting 7+ days",
     color: "purple",
   },
+  {
+    name: "unsubmitted-uploads",
+    label: "Unsubmitted Uploads",
+    description: "Each morning, tells admin@ about workers who uploaded documents but never pressed Submit",
+    color: "orange",
+  },
 ];
 
 const colorMap: Record<string, { bg: string; text: string; border: string }> = {

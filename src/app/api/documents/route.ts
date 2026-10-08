@@ -5,7 +5,6 @@ import { validateWorkerExpiry } from "@/lib/doc-expiry";
 import { auth } from "@/lib/auth";
 import { isValidComplianceType } from "@/lib/compliance-types";
 import { logActivity } from "@/lib/activity-log";
-import { notifyStaffOfUpload } from "@/lib/upload-notification";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -205,7 +204,8 @@ export async function POST(request: NextRequest) {
       contractorId,
       `${type} — ${file.name}${version > 1 ? ` (version ${version})` : ""}`
     );
-    if (byWorker) await notifyStaffOfUpload(contractorId, type);
+    // No office email per upload: the worker presses Submit on My Documents
+    // when they've finished (Jenni, 08-10-26). See document-submission.ts.
 
     return NextResponse.json({
       message: "Document uploaded successfully",
