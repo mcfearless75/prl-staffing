@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 /**
  * Compact "Send app invite" action for an Applicants table row. Once an invite
  * has gone out (Contractor.inviteSentAt, stamped by /api/send-app-invite) it
- * becomes "Resend" behind a confirm(), so staff don't email someone twice by
- * accident.
+ * becomes "Resend". Every send asks first (OK / Cancel), so staff don't email
+ * anyone by accident.
  */
 export function ApplicantInviteButton({
   contractorId,
@@ -26,9 +26,12 @@ export function ApplicantInviteButton({
   const [loading, setLoading] = useState(false);
 
   async function sendInvite() {
-    if (sentLabel && !confirm(`An app invite was already sent to ${name} on ${sentLabel}. Send it again?`)) {
-      return;
-    }
+    // Ask before EVERY send, not just a resend (Jenni, 08-10-26): the email
+    // goes the moment this runs, so a mis-click can't be taken back afterwards.
+    const question = sentLabel
+      ? `An app invite was already sent to ${name} on ${sentLabel}. Send it again?`
+      : `Send the app invite to ${name}?`;
+    if (!confirm(question)) return;
     setLoading(true);
     try {
       const res = await fetch("/api/send-app-invite", {

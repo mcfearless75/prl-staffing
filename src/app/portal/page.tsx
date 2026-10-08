@@ -97,7 +97,7 @@ export default async function PortalDashboard() {
             <p className="text-xs font-semibold text-gray-800 mb-2">🤖 Android (Chrome)</p>
             <ol className="text-xs text-gray-600 space-y-1 list-none">
               <li><span className="font-semibold text-gray-700">1.</span> Open <strong>Chrome</strong> and go to <strong>www.prismworkforce.online/install</strong></li>
-              <li><span className="font-semibold text-gray-700">2.</span> Tap the <strong>three dots</strong> menu (top right)</li>
+              <li><span className="font-semibold text-gray-700">2.</span> Tap the <strong>three dots</strong> menu (top right, or bottom right if your address bar is at the bottom)</li>
               <li><span className="font-semibold text-gray-700">3.</span> Tap <strong>&quot;Install app&quot;</strong> (on some phones it says <strong>&quot;Add to Home screen&quot;</strong>)</li>
               <li><span className="font-semibold text-gray-700">4.</span> Tap <strong>Install</strong> to confirm — PRISM appears on your home screen</li>
             </ol>
