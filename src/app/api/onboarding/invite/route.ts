@@ -242,10 +242,9 @@ export async function POST(request: Request) {
 
     await logActivity("Subcontractor agreement sent", "Contractor", contractor.id, `${companyName} — to ${loginEmail}`);
 
-    // Records copy for the team.
+    // Records copy for the team. Not to whoever sent it as well (Jenni,
+    // 08-10-26: an extra copy in her own inbox for every agreement she sends).
     const staffCopyTo = ["helen@prlsitesolutions.co.uk"];
-    const sessionEmail = session.user.email;
-    if (sessionEmail && !staffCopyTo.includes(sessionEmail)) staffCopyTo.push(sessionEmail);
     const copyResult = await sendEmail({
       to: staffCopyTo,
       subject: `[Copy] ${subject}`,
