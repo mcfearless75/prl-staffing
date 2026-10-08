@@ -30,7 +30,7 @@ function LoginForm() {
   useEffect(() => {
     const urlError = searchParams.get("error");
     if (urlError === "CredentialsSignin" || urlError === "Configuration") {
-      setError("Invalid email or password. Please try again.");
+      setError("Invalid email or password. Passwords are case-sensitive: check your capital letters and try again.");
     } else if (urlError) {
       setError("Sign in failed. Please try again.");
     }
@@ -49,7 +49,7 @@ function LoginForm() {
       });
 
       if (result?.error) {
-        setError("Invalid email or password. Please try again.");
+        setError("Invalid email or password. Passwords are case-sensitive: check your capital letters and try again.");
         setLoading(false);
         return;
       }

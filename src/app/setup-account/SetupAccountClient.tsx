@@ -300,7 +300,7 @@ export default function SetupAccountClient() {
               id="password-rule"
               className={`mt-1 text-xs ${password.length >= 10 ? "text-emerald-600" : "text-gray-500"}`}
             >
-              {password.length >= 10 ? "✓ " : ""}At least 10 characters.
+              {password.length >= 10 ? "✓ " : ""}At least 10 characters. Passwords are case-sensitive: capital letters count, so remember which ones you used.
             </p>
           </div>
 
