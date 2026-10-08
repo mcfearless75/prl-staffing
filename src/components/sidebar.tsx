@@ -53,8 +53,10 @@ const navigationSections = [
     items: [
       { name: "Campaign", href: "/campaign", icon: Send, badgeKey: null },
       { name: "Applicants", href: "/applicants", icon: UserCheck, badgeKey: "pendingApplicants" as const },
-      // New Starters lives inside Onboarding (Erica, 2026-10-07); one badge for both.
-      { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "onboardingTotal" as const, also: ["/new-starters"] },
+      // Own menu item again (Jenni, 2026-10-08): one click to what needs doing.
+      // The Onboarding pages still share a tab bar with it (Erica, 2026-10-07).
+      { name: "New Starters", href: "/new-starters", icon: UserPlus, badgeKey: "newStarters" as const },
+      { name: "Onboarding", href: "/onboarding/submissions", icon: UserPlus, badgeKey: "pendingOnboarding" as const },
     ],
   },
   {

@@ -36,10 +36,10 @@ export default async function NewStartersPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Onboarding"
+        title="New Starters"
         description={
           tab === "pipeline"
-            ? "New starters: people placed with a job agreed, from app invite to ready to start"
+            ? "People placed with a job agreed, from app invite to ready to start"
             : "HMRC starter declarations from the public new-starter form"
         }
         action={tab === "pipeline" ? <AddNewStarterButton companies={companies} roles={roles.map((r) => r.name)} /> : undefined}
