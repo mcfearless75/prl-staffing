@@ -10,17 +10,22 @@ import { ComplianceUploader } from "../compliance/compliance-uploader";
  * "Do you have a UK or Irish passport?" and the documents each answer needs.
  * Answers and uploads are kept between visits, so a worker waiting on a share
  * code can leave and come back.
+ *
+ * Jenni, 08-10-26: the saved share code showed only its last 3 characters and
+ * couldn't be changed, so a worker who'd mistyped it, or whose code had
+ * expired, was stuck. It's their own code, so it now shows in full, with a
+ * "Change" button.
  */
 export function RtwSection({
   contractorId,
   route: savedRoute,
-  maskedShareCode,
+  shareCode,
   satisfiedTypes,
 }: {
   contractorId: string;
   route: RtwRoute | null;
-  /** Masked code if one is on file (the full code never reaches the browser). */
-  maskedShareCode: string | null;
+  /** The worker's own share code, formatted "W12 345 67X", if one is on file. */
+  shareCode: string | null;
   satisfiedTypes: string[];
 }) {
   const router = useRouter();
@@ -31,9 +36,10 @@ export function RtwSection({
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [changingCode, setChangingCode] = useState(false);
 
   const satisfied = new Set(satisfiedTypes);
-  const progress = rtwProgress(route, satisfied, !!maskedShareCode);
+  const progress = rtwProgress(route, satisfied, !!shareCode);
 
   async function save(next: RtwRoute, shareCode?: string) {
     setBusy(true);
@@ -48,6 +54,7 @@ export function RtwSection({
       if (!res.ok) throw new Error(data.error || "Could not save");
       setRoute(next);
       setCode("");
+      setChangingCode(false);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save");
@@ -124,15 +131,25 @@ export function RtwSection({
             )}
 
             {RTW_ROUTES[route].needsShareCode &&
-              (maskedShareCode ? (
-                <p className="flex items-center gap-1.5 text-sm text-emerald-700">
-                  <Check className="h-4 w-4" /> Share code saved ({maskedShareCode})
-                </p>
+              (shareCode && !changingCode ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="flex items-center gap-1.5 text-sm text-emerald-700">
+                    <Check className="h-4 w-4" /> Share code saved: <span className="font-mono font-semibold">{shareCode}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setChangingCode(true)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Change
+                  </button>
+                </div>
               ) : (
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                  <p className="text-sm font-medium text-gray-900">Share code</p>
+                  <p className="text-sm font-medium text-gray-900">{changingCode ? "New share code" : "Share code"}</p>
                   <p className="mb-2 text-[11px] text-gray-500">
                     Get it from GOV.UK &ldquo;Prove your right to work&rdquo;. It looks like W12 345 67X.
+                    {changingCode && " Share codes expire, so if yours has, get a new one and enter it here."}
                   </p>
                   <div className="flex gap-2">
                     <input
@@ -151,6 +168,19 @@ export function RtwSection({
                       Save
                     </button>
                   </div>
+                  {changingCode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChangingCode(false);
+                        setCode("");
+                        setError("");
+                      }}
+                      className="mt-2 text-xs text-gray-500 underline"
+                    >
+                      Cancel, keep {shareCode}
+                    </button>
+                  )}
                 </div>
               ))}
           </div>

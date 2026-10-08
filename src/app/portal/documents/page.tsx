@@ -14,7 +14,7 @@ import { ComplianceChecklist } from "./compliance-checklist";
 import { SubmitDocuments } from "./submit-documents";
 import { submissionEvents } from "@/lib/upload-notification";
 import { pendingUploads, lastSubmittedAt } from "@/lib/document-submission";
-import { RTW_SATISFIED_STATUSES, maskShareCode, normaliseShareCode, parseRtwRoute, rtwProgress } from "@/lib/rtw-route";
+import { RTW_SATISFIED_STATUSES, formatShareCode, normaliseShareCode, parseRtwRoute, rtwProgress } from "@/lib/rtw-route";
 
 // Friendlier labels and icons for uploaded documents in the vault. A type not
 // listed here shows under its own name with a 📎.
@@ -128,7 +128,7 @@ export default async function PortalDocumentsPage({
       <RtwSection
         contractorId={contractorId}
         route={parseRtwRoute(rtw?.rtwRoute)}
-        maskedShareCode={rtw?.shareCode ? maskShareCode(rtw.shareCode) : null}
+        shareCode={rtw?.shareCode ? formatShareCode(rtw.shareCode) : null}
         satisfiedTypes={[...new Set(satisfiedRecords.map((r) => r.type))]}
       />
 
