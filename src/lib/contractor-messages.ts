@@ -197,6 +197,12 @@ export const MESSAGE_TEMPLATES: { id: string; label: string; body: string }[] = 
     body: "Hi {name}, your profile isn't finished yet. Please open Profile in the app, answer every question marked *, then press Submit and continue. Thanks, PRL",
   },
   {
+    // Erica, 08-10-26.
+    id: "emergency",
+    label: "Emergency contact needed",
+    body: "Hi {name}, we don't have an emergency contact for you yet. Please open Profile in the app and fill in the Emergency contact section (their name, phone number and how they're related to you), then press Submit and continue. Thanks, PRL",
+  },
+  {
     id: "call",
     label: "Please call us",
     body: `Hi {name}, could you give us a call on ${PRL_OFFICE_PHONE} when you get a minute? Thanks, PRL`,
