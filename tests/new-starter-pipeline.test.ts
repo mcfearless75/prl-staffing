@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   PIPELINE_STAGES,
   NEW_STARTER_STAGES,
+  docsVerifiedBlocked,
   ONBOARDING_STAGES,
   derivePipelineStage,
   pipelineActions,
@@ -255,5 +256,17 @@ describe("New Starters / Onboarding split", () => {
   test("verified documents move a person to Onboarding", () => {
     assert.ok(ONBOARDING_STAGES.includes("onboarding"));
     assert.ok(NEW_STARTER_STAGES.includes("docs"));
+  });
+});
+
+/** Jenni, 08-10-26: "Documents verified" can't be pressed while any are still waiting. */
+describe("docsVerifiedBlocked", () => {
+  test("blocked while documents are waiting, with the count", () => {
+    assert.match(docsVerifiedBlocked({ pendingDocCount: 2 }) ?? "", /2 documents are still waiting/);
+    assert.match(docsVerifiedBlocked({ pendingDocCount: 1 }) ?? "", /1 document is still waiting/);
+  });
+
+  test("allowed once none are waiting", () => {
+    assert.equal(docsVerifiedBlocked({ pendingDocCount: 0 }), null);
   });
 });

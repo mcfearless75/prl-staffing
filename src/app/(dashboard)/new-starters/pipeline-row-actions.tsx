@@ -19,6 +19,7 @@ const BTN = "rounded-md px-3 py-1 text-xs font-medium disabled:cursor-not-allowe
 export function PipelineRowActions({
   placementId,
   contractorId,
+  docsBlockedReason,
   name,
   actions,
   agreementPrefill,
@@ -26,6 +27,8 @@ export function PipelineRowActions({
   placementId: string;
   /** Where "Induction done" / "Not needed" goes next: the person's Assignments tab. */
   contractorId: string;
+  /** Set while documents are still waiting: "Documents verified" is greyed out with this reason. */
+  docsBlockedReason?: string | null;
   name: string;
   actions: PipelineAction[];
   agreementPrefill: AgreementPrefill;
@@ -93,12 +96,13 @@ export function PipelineRowActions({
         {actions.includes("docs-verified") && (
           <button
             type="button"
-            disabled={pending}
+            disabled={pending || !!docsBlockedReason}
+            title={docsBlockedReason ?? undefined}
             onClick={() =>
               confirm(`Have you checked ${name}'s documents? This moves them to Onboarding, ready for the agreement.`) &&
               run(() => markNewStarterDocsVerified(placementId))
             }
-            className={`${BTN} bg-emerald-600 text-white hover:bg-emerald-700`}
+            className={`${BTN} bg-emerald-600 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600`}
           >
             Documents verified → Onboarding
           </button>
