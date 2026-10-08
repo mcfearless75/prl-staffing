@@ -23,6 +23,13 @@ export type ProfileFormValues = {
   emergencyContactRelation: string;
 };
 
+/** YYYY-MM-DD, 16 years before today: the latest date of birth that can start work. */
+function sixteenYearsAgo(): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 16);
+  return d.toISOString().split("T")[0];
+}
+
 /**
  * The App Invite Form — personal, contact and emergency-contact details. Saved
  * by the single button at the bottom of the page (profile-flow.tsx): "finish
@@ -155,7 +162,9 @@ export function ProfileForm({
               value={values.dateOfBirth}
               onChange={set("dateOfBirth")}
               className={`${inputClass} max-w-[200px]`}
-              max={new Date().toISOString().split("T")[0]}
+              // 16 is the youngest anyone can start, so the picker opens 16
+              // years back instead of today (Jenni, 08-10-26).
+              max={sixteenYearsAgo()}
             />
           </div>
           <div>

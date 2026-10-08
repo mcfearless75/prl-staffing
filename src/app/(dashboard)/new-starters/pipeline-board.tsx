@@ -115,7 +115,11 @@ export async function PipelineBoard({
                           <p>{p.contractor.inviteSentAt ? `Invite sent ${ukDay(p.contractor.inviteSentAt)}` : "Invite not sent"}</p>
                           {p.contractor._count.compliances > 0 && (
                             <p>
-                              <Link href="/compliance/review" className="font-medium text-amber-700 hover:underline">
+                              {/* That person's documents, not everyone's (Jenni, 08-10-26). */}
+                              <Link
+                                href={`/contractors/${p.contractor.id}?tab=${encodeURIComponent("Comps & Certs")}`}
+                                className="font-medium text-amber-700 hover:underline"
+                              >
                                 {p.contractor._count.compliances} document{p.contractor._count.compliances === 1 ? "" : "s"} to verify
                               </Link>
                             </p>

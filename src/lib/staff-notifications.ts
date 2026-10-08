@@ -44,6 +44,23 @@ export function markReadWhere(userId: string, body: unknown): OwnNotificationsWh
   return { ...ownNotificationsWhere(userId, { unreadOnly: true }), id: { in: ids } };
 }
 
+/**
+ * Body of DELETE /api/notifications → which of the caller's READ alerts to
+ * delete (Jenni, 08-10-26: tidy the list). `{ all: true }` = every read one;
+ * `{ ids: [...] }` = those ids. Unread alerts and other people's are never
+ * matched. Anything else is rejected (null).
+ */
+export function deleteReadWhere(userId: string, body: unknown): OwnNotificationsWhere | null {
+  if (!body || typeof body !== "object") return null;
+  const b = body as { all?: unknown; ids?: unknown };
+  const own = { ...ownNotificationsWhere(userId), isRead: true };
+  if (b.all === true) return own;
+  if (!Array.isArray(b.ids)) return null;
+  const ids = b.ids.filter((id): id is string => typeof id === "string" && id.length > 0 && id.length <= 64);
+  if (ids.length === 0 || ids.length > MAX_IDS_PER_REQUEST) return null;
+  return { ...own, id: { in: ids } };
+}
+
 /** Only follow in-app links from a notification: "/contractors/abc", never "//evil" or "https://…". */
 export function safeNotificationHref(url: string | null | undefined): string | null {
   if (!url || !url.startsWith("/") || url.startsWith("//") || url.startsWith("/\\")) return null;
