@@ -122,7 +122,11 @@ export function CompsCertsTab({
                     <div className="flex items-center gap-2 shrink-0">
                       {compliance.status !== "Verified" && (
                         <a
-                          href={`/api/compliance/${compliance.id}/verify?redirect=/contractors/${contractorId}`}
+                          // Back to this tab, not Overview, so staff can carry on
+                          // through the other documents (Erica, 08-10-26).
+                          href={`/api/compliance/${compliance.id}/verify?redirect=${encodeURIComponent(
+                            `/contractors/${contractorId}?tab=${encodeURIComponent("Comps & Certs")}`
+                          )}`}
                           className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
                         >
                           ✓ Approve
