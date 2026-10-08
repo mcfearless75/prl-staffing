@@ -1,6 +1,6 @@
 /**
  * "Thanks, we'll be in touch" email to someone who has just applied on the
- * website (/apply). Pure: the route sends it.
+ * website (/apply or /new-starter). Pure: the routes send it.
  */
 import { escapeHtml } from "@/lib/utils";
 

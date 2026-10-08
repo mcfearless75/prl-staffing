@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendEmail, NEW_STARTER_RECIPIENTS } from "@/lib/email";
+import { applicantThankYouEmail } from "@/lib/applicant-thank-you";
 import { maskNI } from "@/lib/utils";
 import { checkPublicFormRateLimit } from "@/lib/rate-limit";
 
@@ -161,6 +162,20 @@ export async function POST(request: Request) {
           `Failed to send new starter notification email for ${email} (submission ${submission.id}):`,
           emailResult.error
         );
+      }
+
+      // Same thank-you as /apply: the website's "New Starter" link is the one
+      // most people find first (Erica, 08-10-26).
+      const thanks = applicantThankYouEmail(firstName);
+      const thanksResult = await sendEmail({
+        to: email,
+        subject: thanks.subject,
+        html: thanks.html,
+        text: thanks.text,
+        template: "applicant-thank-you",
+      });
+      if (!thanksResult.success) {
+        console.error(`Failed to send new starter thank-you email to ${email}:`, thanksResult.error);
       }
 
     return NextResponse.json({
