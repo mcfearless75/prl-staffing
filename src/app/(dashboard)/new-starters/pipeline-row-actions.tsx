@@ -18,11 +18,14 @@ const BTN = "rounded-md px-3 py-1 text-xs font-medium disabled:cursor-not-allowe
 /** The buttons for one pipeline row. Which buttons show comes from pipelineActions(). */
 export function PipelineRowActions({
   placementId,
+  contractorId,
   name,
   actions,
   agreementPrefill,
 }: {
   placementId: string;
+  /** Where "Induction done" / "Not needed" goes next: the person's Assignments tab. */
+  contractorId: string;
   name: string;
   actions: PipelineAction[];
   agreementPrefill: AgreementPrefill;
@@ -47,7 +50,7 @@ export function PipelineRowActions({
 
   function complete(mode: "induction-done" | "no-induction" | "complete") {
     const label = mode === "induction-done" ? "their induction is done" : mode === "no-induction" ? "no induction is needed" : "they are ready";
-    if (!confirm(`Confirm ${label}? This creates ${name}'s placement (status Placed) and makes them Active.`)) return;
+    if (!confirm(`Confirm ${label}? This creates ${name}'s placement (status Placed), makes them Active and opens their Assignments tab.`)) return;
     setMessage(null);
     startTransition(async () => {
       try {
@@ -60,9 +63,14 @@ export function PipelineRowActions({
           }
           res = await completeNewStarter(placementId, mode, note);
         }
-        if (res.error) setMessage({ text: res.error, error: true });
-        else if (res.ok) setMessage({ text: res.ok, error: false });
-        router.refresh();
+        if (res.error) {
+          setMessage({ text: res.error, error: true });
+          router.refresh();
+          return;
+        }
+        // Straight to their Assignments tab to check the job that was just
+        // created (role, site, rates) — Jenni, 08-10-26.
+        router.push(`/contractors/${contractorId}?tab=Assignments`);
       } catch {
         setMessage({ text: "Something went wrong. Please try again.", error: true });
       }

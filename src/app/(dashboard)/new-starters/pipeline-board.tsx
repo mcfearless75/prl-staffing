@@ -133,6 +133,7 @@ export async function PipelineBoard({
                         <td className="px-4 py-3 text-right">
                           <PipelineRowActions
                             placementId={p.id}
+                            contractorId={p.contractor.id}
                             name={name}
                             actions={actions}
                             agreementPrefill={{
