@@ -4,7 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { safeNotificationHref } from "@/lib/staff-notifications";
 
-type Item = { id: string; title: string; body: string; url: string | null; isRead: boolean; sentAt: string };
+type Item = {
+  id: string;
+  title: string;
+  body: string;
+  url: string | null;
+  isRead: boolean;
+  sentAt: string;
+  /** "Opened by Jenni" when a teammate opened this team alert. */
+  openedBy?: string | null;
+};
 
 function when(iso: string): string {
   return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London" }).format(
@@ -100,6 +109,7 @@ export function NotificationsList({ items, unreadOnly, limit }: { items: Item[];
                   <span className="shrink-0 text-xs text-gray-400">{when(item.sentAt)}</span>
                 </div>
                 {item.body && <p className="mt-0.5 text-sm text-gray-500">{item.body}</p>}
+                {item.openedBy && <p className="mt-0.5 text-xs font-medium text-emerald-700">✓ {item.openedBy}</p>}
               </button>
               {item.isRead && (
                 <button

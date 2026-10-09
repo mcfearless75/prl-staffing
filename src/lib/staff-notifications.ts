@@ -61,6 +61,22 @@ export function deleteReadWhere(userId: string, body: unknown): OwnNotifications
   return { ...own, id: { in: ids } };
 }
 
+/**
+ * The team groups to mark read when someone opens these alerts (Jenni,
+ * 08-10-26): every copy of a team alert shares a groupId, so opening one
+ * clears it for everyone. Personal alerts (no groupId) never spread.
+ */
+export function teamGroupIds(rows: { groupId: string | null }[]): string[] {
+  return [...new Set(rows.map((r) => r.groupId).filter((g): g is string => !!g))];
+}
+
+/** "Opened by Jenni" on everyone else's copy; nothing on the opener's own. */
+export function openedByLabel(readBy: string | null | undefined, myName: string | null | undefined): string | null {
+  if (!readBy) return null;
+  if (myName && readBy.trim().toLowerCase() === myName.trim().toLowerCase()) return null;
+  return `Opened by ${readBy.split(" ")[0]}`;
+}
+
 /** Only follow in-app links from a notification: "/contractors/abc", never "//evil" or "https://…". */
 export function safeNotificationHref(url: string | null | undefined): string | null {
   if (!url || !url.startsWith("/") || url.startsWith("//") || url.startsWith("/\\")) return null;

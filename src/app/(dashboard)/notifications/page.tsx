@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/require-staff";
 import { PageHeader } from "@/components/page-header";
-import { ownNotificationsWhere } from "@/lib/staff-notifications";
+import { openedByLabel, ownNotificationsWhere } from "@/lib/staff-notifications";
 import { NotificationsList } from "./notifications-list";
 
 const PAGE_LIMIT = 200;
@@ -21,7 +21,7 @@ export default async function NotificationsPage({
   const guard = await requireStaff();
   if (!guard.ok) redirect(guard.reason === "forbidden" ? "/" : "/login");
   const email = guard.session.user.email;
-  const me = email ? await prisma.user.findUnique({ where: { email }, select: { id: true } }) : null;
+  const me = email ? await prisma.user.findUnique({ where: { email }, select: { id: true, name: true } }) : null;
   const unreadOnly = (await searchParams)?.show === "unread";
 
   const items = me
@@ -29,7 +29,7 @@ export default async function NotificationsPage({
         where: ownNotificationsWhere(me.id, { unreadOnly }),
         orderBy: { sentAt: "desc" },
         take: PAGE_LIMIT,
-        select: { id: true, title: true, body: true, url: true, isRead: true, sentAt: true },
+        select: { id: true, title: true, body: true, url: true, isRead: true, sentAt: true, readBy: true },
       })
     : [];
 
@@ -41,7 +41,11 @@ export default async function NotificationsPage({
       />
       <NotificationsList
         unreadOnly={unreadOnly}
-        items={items.map((i) => ({ ...i, sentAt: i.sentAt.toISOString() }))}
+        items={items.map(({ readBy, ...i }) => ({
+          ...i,
+          sentAt: i.sentAt.toISOString(),
+          openedBy: openedByLabel(readBy, me?.name),
+        }))}
         limit={PAGE_LIMIT}
       />
     </div>

@@ -45,8 +45,11 @@ export const authConfig = {
             try {
               const admins = await prisma.user.findMany({ where: { role: STAFF_ROLE_ADMIN }, select: { id: true } });
               if (admins.length > 0) {
+                // Shared group: one admin handling it clears it for the others.
+                const groupId = crypto.randomUUID();
                 await prisma.notification.createMany({
                   data: admins.map((a) => ({
+                    groupId,
                     recipientType: "user",
                     recipientId: a.id,
                     title: `${name} is waiting for PRISM access`,
