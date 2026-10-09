@@ -4,6 +4,8 @@ import {
   ownNotificationsWhere,
   markReadWhere,
   deleteReadWhere,
+  teamGroupIds,
+  openedByLabel,
   safeNotificationHref,
   badgeLabel,
   STAFF_RECIPIENT_TYPE,
@@ -80,5 +82,31 @@ describe("deleteReadWhere", () => {
     for (const body of [null, {}, { ids: [] }, { ids: "a" }, { all: "yes" }]) {
       assert.equal(deleteReadWhere("u1", body), null);
     }
+  });
+});
+
+/**
+ * Opening a team alert clears it for everyone (Jenni, 08-10-26). Only alerts
+ * with a group spread; a personal one (an @mention) must never clear anyone
+ * else's.
+ */
+describe("teamGroupIds", () => {
+  test("distinct groups of the opened alerts", () => {
+    assert.deepEqual(teamGroupIds([{ groupId: "g1" }, { groupId: "g1" }, { groupId: "g2" }]), ["g1", "g2"]);
+  });
+
+  test("personal alerts (no group) never spread", () => {
+    assert.deepEqual(teamGroupIds([{ groupId: null }]), []);
+  });
+});
+
+describe("openedByLabel", () => {
+  test("teammates see who opened it, by first name", () => {
+    assert.equal(openedByLabel("Jenni Connors", "Erica South"), "Opened by Jenni");
+  });
+
+  test("nothing on the opener's own copy, or when nobody has", () => {
+    assert.equal(openedByLabel("Jenni Connors", "jenni connors"), null);
+    assert.equal(openedByLabel(null, "Erica South"), null);
   });
 });

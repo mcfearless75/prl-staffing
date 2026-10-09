@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { prisma } from "@/lib/db";
 import { STAFF_RECIPIENT_TYPE } from "@/lib/staff-notifications";
 import { STAFF_ROLE_PENDING } from "@/lib/staff-access";
@@ -13,6 +14,8 @@ export async function notifyAllStaff(alert: { title: string; body: string; url: 
   try {
     const staff = await prisma.user.findMany({ where: { role: { not: STAFF_ROLE_PENDING } }, select: { id: true } });
     if (staff.length === 0) return;
+    // One id for all the copies, so opening any one marks them all read.
+    const groupId = randomUUID();
     await prisma.notification.createMany({
       data: staff.map((u) => ({
         recipientType: STAFF_RECIPIENT_TYPE,
@@ -20,6 +23,7 @@ export async function notifyAllStaff(alert: { title: string; body: string; url: 
         title: alert.title.slice(0, 200),
         body: alert.body.slice(0, 500),
         url: alert.url,
+        groupId,
       })),
     });
   } catch (err) {

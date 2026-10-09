@@ -796,6 +796,13 @@ model Notification {
   url           String? // link to open when tapped
   isRead        Boolean  @default(false)
   sentAt        DateTime @default(now())
+  /// Copies of one team alert share this (Jenni, 2026-10-08): opening any copy
+  /// marks them all read. Null = a personal alert (e.g. an @mention).
+  groupId       String?
+  /// Who opened the team alert, shown to everyone else ("Opened by Jenni").
+  readBy        String?
+
+  @@index([groupId])
 }
 
 // ─── Rate Cards ───
