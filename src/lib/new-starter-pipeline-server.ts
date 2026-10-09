@@ -12,7 +12,9 @@ export async function loadPipelineRows() {
     orderBy: { startDate: "asc" },
     include: {
       company: { select: { name: true } },
-      site: { select: { name: true } },
+      site: {
+        select: { name: true, address: true, city: true, postcode: true, contactName: true, contactPhone: true, contactEmail: true },
+      },
       contractor: {
         select: {
           id: true, firstName: true, lastName: true, email: true, phone: true, status: true, inviteSentAt: true,
